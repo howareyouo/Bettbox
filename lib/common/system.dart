@@ -193,7 +193,7 @@ class Windows {
     final output = result.stdout.toString();
     if (!output.contains('RUNNING')) return WindowsHelperServiceStatus.presence;
 
-    final isReachable = await request.quickPingHelper();
+    final isReachable = await request.pingHelper();
     return isReachable
         ? WindowsHelperServiceStatus.running
         : WindowsHelperServiceStatus.presence;
@@ -206,7 +206,7 @@ class Windows {
     final quickCheck = await Process.run('sc', ['query', appHelperService]);
     if (quickCheck.exitCode == 0 &&
         quickCheck.stdout.toString().contains('RUNNING')) {
-      final isReachable = await request.quickPingHelper();
+      final isReachable = await request.pingHelper();
       if (isReachable) {
         if (createdNewKey && authKey != null) {
           await _restartServiceWithAuthKey(authKey);
@@ -256,7 +256,7 @@ class Windows {
 
     for (int i = 0; i < 10; i++) {
       await Future.delayed(const Duration(milliseconds: 200));
-      if (await request.quickPingHelper()) return true;
+      if (await request.pingHelper()) return true;
       if (i > 0 && i % 4 == 0) {
         final check = await Process.run('sc', ['query', appHelperService]);
         final out = check.stdout.toString();
@@ -293,7 +293,8 @@ class Windows {
     final executablePath = Platform.resolvedExecutable;
     final workingDirectory = dirname(executablePath);
 
-    final taskXml = '''
+    final taskXml =
+        '''
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>

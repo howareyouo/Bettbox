@@ -516,7 +516,8 @@ class GlobalState {
     rawConfig['tun']['dns-hijack'] = realPatchConfig.tun.dnsHijack;
     rawConfig['tun']['stack'] = realPatchConfig.tun.stack.name;
     rawConfig['tun']['route-address'] = realPatchConfig.tun.routeAddress;
-    rawConfig['tun']['route-exclude-address'] = realPatchConfig.tun.routeExcludeAddress;
+    rawConfig['tun']['route-exclude-address'] =
+        realPatchConfig.tun.routeExcludeAddress;
     rawConfig['tun']['auto-route'] = true;
     rawConfig['tun']['auto-detect-interface'] = true;
     rawConfig['tun']['strict-route'] = realPatchConfig.tun.strictRoute;
@@ -753,17 +754,18 @@ class GlobalState {
       }
     }
 
-
-
     if (config.vpnProps.fcmOptimization) {
       final fcmRules = ['DOMAIN,mtalk.google.com,DIRECT'];
       rules = [...fcmRules, ...rules];
     }
 
     if (config.vpnProps.disableQuic) {
-      final isRussian = config.appSetting.locale?.toLowerCase().startsWith('ru') ?? false;
+      final isRussian =
+          config.appSetting.locale?.toLowerCase().startsWith('ru') ?? false;
       final quicRules = config.vpnProps.excludeChina && !isRussian
-          ? ['AND,((NETWORK,UDP),(DST-PORT,443),(NOT,((OR,((GEOSITE,geolocation-cn),(GEOIP,CN,no-resolve)))))),REJECT']
+          ? [
+              'AND,((NETWORK,UDP),(DST-PORT,443),(NOT,((OR,((GEOSITE,geolocation-cn),(GEOIP,CN,no-resolve)))))),REJECT',
+            ]
           : ['AND,((NETWORK,UDP),(DST-PORT,443)),REJECT'];
       rules = [...quicRules, ...rules];
     }
@@ -956,7 +958,10 @@ class DetectionState {
       errorMessage: null,
     );
 
-    final res = await request.checkIpDomestic(cancelToken: _cancelToken);
+    final res = await request.checkIp(
+      cancelToken: _cancelToken,
+      domestic: true,
+    );
 
     if (requestId != _requestId) return;
 
@@ -1023,7 +1028,10 @@ class DetectionState {
     final isStateChanged = _preIsStart != isStart;
     _preIsStart = isStart;
 
-    if (!isStart && state.value.ipInfo != null && !state.value.isLoading && !isStateChanged) {
+    if (!isStart &&
+        state.value.ipInfo != null &&
+        !state.value.isLoading &&
+        !isStateChanged) {
       return;
     }
 
@@ -1041,9 +1049,10 @@ class DetectionState {
 
     final res = isStart
         ? await request.checkIp(cancelToken: _cancelToken, timeout: timeout)
-        : await request.checkIpDomestic(
+        : await request.checkIp(
             cancelToken: _cancelToken,
             timeout: timeout,
+            domestic: true,
           );
 
     if (requestId != _requestId) return;
