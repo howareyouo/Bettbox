@@ -188,7 +188,6 @@ class Request {
         'arg': arg,
         'home_dir': homeDirPath,
       }),
-      timeout: Duration(seconds: 3),
     );
   }
 
@@ -201,11 +200,10 @@ class Request {
     String data = '',
     Duration timeout = const Duration(seconds: 3),
   }) async {
-    final url = 'http://$localhost:$helperPort/$method';
     try {
       final res = await _clashDio
           .post(
-            url,
+            'http://$localhost:$helperPort/$method',
             data: data,
             options: Options(
               responseType: ResponseType.plain,
