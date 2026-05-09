@@ -272,8 +272,7 @@ class AppSidebarContainer extends ConsumerWidget {
       return child;
     }
     final currentIndex = navigationState.currentIndex;
-    final showLabel = ref.watch(appSettingProvider).showLabel;
-    final isLocked = ref.watch(
+    final showLabel = ref.watch(
       windowSettingProvider.select((state) => state.isLocked),
     );
     return Row(
@@ -332,12 +331,9 @@ class AppSidebarContainer extends ConsumerWidget {
                                     color: context.colorScheme.onSurface,
                                   ),
                               destinations: navigationItems.map((e) {
-                                final label = Intl.message(e.label.name);
                                 return NavigationRailDestination(
-                                  icon: isLocked
-                                      ? Tooltip(message: label, child: e.icon)
-                                      : e.icon,
-                                  label: Text(label),
+                                  icon: e.icon,
+                                  label: Text(Intl.message(e.label.name)),
                                 );
                               }).toList(),
                               onDestinationSelected: (index) {
@@ -345,9 +341,9 @@ class AppSidebarContainer extends ConsumerWidget {
                                   navigationItems[index].label,
                                 );
                               },
-                              extended: showLabel && !isLocked,
+                              extended: showLabel,
                               selectedIndex: currentIndex,
-                              labelType: isLocked || showLabel
+                              labelType: showLabel
                                   ? NavigationRailLabelType.none
                                   : NavigationRailLabelType.all,
                             ),
