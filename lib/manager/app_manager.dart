@@ -272,7 +272,9 @@ class AppSidebarContainer extends ConsumerWidget {
       return child;
     }
     final currentIndex = navigationState.currentIndex;
-    final showLabel = ref.watch(appSettingProvider).showLabel;
+    final hideLabel = ref.watch(
+      windowSettingProvider.select((state) => state.isLocked),
+    );
     return Row(
       children: [
         Stack(
@@ -328,23 +330,21 @@ class AppSidebarContainer extends ConsumerWidget {
                                   .copyWith(
                                     color: context.colorScheme.onSurface,
                                   ),
-                              destinations: navigationItems
-                                  .map(
-                                    (e) => NavigationRailDestination(
-                                      icon: e.icon,
-                                      label: Text(Intl.message(e.label.name)),
-                                    ),
-                                  )
-                                  .toList(),
+                              destinations: navigationItems.map((e) {
+                                return NavigationRailDestination(
+                                  icon: e.icon,
+                                  label: Text(Intl.message(e.label.name)),
+                                );
+                              }).toList(),
                               onDestinationSelected: (index) {
                                 globalState.appController.toPage(
                                   navigationItems[index].label,
                                 );
                               },
-                              extended: showLabel,
+                              extended: false,
                               selectedIndex: currentIndex,
-                              labelType: showLabel
-                                  ? NavigationRailLabelType.none
+                              labelType: hideLabel
+                                  ? NavigationRailLabelType.selected
                                   : NavigationRailLabelType.all,
                             ),
                           ),
