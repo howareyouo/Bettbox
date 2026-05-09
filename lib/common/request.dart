@@ -34,10 +34,6 @@ class Request {
     return _getResponseForUrl(url, responseType: ResponseType.bytes);
   }
 
-  Future<Response> getFileResponseForUrl(String url) async {
-    return _getResponseForUrl(url, ResponseType.bytes);
-  }
-
   Future<Response> getTextResponseForUrl(String url) async {
     return _getResponseForUrl(url, responseType: ResponseType.plain);
   }
@@ -125,27 +121,22 @@ class Request {
     List<String> sources, {
     CancelToken? cancelToken,
     Duration? timeout,
-  ) async {
+  }) async {
     final effectiveTimeout = timeout ?? const Duration(seconds: 5);
     final futures = sources.map((url) {
       return _makeIpRequest(url, effectiveTimeout, cancelToken);
     }).toList();
 
     try {
-      return await resultCompleter.future.timeout(
-        effectiveTimeout,
-        onTimeout: () => Result.success(null),
-      );
-    } finally {
-      dio.close(force: true);
+      final res = await Future.any(
+        futures,
+      ).timeout(effectiveTimeout, onTimeout: () => Result.success(null));
+      cancelToken?.cancel();
+      return res;
+    } catch (e) {
+      cancelToken?.cancel();
+      return Result.success(null);
     }
-  }
-
-  Future<Result<IpInfo?>> checkIp({
-    CancelToken? cancelToken,
-    Duration? timeout,
-  }) async {
-    return _checkIpFromSources(_ipInfoSources, cancelToken, timeout);
   }
 
   Future<Result<IpInfo?>> _makeIpRequest(

@@ -292,7 +292,7 @@ class _EditorPageState extends ConsumerState<EditorPage> {
           shortcutsActivatorsBuilder: DefaultCodeShortcutsActivatorsBuilder(),
           controller: _controller,
           style: CodeEditorStyle(
-            fontSize: context.textTheme.bodyLarge?.fontSize?.ap,
+            fontSize: context.textTheme.bodySmall?.fontSize?.ap,
             fontFamily: FontFamily.jetBrainsMono.value,
             codeTheme: CodeHighlightTheme(
               languages: {
