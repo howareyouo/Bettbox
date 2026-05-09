@@ -272,7 +272,7 @@ class AppSidebarContainer extends ConsumerWidget {
       return child;
     }
     final currentIndex = navigationState.currentIndex;
-    final showLabel = ref.watch(
+    final hideLabel = ref.watch(
       windowSettingProvider.select((state) => state.isLocked),
     );
     return Row(
@@ -341,9 +341,9 @@ class AppSidebarContainer extends ConsumerWidget {
                                   navigationItems[index].label,
                                 );
                               },
-                              extended: showLabel,
+                              extended: false,
                               selectedIndex: currentIndex,
-                              labelType: showLabel
+                              labelType: hideLabel
                                   ? NavigationRailLabelType.selected
                                   : NavigationRailLabelType.all,
                             ),
