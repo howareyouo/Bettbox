@@ -273,6 +273,9 @@ class AppSidebarContainer extends ConsumerWidget {
     }
     final currentIndex = navigationState.currentIndex;
     final showLabel = ref.watch(appSettingProvider).showLabel;
+    final isLocked = ref.watch(
+      windowSettingProvider.select((state) => state.isLocked),
+    );
     return Row(
       children: [
         Stack(
@@ -328,22 +331,23 @@ class AppSidebarContainer extends ConsumerWidget {
                                   .copyWith(
                                     color: context.colorScheme.onSurface,
                                   ),
-                              destinations: navigationItems
-                                  .map(
-                                    (e) => NavigationRailDestination(
-                                      icon: e.icon,
-                                      label: Text(Intl.message(e.label.name)),
-                                    ),
-                                  )
-                                  .toList(),
+                              destinations: navigationItems.map((e) {
+                                final label = Intl.message(e.label.name);
+                                return NavigationRailDestination(
+                                  icon: isLocked
+                                      ? Tooltip(message: label, child: e.icon)
+                                      : e.icon,
+                                  label: Text(label),
+                                );
+                              }).toList(),
                               onDestinationSelected: (index) {
                                 globalState.appController.toPage(
                                   navigationItems[index].label,
                                 );
                               },
-                              extended: showLabel,
+                              extended: showLabel && !isLocked,
                               selectedIndex: currentIndex,
-                              labelType: showLabel
+                              labelType: isLocked || showLabel
                                   ? NavigationRailLabelType.none
                                   : NavigationRailLabelType.all,
                             ),
