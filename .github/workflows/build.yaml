@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - no-auth
 
 env:
   IS_STABLE: ${{ !contains(github.ref, '-') }}
@@ -36,7 +38,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.arch == 'arm64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
-
+          
       - name: Setup llvm-mingw (Windows arm64)
         if: matrix.platform == 'windows' && matrix.arch == 'arm64'
         shell: pwsh
