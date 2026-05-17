@@ -96,12 +96,12 @@ class Request {
 
   static const _ipSources = {
     'global': [
-      'https://api.cloudflare.com/cdn-cgi/trace'
+      'https://api.cloudflare.com/cdn-cgi/trace',
       'https://cp.cloudflare.com/cdn-cgi/trace',
     ],
     'domestic': [
-      'https://www.teamviewer.cn/cdn-cgi/trace',
       'https://www.cloudflare-cn.com/cdn-cgi/trace',
+      'https://www.teamviewer.cn/cdn-cgi/trace',
     ],
   };
 
