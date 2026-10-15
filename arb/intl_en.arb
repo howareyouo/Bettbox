@@ -821,7 +821,11 @@
   "logLevelDebugHint": "{level} mode is for network debugging; turn it off for daily use",
   "collapse": "Collapse",
   "analyzeLogPrompt": "Analyze Bettbox (Mihomo) log: {log}",
-  "geoBuiltInResources": "GEO Built-in Resources"
+  "geoBuiltInResources": "GEO Built-in Resources",
+  "externalEditorTip": "Opened in an external editor. Changes are synced back to the app automatically when you save the file.",
+  "externalEditor": "External Editor",
+  "autoDetect": "Auto Detect",
+  "done": "Done"
 }
 
 

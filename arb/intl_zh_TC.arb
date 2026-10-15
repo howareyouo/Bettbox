@@ -822,7 +822,11 @@
   "logLevelDebugHint": "{level}模式適合網路偵錯，日常使用建議關閉",
   "collapse": "收起",
   "analyzeLogPrompt": "分析Bettbox(Mihomo)日誌:{log}",
-  "geoBuiltInResources": "GEO 內建資源"
+  "geoBuiltInResources": "GEO 內建資源",
+  "externalEditorTip": "已在外部編輯器中開啟，儲存檔案後將自動同步到應用",
+  "externalEditor": "外部編輯器",
+  "autoDetect": "自動偵測",
+  "done": "完成"
 }
 
 

@@ -923,8 +923,6 @@ class GlobalState {
     final scriptActive =
         config.scriptProps.currentScript != null && profile.useScriptOverride;
     final overrideData = profile.overrideData;
-    final isRussian =
-        config.appSetting.locale?.toLowerCase().startsWith('ru') ?? false;
     final isChinese =
         config.appSetting.locale?.toLowerCase().startsWith('zh') ?? false;
     final listenPorts = patchConfig.listenPorts;
@@ -977,7 +975,7 @@ class GlobalState {
             'AND,((DST-PORT,853),(IP-CIDR,198.51.100.0/30,no-resolve)),REJECT',
         ],
         if (config.vpnProps.disableQuic)
-          config.vpnProps.excludeChina && !isRussian
+          config.vpnProps.excludeChina
               ? 'AND,((NETWORK,UDP),(DST-PORT,443),(NOT,((OR,((GEOSITE,geolocation-cn),(GEOIP,CN,no-resolve)))))),REJECT'
               : 'AND,((NETWORK,UDP),(DST-PORT,443)),REJECT',
       ],

@@ -1,5 +1,5 @@
 <h4 align="right">
-  <strong>简体中文</strong> | <a href="readme/README_en.md">English</a> | <a href="readme/README_ru.md">Русский</a> | <a href="readme/README_fa.md">فارسی</a> | <a href="readme/README_ja.md">日本語</a> | <a href="readme/README_ko.md">한국어</a>
+  <strong>简体中文</strong> | <a href="readme/README_en.md">English</a>
 </h4>
 
 <h1 align="center">⚡ Bettbox</h1>

@@ -132,6 +132,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoCloseConnectionsDesc": MessageLookupByLibrary.simpleMessage(
       "切换节点后自动关闭连接",
     ),
+    "autoDetect": MessageLookupByLibrary.simpleMessage("自动检测"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("开机启动"),
     "autoLaunchDesc": MessageLookupByLibrary.simpleMessage("跟随系统自启动"),
     "autoRun": MessageLookupByLibrary.simpleMessage("自动连接"),
@@ -312,6 +313,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "dnsResolution": MessageLookupByLibrary.simpleMessage("DNS 解析"),
     "doYouWantToPass": MessageLookupByLibrary.simpleMessage("是否要通过"),
     "domain": MessageLookupByLibrary.simpleMessage("域名"),
+    "done": MessageLookupByLibrary.simpleMessage("完成"),
     "doubleBounce": MessageLookupByLibrary.simpleMessage("双重弹奏"),
     "download": MessageLookupByLibrary.simpleMessage("下载"),
     "dozeSuspend": MessageLookupByLibrary.simpleMessage("休眠支持"),
@@ -362,6 +364,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "externalController": MessageLookupByLibrary.simpleMessage("外部控制"),
     "externalControllerDesc": MessageLookupByLibrary.simpleMessage(
       "通过在线端口控制内核",
+    ),
+    "externalEditor": MessageLookupByLibrary.simpleMessage("外部编辑器"),
+    "externalEditorTip": MessageLookupByLibrary.simpleMessage(
+      "已在外部编辑器中打开，保存文件后将自动同步到应用",
     ),
     "externalLink": MessageLookupByLibrary.simpleMessage("外部链接"),
     "externalResources": MessageLookupByLibrary.simpleMessage("外部资源"),

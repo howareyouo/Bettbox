@@ -17,6 +17,17 @@ class BaseScrollBehavior extends MaterialScrollBehavior {
   };
 }
 
+class NoMouseDragScrollBehavior extends BaseScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.invertedStylus,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.unknown,
+  };
+}
+
 class HiddenBarScrollBehavior extends BaseScrollBehavior {
   @override
   Widget buildScrollbar(

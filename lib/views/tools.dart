@@ -1572,14 +1572,10 @@ class _LocaleItem extends ConsumerWidget {
     'zh_CN': '简体中文',
     'zh_TC': '繁體中文',
     'en': 'English',
-    'ru': 'Русский',
-    'fa': 'فارسی',
-    'ja': '日本語',
-    'ko': '한국어',
   };
 
   static List<Locale> _getOrderedLocales() {
-    final priority = ['zh_CN', 'zh_TC', 'en', 'ru', 'fa', 'ja', 'ko'];
+    final priority = ['zh_CN', 'zh_TC', 'en'];
     final locales = List<Locale>.from(
       AppLocalizations.delegate.supportedLocales,
     );

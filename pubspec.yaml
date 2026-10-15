@@ -119,8 +119,3 @@ ffigen:
   headers:
     entry-points:
       - 'libclash/android/arm64-v8a/libmeta.h'
-flutter_intl:
-  enabled: true
-  class_name: AppLocalizations
-  arb_dir: arb
-  output_dir: lib/l10n

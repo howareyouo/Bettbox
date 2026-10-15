@@ -250,9 +250,6 @@ class ApplicationState extends ConsumerState<Application>
       _buildState(
         Consumer(
           builder: (_, ref, child) {
-            final locale = ref.watch(
-              appSettingProvider.select((state) => state.locale),
-            );
             final themeProps = ref.watch(themeSettingProvider);
             final fontFamily = themeProps.useHarmonyFont
                 ? 'HarmonyOS_Sans'
@@ -288,9 +285,6 @@ class ApplicationState extends ConsumerState<Application>
               },
               scrollBehavior: BaseScrollBehavior(),
               title: appName,
-              locale:
-                  utils.getLocaleForString(locale) ?? utils.getSystemLocale(),
-              supportedLocales: AppLocalizations.delegate.supportedLocales,
               themeMode: themeProps.themeMode,
               theme: ThemeData(
                 useMaterial3: true,

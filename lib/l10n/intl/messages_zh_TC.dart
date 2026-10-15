@@ -134,6 +134,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoCloseConnectionsDesc": MessageLookupByLibrary.simpleMessage(
       "切換節點後自動關閉連線",
     ),
+    "autoDetect": MessageLookupByLibrary.simpleMessage("自動偵測"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("開機啟動"),
     "autoLaunchDesc": MessageLookupByLibrary.simpleMessage("跟隨系統自動啟動"),
     "autoRun": MessageLookupByLibrary.simpleMessage("自動連線"),
@@ -314,6 +315,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "dnsResolution": MessageLookupByLibrary.simpleMessage("DNS 解析"),
     "doYouWantToPass": MessageLookupByLibrary.simpleMessage("是否要通過"),
     "domain": MessageLookupByLibrary.simpleMessage("網域"),
+    "done": MessageLookupByLibrary.simpleMessage("完成"),
     "doubleBounce": MessageLookupByLibrary.simpleMessage("雙重彈奏"),
     "download": MessageLookupByLibrary.simpleMessage("下載"),
     "dozeSuspend": MessageLookupByLibrary.simpleMessage("休眠支援"),
@@ -364,6 +366,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "externalController": MessageLookupByLibrary.simpleMessage("外部控制"),
     "externalControllerDesc": MessageLookupByLibrary.simpleMessage(
       "透過線上連接埠控制內核",
+    ),
+    "externalEditor": MessageLookupByLibrary.simpleMessage("外部編輯器"),
+    "externalEditorTip": MessageLookupByLibrary.simpleMessage(
+      "已在外部編輯器中開啟，儲存檔案後將自動同步到應用",
     ),
     "externalLink": MessageLookupByLibrary.simpleMessage("外部連結"),
     "externalResources": MessageLookupByLibrary.simpleMessage("外部資源"),

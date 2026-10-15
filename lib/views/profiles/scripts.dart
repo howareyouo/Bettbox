@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bett_box/common/common.dart';
+import 'package:bett_box/common/external_editor.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/card.dart';
@@ -102,6 +104,23 @@ class ScriptsView extends ConsumerStatefulWidget {
 }
 
 class _ScriptsViewState extends ConsumerState<ScriptsView> {
+  final Map<String, StreamSubscription<FileSystemEvent>> _editSubscriptions =
+      {};
+  final Map<String, Timer> _editDebounces = {};
+
+  @override
+  void dispose() {
+    for (final subscription in _editSubscriptions.values) {
+      subscription.cancel();
+    }
+    _editSubscriptions.clear();
+    for (final timer in _editDebounces.values) {
+      timer.cancel();
+    }
+    _editDebounces.clear();
+    super.dispose();
+  }
+
   Future<void> _handleDelScript(String label) async {
     final res = await globalState.showMessage(
       message: TextSpan(
@@ -152,6 +171,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
       builder: (_, type) {
         return _ScriptSettingsSheet(type: type);
       },
+    );
+  }
+
+  void _handleShowExternalEditorSetting() {
+    showDialog(
+      context: context,
+      builder: (_) => const _ExternalEditorDialog(),
     );
   }
 
@@ -293,10 +319,10 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                           popup: CommonPopupMenu(
                             items: [
                               PopupMenuItemData(
-                                icon: Icons.edit,
-                                label: appLocalizations.edit,
+                                icon: Icons.edit_note,
+                                label: appLocalizations.externalEditor,
                                 onPressed: () {
-                                  _handleToEditor(script: script);
+                                  _handleExternalEdit(script: script);
                                 },
                               ),
                               if (script.compatible)
@@ -344,110 +370,91 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     );
   }
 
-  Future<void> _handleEditorSave(
-    BuildContext _,
-    String title,
-    String content, {
-    Script? script,
-    String? url,
-  }) async {
-    var finalLabel = title.trim();
-    if (finalLabel.isEmpty) {
-      finalLabel = ref
-          .read(scriptStateProvider.notifier)
-          .getAvailableLabel(appLocalizations.unnamed);
-    }
-    final draft =
-        script?.copyWith(label: finalLabel, url: url) ??
-        Script.create(label: finalLabel, url: url);
-    if (draft.label != script?.label) {
-      final isExits = ref
-          .read(scriptStateProvider.notifier)
-          .isExits(draft.label);
-      if (isExits) {
-        globalState.showMessage(
-          message: TextSpan(
-            text: appLocalizations.existsTip(appLocalizations.name),
-          ),
-          cancelable: false,
-        );
-        return;
-      }
-    }
-    final newScript = await globalState.appController.safeRun(
-      silence: false,
-      () => draft.writeContent(content),
-    );
-    if (newScript == null || !mounted) return;
-    ref.read(scriptStateProvider.notifier).setScript(newScript);
-    Navigator.of(context).pop();
-  }
-
-  Future<bool> _handleEditorPop(
-    BuildContext _,
-    String title,
-    String content,
-    String raw, {
-    Script? script,
-  }) async {
-    if (content == raw) {
-      return true;
-    }
-    final res = await globalState.showMessage(
-      message: TextSpan(text: appLocalizations.saveChanges),
-    );
-    if (res == true && mounted) {
-      _handleEditorSave(
-        context,
-        title,
-        content,
-        script: script,
-        url: script?.url,
-      );
-    } else {
-      return true;
-    }
-    return false;
-  }
-
-  Future<void> _handleToEditor({
+  Future<void> _handleExternalEdit({
     Script? script,
     String? initialContent,
     String? url,
-    bool delayedFocus = false,
   }) async {
-    final title = script?.label ?? '';
-    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
+    final res = await globalState.appController.safeRun<bool>(
+      () async {
+        var target = script;
+        if (target == null) {
+          final label = ref
+              .read(scriptStateProvider.notifier)
+              .getAvailableLabel(appLocalizations.unnamed);
+          final draft = Script.create(label: label, url: url);
+          target = await draft.writeContent(initialContent ?? '');
+          ref.read(scriptStateProvider.notifier).setScript(target);
+        }
+        final path = await appPath.getScriptPath(target.id);
+        final content = await target.readContent();
+        final file = File(path);
+        await file.parent.create(recursive: true);
+        await file.writeAsString(content, flush: true);
+        final ok = await launchExternalEditor(
+          path,
+          ref.read(appSettingProvider).externalEditor,
+        );
+        if (ok) {
+          _watchScriptFile(target);
+        }
+        return ok;
+      },
+      needLoading: true,
+      title: appLocalizations.tip,
+    );
+    if (res != true) {
+      globalState.showMessage(
+        message: TextSpan(text: appLocalizations.tip),
+        cancelable: false,
+      );
+      return;
+    }
+    globalState.showNotifier(appLocalizations.externalEditorTip);
+  }
+
+  void _watchScriptFile(Script script) {
+    if (_editSubscriptions.containsKey(script.id)) {
+      return;
+    }
+    unawaited(() async {
+      final path = await appPath.getScriptPath(script.id);
+      if (!mounted) return;
+      final subscription = File(path).watch(
+        events: FileSystemEvent.modify |
+            FileSystemEvent.create |
+            FileSystemEvent.move,
+      ).listen(
+        (_) => _scheduleScriptSync(script),
+        onError: (_) {},
+        cancelOnError: false,
+      );
+      if (!mounted) {
+        await subscription.cancel();
+        return;
+      }
+      _editSubscriptions[script.id] = subscription;
+    }());
+  }
+
+  void _scheduleScriptSync(Script script) {
+    _editDebounces.remove(script.id)?.cancel();
+    _editDebounces[script.id] = Timer(
+      const Duration(milliseconds: 600),
+      () => _syncScriptFromFile(script),
+    );
+  }
+
+  Future<void> _syncScriptFromFile(Script script) async {
     if (!mounted) return;
-    String? importedUrl = url ?? script?.url;
-    BaseNavigator.push(
-      context,
-      EditorPage(
-        titleEditable: true,
-        title: title,
-        supportRemoteDownload: true,
-        delayedFocus: delayedFocus,
-        onUrlImport: (downloadedUrl) {
-          importedUrl = downloadedUrl;
-        },
-        onSave: (context, title, content) {
-          final scriptToSave = script != null
-              ? script.copyWith(url: importedUrl)
-              : null;
-          _handleEditorSave(
-            context,
-            title,
-            content,
-            script: scriptToSave,
-            url: importedUrl,
-          );
-        },
-        onPop: (context, title, content) {
-          return _handleEditorPop(context, title, content, raw, script: script);
-        },
-        languages: const [Language.javaScript],
-        content: raw,
-      ),
+    await globalState.appController.safeRun(
+      () async {
+        final newScript = await script.writeContent(
+          await script.readContent(),
+        );
+        if (newScript == script) return;
+        ref.read(scriptStateProvider.notifier).setScript(newScript);
+      },
     );
   }
 
@@ -461,7 +468,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
 
     switch (option) {
       case ImportOption.code:
-        _handleToEditor(delayedFocus: true);
+        _handleExternalEdit();
       case ImportOption.url:
         await _handleUrlImport();
       case ImportOption.file:
@@ -494,7 +501,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     try {
       final res = await request.getTextResponseForUrl(url);
       if (mounted) {
-        _handleToEditor(initialContent: res.data, url: url);
+        _handleExternalEdit(initialContent: res.data, url: url);
       }
     } catch (e) {
       globalState.showMessage(
@@ -515,7 +522,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     }
     final content = utf8.decode(bytes);
     if (mounted) {
-      _handleToEditor(initialContent: content);
+      _handleExternalEdit(initialContent: content);
     }
   }
 
@@ -529,6 +536,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
         child: Icon(Icons.add),
       ),
       actions: [
+        IconButton(
+          onPressed: _handleShowExternalEditorSetting,
+          tooltip: appLocalizations.externalEditor,
+          icon: Icon(Icons.edit_note),
+        ),
         IconButton(
           onPressed: _handleShowScriptSettings,
           tooltip: appLocalizations.settings,
@@ -555,45 +567,225 @@ class _ScriptSettingsSheet extends ConsumerWidget {
       body: profiles.isEmpty
           ? NullStatus(label: appLocalizations.nullProfileDesc)
           : ScrollEdgeRise(
-              builder: (_, rise) => ListView.builder(
-                padding: EdgeInsets.fromLTRB(12, 16 + rise, 12, 16),
-                itemCount: profiles.length,
-                itemBuilder: (_, index) {
-                  final profile = profiles[index];
-                  final isCurrentProfile = profile.id == currentProfileId;
-                  return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: CommonCard(
-                      type: CommonCardType.filled,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.only(
-                          left: 16,
-                          right: 16,
-                        ),
-                        title: EmojiText(profile.label ?? profile.id),
-                        trailing: Switch(
-                          value: profile.useScriptOverride,
-                          onChanged: (value) async {
-                            ref
-                                .read(profilesProvider.notifier)
-                                .updateProfile(
-                                  profile.id,
-                                  (p) => p.copyWith(useScriptOverride: value),
-                                );
-                            if (isCurrentProfile) {
-                              await globalState.appController.applyProfile(
-                                silence: true,
-                              );
-                            }
-                          },
-                        ),
-                      ),
+              builder: (_, rise) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(12, 16 + rise, 12, 8),
+                    child: _ExternalEditorCard(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const _ExternalEditorDialog(),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                      itemCount: profiles.length,
+                      itemBuilder: (_, index) {
+                        final profile = profiles[index];
+                        final isCurrentProfile =
+                            profile.id == currentProfileId;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: CommonCard(
+                            type: CommonCardType.filled,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.only(
+                                left: 16,
+                                right: 16,
+                              ),
+                              title: EmojiText(profile.label ?? profile.id),
+                              trailing: Switch(
+                                value: profile.useScriptOverride,
+                                onChanged: (value) async {
+                                  ref
+                                      .read(profilesProvider.notifier)
+                                      .updateProfile(
+                                        profile.id,
+                                        (p) => p.copyWith(
+                                          useScriptOverride: value,
+                                        ),
+                                      );
+                                  if (isCurrentProfile) {
+                                    await globalState.appController.applyProfile(
+                                      silence: true,
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
       title: appLocalizations.useGlobalScriptOverride,
+    );
+  }
+}
+
+class _ExternalEditorCard extends ConsumerWidget {
+  final VoidCallback onPressed;
+
+  const _ExternalEditorCard({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final configured = ref.watch(
+      appSettingProvider.select((state) => state.externalEditor),
+    );
+    final label = configured.isEmpty
+        ? appLocalizations.autoDetect
+        : externalEditorLabel(configured);
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: CommonCard(
+        type: CommonCardType.filled,
+        child: ListTile(
+          contentPadding: const EdgeInsets.only(left: 16, right: 16),
+          leading: const Icon(Icons.edit_note),
+          title: Text(appLocalizations.externalEditor),
+          subtitle: Text(label),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onPressed,
+        ),
+      ),
+    );
+  }
+}
+
+class _ExternalEditorDialog extends ConsumerStatefulWidget {
+  const _ExternalEditorDialog();
+
+  @override
+  ConsumerState<_ExternalEditorDialog> createState() =>
+      _ExternalEditorDialogState();
+}
+
+class _ExternalEditorDialogState extends ConsumerState<_ExternalEditorDialog> {
+  List<String> _detected = [];
+  bool _loading = true;
+  late String _selected;
+  final _customController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final configured = ref.read(appSettingProvider).externalEditor;
+    final detected = await detectExternalEditors();
+    if (!mounted) return;
+    setState(() {
+      _detected = detected;
+      _loading = false;
+      _selected = configured.isNotEmpty
+          ? configured
+          : (detected.isNotEmpty ? detected.first : '');
+      _customController.text = configured;
+    });
+  }
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  void _handleSave() {
+    final custom = _customController.text.trim();
+    ref.read(appSettingProvider.notifier).updateState(
+      (state) => state.copyWith(externalEditor: custom.isEmpty ? _selected : custom),
+    );
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <String>[
+      if (_detected.isNotEmpty) ..._detected,
+      if (_selected.isNotEmpty && !_detected.contains(_selected)) _selected,
+    ];
+    return CommonDialog(
+      title: appLocalizations.externalEditor,
+      child: RadioGroup<String>(
+        groupValue: _selected,
+        onChanged: (value) {
+          setState(() {
+            _selected = value ?? '';
+            _customController.text = '';
+          });
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              )
+            else ...[
+              if (options.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(appLocalizations.autoDetect),
+                )
+              else
+                for (final option in options)
+                  RadioListTile<String>(
+                    value: option,
+                    title: Text(externalEditorLabel(option)),
+                  ),
+              ListItem(
+                leading: const Icon(Icons.auto_awesome),
+                title: Text(appLocalizations.autoDetect),
+                trailing: const Radio<String>(value: ''),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  appLocalizations.custom,
+                  style: context.textTheme.labelLarge,
+                ),
+              ),
+              TextField(
+                controller: _customController,
+                decoration: InputDecoration(
+                  labelText: appLocalizations.externalEditor,
+                ),
+                onChanged: (value) {
+                  setState(() => _selected = value.trim());
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(appLocalizations.cancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _loading ? null : _handleSave,
+                  child: Text(appLocalizations.done),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

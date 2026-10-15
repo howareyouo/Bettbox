@@ -1,9 +1,7 @@
-import 'dart:ui';
-
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/edit_profile.dart';
@@ -24,6 +22,38 @@ class ProfilesView extends ConsumerStatefulWidget {
 }
 
 class _ProfilesViewState extends ConsumerState<ProfilesView> {
+  final _gridKey = GlobalKey<SuperGridState>();
+
+  void _handleGridUpdate() {
+    final children = _gridKey.currentState?.children;
+    if (children == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ids = children
+          .map((item) => item.key)
+          .whereType<ValueKey<String>>()
+          .map((key) => key.value)
+          .toList();
+      final profiles = globalState.config.profiles;
+      if (ids.length != profiles.length) return;
+      final profileMap = {for (final profile in profiles) profile.id: profile};
+      final sorted = [
+        for (final id in ids)
+          if (profileMap[id] != null) profileMap[id]!,
+      ];
+      if (sorted.length != profiles.length) return;
+      var isSame = true;
+      for (int i = 0; i < ids.length; i++) {
+        if (profiles[i].id != ids[i]) {
+          isSame = false;
+          break;
+        }
+      }
+      if (isSame) return;
+      globalState.appController.setProfiles(sorted);
+    });
+  }
+
   Function? applyConfigDebounce;
 
   void _handleShowAddExtendPage() {
@@ -99,20 +129,6 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
           },
         ),
       ),
-      IconButton(
-        onPressed: () {
-          final profiles = globalState.config.profiles;
-          showSheet(
-            context: context,
-            builder: (_, type) {
-              return ReorderableProfilesSheet(type: type, profiles: profiles);
-            },
-          );
-        },
-        tooltip: appLocalizations.sort,
-        icon: const Icon(Icons.sort),
-        iconSize: 26,
-      ),
     ];
   }
 
@@ -155,47 +171,55 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
                     profilesSelectorState.columns
               ? profilesSelectorState.profiles.length
               : profilesSelectorState.columns;
-          return ScrollEdgeRise(
-            builder: (context, rise) => Align(
-              alignment: Alignment.topCenter,
-              child: SingleChildScrollView(
-                key: profilesStoreKey,
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 16 + rise,
-                  bottom:
-                      (profilesSelectorState.profiles.isNotEmpty &&
-                              profilesSelectorState.profiles.length % columns ==
-                                  0
-                          ? 88
-                          : 16) +
-                      (isMobileView
-                          ? getFloatingBottomBarReserveHeight(context)
-                          : 0),
-                ),
-                child: Grid(
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  crossAxisCount: columns,
-                  children: [
-                    for (
-                      int i = 0;
-                      i < profilesSelectorState.profiles.length;
-                      i++
-                    )
-                      GridItem(
-                        child: ProfileItem(
-                          key: Key(profilesSelectorState.profiles[i].id),
-                          profile: profilesSelectorState.profiles[i],
-                          groupValue: profilesSelectorState.currentProfileId,
-                          onChanged: (profileId) {
-                            ref.read(currentProfileIdProvider.notifier).value =
-                                profileId;
-                          },
+          return ScrollConfiguration(
+            behavior: NoMouseDragScrollBehavior(),
+            child: ScrollEdgeRise(
+              builder: (context, rise) => Align(
+                alignment: Alignment.topCenter,
+                child: SingleChildScrollView(
+                  key: profilesStoreKey,
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16 + rise,
+                    bottom:
+                        (profilesSelectorState.profiles.isNotEmpty &&
+                                profilesSelectorState.profiles.length % columns ==
+                                    0
+                            ? 88
+                            : 16) +
+                        (isMobileView
+                            ? getFloatingBottomBarReserveHeight(context)
+                            : 0),
+                  ),
+                  child: SuperGrid(
+                    key: _gridKey,
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    wrapCard: false,
+                    shake: false,
+                    absorbItem: false,
+                    mouseDragSlop: 8,
+                    onUpdate: _handleGridUpdate,
+                    children: [
+                      for (final profile in profilesSelectorState.profiles)
+                        GridItem(
+                          key: ValueKey(profile.id),
+                          child: ProfileItem(
+                            key: ValueKey(profile.id),
+                            profile: profile,
+                            groupValue:
+                                profilesSelectorState.currentProfileId,
+                            onChanged: (profileId) {
+                              ref.read(
+                                    currentProfileIdProvider.notifier,
+                                  ).value = profileId;
+                            },
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -243,11 +267,10 @@ class ProfileItem extends StatelessWidget {
           return;
         }
 
-        final previewPage = EditorPage(
+        final previewPage = ViewerPage(
           title:
               '${appLocalizations.runtimeConfig} - ${profile.label ?? profile.id}',
           content: content,
-          readOnly: true,
         );
         BaseNavigator.push<String>(context, previewPage, maintainState: false);
       },
@@ -621,108 +644,6 @@ class ProfileItem extends StatelessWidget {
       onPressed: isTV ? null : () => onChanged(profile.id),
       onLongPress: isTV ? null : () => _handlePreviewRuntimeConfig(context),
       child: isTV ? _buildTVLayout(context) : _buildNormalLayout(context),
-    );
-  }
-}
-
-class ReorderableProfilesSheet extends StatefulWidget {
-  final List<Profile> profiles;
-  final SheetType type;
-
-  const ReorderableProfilesSheet({
-    super.key,
-    required this.profiles,
-    required this.type,
-  });
-
-  @override
-  State<ReorderableProfilesSheet> createState() =>
-      _ReorderableProfilesSheetState();
-}
-
-class _ReorderableProfilesSheetState extends State<ReorderableProfilesSheet> {
-  late List<Profile> profiles;
-
-  @override
-  void initState() {
-    super.initState();
-    profiles = List.from(widget.profiles);
-  }
-
-  Widget proxyDecorator(Widget child, int index, Animation<double> animation) {
-    final profile = profiles[index];
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (_, Widget? child) {
-        final double animValue = Curves.easeInOut.transform(animation.value);
-        final double scale = lerpDouble(1, 1.02, animValue)!;
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Container(
-        key: Key(profile.id),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: CommonCard(
-          type: CommonCardType.filled,
-          child: ListTile(
-            contentPadding: const EdgeInsets.only(right: 44, left: 16),
-            title: EmojiText(profile.label ?? profile.id),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AdaptiveSheetScaffold(
-      type: widget.type,
-      actions: [
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            globalState.appController.setProfiles(profiles);
-          },
-          icon: Icon(Icons.save),
-        ),
-      ],
-      body: Padding(
-        padding: EdgeInsets.only(bottom: 32, top: 16),
-        child: ReorderableListView.builder(
-          buildDefaultDragHandles: false,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          proxyDecorator: proxyDecorator,
-          // ignore: deprecated_member_use
-          onReorder: (oldIndex, newIndex) {
-            setState(() {
-              if (oldIndex < newIndex) {
-                newIndex -= 1;
-              }
-              final profile = profiles.removeAt(oldIndex);
-              profiles.insert(newIndex, profile);
-            });
-          },
-          itemBuilder: (_, index) {
-            final profile = profiles[index];
-            return Container(
-              key: Key(profile.id),
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: CommonCard(
-                type: CommonCardType.filled,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.only(right: 16, left: 16),
-                  title: EmojiText(profile.label ?? profile.id),
-                  trailing: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle),
-                  ),
-                ),
-              ),
-            );
-          },
-          itemCount: profiles.length,
-        ),
-      ),
-      title: appLocalizations.profilesSort,
     );
   }
 }

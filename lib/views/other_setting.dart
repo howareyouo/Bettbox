@@ -495,10 +495,6 @@ class DisableQuicSection extends ConsumerWidget {
     final excludeChina = ref.watch(
       vpnSettingProvider.select((state) => state.excludeChina),
     );
-    final locale = ref.watch(
-      appSettingProvider.select((state) => state.locale),
-    );
-    final isRussian = locale?.toLowerCase().startsWith('ru') ?? false;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -516,7 +512,7 @@ class DisableQuicSection extends ConsumerWidget {
             },
           ),
         ),
-        if (disableQuic && !isRussian) ...[
+        if (disableQuic) ...[
           Divider(
             height: 1,
             thickness: 1,

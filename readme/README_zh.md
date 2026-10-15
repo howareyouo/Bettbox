@@ -1,5 +1,5 @@
 <h4 align="right">
-  <a href="../README.md">简体中文</a> | <a href="README_en.md">English</a> | <a href="README_ru.md">Русский</a> | <a href="README_fa.md">فارسی</a> | <a href="README_ja.md">日本語</a> | <a href="README_ko.md">한국어</a>
+  <a href="../README.md">简体中文</a> | <a href="README_en.md">English</a>
 </h4>
 
 <h1 align="center">⚡ Bettbox</h1>

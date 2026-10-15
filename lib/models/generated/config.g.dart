@@ -83,6 +83,7 @@ _AppSettingProps _$AppSettingPropsFromJson(
       ? defaultSidebarFlyoutEntries
       : sidebarFlyoutEntriesSafeFromJson(json['sidebarFlyoutEntries'] as List?),
   dashboardTitle: json['dashboardTitle'] as String?,
+  externalEditor: json['externalEditor'] as String? ?? '',
 );
 
 Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
@@ -139,6 +140,7 @@ Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
           .map((e) => _$SidebarFlyoutEntryEnumMap[e]!)
           .toList(),
       'dashboardTitle': instance.dashboardTitle,
+      'externalEditor': instance.externalEditor,
     };
 
 const _$StartSwitchStyleEnumMap = {

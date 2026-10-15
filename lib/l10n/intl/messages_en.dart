@@ -174,6 +174,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoCloseConnectionsDesc": MessageLookupByLibrary.simpleMessage(
       "Close connections when switching nodes",
     ),
+    "autoDetect": MessageLookupByLibrary.simpleMessage("Auto Detect"),
     "autoLaunch": MessageLookupByLibrary.simpleMessage("Auto Launch"),
     "autoLaunchDesc": MessageLookupByLibrary.simpleMessage(
       "Launch on system startup",
@@ -436,6 +437,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Do you want to pass",
     ),
     "domain": MessageLookupByLibrary.simpleMessage("Domain"),
+    "done": MessageLookupByLibrary.simpleMessage("Done"),
     "doubleBounce": MessageLookupByLibrary.simpleMessage("Double Bounce"),
     "download": MessageLookupByLibrary.simpleMessage("Download"),
     "dozeSuspend": MessageLookupByLibrary.simpleMessage("Doze Support"),
@@ -496,6 +498,10 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "externalControllerDesc": MessageLookupByLibrary.simpleMessage(
       "Control core via online port",
+    ),
+    "externalEditor": MessageLookupByLibrary.simpleMessage("External Editor"),
+    "externalEditorTip": MessageLookupByLibrary.simpleMessage(
+      "Opened in an external editor. Changes are synced back to the app automatically when you save the file.",
     ),
     "externalLink": MessageLookupByLibrary.simpleMessage("External Link"),
     "externalResources": MessageLookupByLibrary.simpleMessage(

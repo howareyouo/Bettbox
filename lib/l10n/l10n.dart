@@ -2165,6 +2165,26 @@ class AppLocalizations {
     );
   }
 
+  /// `External Editor`
+  String get externalEditor {
+    return Intl.message(
+      'External Editor',
+      name: 'externalEditor',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Opened in an external editor. Changes are synced back to the app automatically when you save the file.`
+  String get externalEditorTip {
+    return Intl.message(
+      'Opened in an external editor. Changes are synced back to the app automatically when you save the file.',
+      name: 'externalEditorTip',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Control Secret`
   String get controlSecret {
     return Intl.message(
@@ -2833,6 +2853,11 @@ class AppLocalizations {
       desc: '',
       args: [],
     );
+  }
+
+  /// `Auto Detect`
+  String get autoDetect {
+    return Intl.message('Auto Detect', name: 'autoDetect', desc: '', args: []);
   }
 
   /// `Related Settings`
@@ -4223,6 +4248,11 @@ class AppLocalizations {
   /// `Domain`
   String get domain {
     return Intl.message('Domain', name: 'domain', desc: '', args: []);
+  }
+
+  /// `Done`
+  String get done {
+    return Intl.message('Done', name: 'done', desc: '', args: []);
   }
 
   /// `Reset`
@@ -6727,10 +6757,6 @@ class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalizations> {
   List<Locale> get supportedLocales {
     return const <Locale>[
       Locale.fromSubtags(languageCode: 'en'),
-      Locale.fromSubtags(languageCode: 'fa'),
-      Locale.fromSubtags(languageCode: 'ja'),
-      Locale.fromSubtags(languageCode: 'ko'),
-      Locale.fromSubtags(languageCode: 'ru'),
       Locale.fromSubtags(languageCode: 'zh', countryCode: 'CN'),
       Locale.fromSubtags(languageCode: 'zh', countryCode: 'TC'),
     ];
