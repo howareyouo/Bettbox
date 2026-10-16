@@ -1,5 +1,5 @@
 diff --git a/lib/application.dart b/lib/application.dart
-index cf757390..8498acc3 100644
+index cf757390..7d608be1 100644
 --- a/lib/application.dart
 +++ b/lib/application.dart
 @@ -116,6 +116,7 @@ class ApplicationState extends ConsumerState<Application>
@@ -10,22 +10,6 @@ index cf757390..8498acc3 100644
      WidgetsBinding.instance.addPostFrameCallback((_) {
        unawaited(_initApp());
      });
-@@ -231,13 +232,13 @@ class ApplicationState extends ConsumerState<Application>
-                 ),
-               );
-             }
--            if (system.isMacOS || system.isLinux) {
-+            if (system.isMacOS) {
-               // Wait for DHCP and the default route to settle before moving the
-               // managed DNS from the previous network to the new one.
-               await Future.delayed(const Duration(seconds: 1));
-               if (!mounted) return;
-               final dnsState = ref.read(autoSetSystemDnsStateProvider);
--              await system.updateDns(!(dnsState.a && dnsState.b));
-+              await macOS?.updateDns(!(dnsState.a && dnsState.b));
-             }
-             globalState.appController.updateLocalNetwork();
-             globalState.appController.addCheckIpNumDebounce();
 @@ -287,10 +288,17 @@ class ApplicationState extends ConsumerState<Application>
                    child: ValueListenableBuilder<bool>(
                      valueListenable: globalState.animationEnabled,
@@ -269,38 +253,10 @@ index 00000000..54558a75
 +final pageNavigationController = PageNavigationController.instance;
 \ No newline at end of file
 diff --git a/lib/controller.dart b/lib/controller.dart
-index 918c614a..d0261255 100644
+index 918c614a..0e37f738 100644
 --- a/lib/controller.dart
 +++ b/lib/controller.dart
-@@ -1126,10 +1126,12 @@ class AppController {
-     } catch (e) {
-       commonPrint.warn('handleExit error: $e');
-     } finally {
--      try {
--        await system.updateDns(true);
--      } catch (e) {
--        commonPrint.warn('Failed to restore system DNS on exit: $e');
-+      if (macOS != null) {
-+        try {
-+          await macOS!.updateDns(true);
-+        } catch (e) {
-+          commonPrint.warn('Failed to restore macOS system DNS on exit: $e');
-+        }
-       }
-       if (!exitLock.isCompleted) {
-         exitLock.complete();
-@@ -1408,8 +1410,8 @@ class AppController {
-         }
-       }
-     }
--    if (!globalState.isStart) {
--      await system.updateDns(true);
-+    if (system.isMacOS && !globalState.isStart) {
-+      await macOS?.updateDns(true);
-     }
-     final hasProfile = _ref.read(currentProfileProvider) != null;
-     final shouldStart =
-@@ -1485,6 +1487,7 @@ class AppController {
+@@ -1485,6 +1485,7 @@ class AppController {
        ).popUntil((route) => route.isFirst);
      }
      _ref.read(currentPageLabelProvider.notifier).value = pageLabel;
