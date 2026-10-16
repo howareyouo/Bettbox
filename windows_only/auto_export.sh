@@ -6,7 +6,7 @@
 #   1. 读 windows_only/own_files.txt（每行「补丁名 路径」）
 #   2. 对每个补丁名：git diff upstream/main..HEAD -- <路径> 生成 .patch
 #      （空 diff 且旧补丁存在 → 删除，表示功能已回退到上游）
-#   3. 有变更时在干净上游 worktree 上按字母序验证 windows_only_patches/ 下
+#   3. 有变更时在干净上游 worktree 上按字母序验证 patches/ 下
 #      所有补丁可应用（与 build_windows_only.sh 的应用 glob 顺序一致，
 #      能抓到手工补丁与清单补丁的冲突）
 #   4. 输出 CHANGED（有增删改）或 CLEAN（无变化），由 workflow 决定是否提交
@@ -19,7 +19,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="$REPO_ROOT/windows_only/own_files.txt"
-PATCH_DIR="$REPO_ROOT/windows_only/windows_only_patches"
+PATCH_DIR="$REPO_ROOT/windows_only/patches"
 UPSTREAM_REF="${1:-upstream/main}"
 
 cd "$REPO_ROOT"

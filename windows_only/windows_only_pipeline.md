@@ -20,7 +20,7 @@
 build_windows_only.sh（裁剪脚本，幂等）
    ├─ 以 upstream/main 为基线建干净 worktree
    ├─ 按 delete_manifest.txt 删除非 Windows 文件/目录
-   ├─ 应用 windows_only_patches/*.patch（自有功能）
+   ├─ 应用 patches/*.patch（自有功能）
    ├─ 记录上游 SHA（.upstream-sha）
    └─ commit → push 到 windows-only 分支（无历史包袱）
    ▼
@@ -63,7 +63,7 @@ windows_only/
   delete_manifest.txt                   删除清单：需要物理删除的文件/目录
   own_files.txt                         补丁清单：「补丁名 路径」，自动导出的唯一入口
   auto_export.sh                        自动导出脚本：按 own_files.txt 导出/删除补丁并验证
-  windows_only_patches/
+  patches/
     external_editor.patch               自有功能①：Set Editor 外部编辑器（12 文件）
     profile_drag.patch                  自有功能②：profile 卡片拖拽排序（清单 profile_drag）
     profile_hover.patch                 自有功能③：profile 悬停预览（清单 profile_hover）
@@ -156,7 +156,7 @@ git commit -m "feat(windows_only): track xxx patch in manifest"
 git push origin main
 ```
 
-补丁进入 `windows_only_patches/` 后，下次流水线重建自动带上。
+补丁进入 `patches/` 后，下次流水线重建自动带上。
 
 **要点**：
 - 新功能尽量做成**独立文件**（如 `lib/common/external_editor.dart`），少改上游已有文件 → 冲突面小。
@@ -219,7 +219,7 @@ git rev-parse upstream/main && cat <windows-only 分支的 .upstream-sha>
 处理：
 ```bash
 # 1) 在报错保留的 worktree 里看冲突
-cd .worktrees/<输出分支> && git apply --3way ../windows_only/windows_only_patches/xxx.patch
+cd .worktrees/<输出分支> && git apply --3way ../windows_only/patches/xxx.patch
 # 2) 或：基于新上游重做该功能后重新导出
 git fetch upstream
 git rebase upstream/main        # 解决冲突（生成文件冲突直接 checkout --ours + 重跑 build_runner）

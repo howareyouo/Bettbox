@@ -11,7 +11,7 @@ description: >
 
 本仓库是 fork（origin `howareyouo/Bettbox`，upstream `appshubcc/Bettbox`）。
 自有功能通过补丁导入 windows-only 分支：`windows_only/own_files.txt` 是**唯一入口**，
-CI（`windows_only.yml`，push/cron/手动触发）按它自动导出/删除 `windows_only/windows_only_patches/*.patch`。
+CI（`windows_only.yml`，push/cron/手动触发）按它自动导出/删除 `windows_only/patches/*.patch`。
 
 ## 触发时机
 
@@ -30,7 +30,7 @@ CI（`windows_only.yml`，push/cron/手动触发）按它自动导出/删除 `wi
 
 ## 硬性规则
 
-- **绝不手改 `windows_only/windows_only_patches/*.patch`**——它们只由 CI 按 main 代码生成，手改会被覆盖。
+- **绝不手改 `windows_only/patches/*.patch`**——它们只由 CI 按 main 代码生成，手改会被覆盖。
 - 只列「自有功能」文件，纯上游代码的行级适配不进清单（那是 `strip_scan_page.patch` 一类手工补丁的事，见 pipeline 文档 §3.5）。
 - 新功能尽量做成独立文件，少改上游已有文件，减小冲突面。
 - l10n key 用「追加」，不「改写」上游已有文案。
