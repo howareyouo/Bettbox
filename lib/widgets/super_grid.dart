@@ -75,6 +75,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   /// so cards feel snappy while following the pointer.
   static const Duration _reorderDuration = Duration(milliseconds: 130);
 
+  /// Fraction of the neighbor card's size the drag probe must penetrate past
+  /// the shared edge before a swap fires, so hovering near the boundary
+  /// between two cards does not make them flip back and forth.
+  static const double _swapHysteresis = 0.15;
+
   Completer? _transformCompleter;
 
   Map<int, Animation<Offset>> _transformAnimationMap = {};
@@ -330,8 +335,65 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
-    _dragRect = _dragRect.translate(0, details.delta.dy);
+    _dragRect = _dragRect.translate(details.delta.dx, details.delta.dy);
+    // Re-evaluate the swap target continuously (not only on DragTarget
+    // entry), so a swap suppressed by the hysteresis still fires once the
+    // probe moves deeper into the neighbor slot.
+    final item = _hitTestIndex(_dragRect.center);
+    if (item != null) {
+      _scheduleWill(item);
+    }
     _edgeDraggingAutoScroller?.startAutoScrollIfNecessary(_dragRect);
+  }
+
+  /// Returns the item currently occupying the slot under [globalPoint], or
+  /// null when the point is outside the grid.
+  int? _hitTestIndex(Offset globalPoint) {
+    if (_tempIndexList.isEmpty || _offsets.length != length) {
+      return null;
+    }
+    final local = globalPoint - _parentOffset;
+    for (var slot = 0; slot < _offsets.length; slot++) {
+      final size = _sizes[slot];
+      if (size == Size.zero) {
+        continue;
+      }
+      if (Rect.fromLTWH(
+        _offsets[slot].dx,
+        _offsets[slot].dy,
+        size.width,
+        size.height,
+      ).contains(local)) {
+        return _tempIndexList[slot];
+      }
+    }
+    return null;
+  }
+
+  /// Whether the drag probe has penetrated [candidate]'s slot deep enough
+  /// past the edge shared with the current target slot to justify a swap.
+  bool _penetratesHysteresis(int candidate) {
+    final target = _targetIndex;
+    if (target < 0 || target >= _offsets.length) {
+      return true;
+    }
+    final dx = _offsets[candidate].dx - _offsets[target].dx;
+    final dy = _offsets[candidate].dy - _offsets[target].dy;
+    if (dx == 0 && dy == 0) {
+      return true;
+    }
+    final pointer = _dragRect.center - _parentOffset;
+    final size = _sizes[candidate];
+    if (dy.abs() > dx.abs()) {
+      final margin = size.height * _swapHysteresis;
+      return dy > 0
+          ? pointer.dy - _offsets[candidate].dy >= margin
+          : _offsets[candidate].dy + size.height - pointer.dy >= margin;
+    }
+    final margin = size.width * _swapHysteresis;
+    return dx > 0
+        ? pointer.dx - _offsets[candidate].dx >= margin
+        : _offsets[candidate].dx + size.width - pointer.dx >= margin;
   }
 
   bool _reordering = false;
@@ -360,6 +422,9 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     }
     final targetIndex = _tempIndexList.indexWhere((i) => i == index);
     if (_targetIndex == targetIndex) {
+      return;
+    }
+    if (!_penetratesHysteresis(targetIndex)) {
       return;
     }
     _tempIndexList = List.generate(length, (i) {
