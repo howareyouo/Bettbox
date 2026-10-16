@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
@@ -176,35 +175,7 @@ class EditProfileViewState extends State<EditProfileView> {
     return FileInfo(size: size, lastModified: lastModified);
   }
 
-  Future<void> _handleSaveEdit(BuildContext context, String data) async {
-    final message = await globalState.appController.safeRun<String>(() async {
-      final originalMessage = await clashCore.validateConfig(
-        data,
-        ageSecretKey: ageSecretKeyController.text.trim(),
-      );
-      if (originalMessage.isEmpty) return '';
-      final patched = utils.patchValidateConfig(data);
-      if (patched == data) return originalMessage;
-      final patchedMessage = await clashCore.validateConfig(
-        patched,
-        ageSecretKey: ageSecretKeyController.text.trim(),
-      );
-      return patchedMessage.isEmpty ? '' : originalMessage;
-    }, silence: false);
-    if (message?.isNotEmpty == true) {
-      globalState.showMessage(
-        title: appLocalizations.tip,
-        message: TextSpan(text: message),
-        cancelable: false,
-      );
-      return;
-    }
-    if (context.mounted) {
-      Navigator.of(context).pop(utils.patchValidateConfig(data));
-    }
-  }
-
-  Future<void> _editProfileFile() async {
+  Future<void> _viewProfileFile() async {
     if (rawText == null) {
       final profilePath = await appPath.getProfilePath(widget.profile.id);
       final file = File(profilePath);
@@ -214,38 +185,8 @@ class EditProfileViewState extends State<EditProfileView> {
     }
     if (!mounted) return;
     final title = widget.profile.label ?? widget.profile.id;
-    final editorPage = EditorPage(
-      title: title,
-      content: rawText!,
-      onSave: (context, _, content) {
-        _handleSaveEdit(context, content);
-      },
-      onPop: (context, _, content) async {
-        if (content == rawText) {
-          return true;
-        }
-        final res = await globalState.showMessage(
-          title: title,
-          message: TextSpan(text: appLocalizations.hasCacheChange),
-        );
-        if (res == true && context.mounted) {
-          _handleSaveEdit(context, content);
-        } else {
-          return true;
-        }
-        return false;
-      },
-    );
-    final data = await BaseNavigator.push<String>(context, editorPage);
-    if (data == null) {
-      return;
-    }
-    rawText = data;
-    fileData = Uint8List.fromList(utf8.encode(data));
-    fileInfoNotifier.value = fileInfoNotifier.value?.copyWith(
-      size: fileData?.length ?? 0,
-      lastModified: DateTime.now(),
-    );
+    final viewerPage = ViewerPage(title: title, content: rawText ?? '');
+    await BaseNavigator.push<String>(context, viewerPage);
   }
 
   Future<void> _uploadProfileFile() async {
@@ -420,9 +361,9 @@ class EditProfileViewState extends State<EditProfileView> {
                                 spacing: 12,
                                 children: [
                                   CommonChip(
-                                    avatar: const Icon(Icons.edit),
-                                    label: appLocalizations.edit,
-                                    onPressed: _editProfileFile,
+                                    avatar: const Icon(Icons.visibility),
+                                    label: appLocalizations.view,
+                                    onPressed: _viewProfileFile,
                                   ),
                                   CommonChip(
                                     avatar: const Icon(Icons.upload),

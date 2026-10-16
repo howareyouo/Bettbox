@@ -1,7 +1,7 @@
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/edit_profile.dart';
@@ -267,11 +267,10 @@ class _ProfileItemState extends State<ProfileItem> {
           return;
         }
 
-        final previewPage = EditorPage(
+        final previewPage = ViewerPage(
           title:
               '${appLocalizations.runtimeConfig} - ${profile.label ?? profile.id}',
           content: content,
-          readOnly: true,
         );
         BaseNavigator.push<String>(context, previewPage, maintainState: false);
       },
