@@ -134,11 +134,7 @@ class CommonModal extends ConsumerWidget {
       child: Container(
         width: size.width * 0.85,
         height: size.height * 0.85,
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
         clipBehavior: Clip.antiAlias,
         child: child,
       ),

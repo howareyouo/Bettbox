@@ -77,6 +77,40 @@ class InfoHeader extends StatelessWidget {
   }
 }
 
+class SmoothRoundedRectangleBorder extends RoundedRectangleBorder {
+  const SmoothRoundedRectangleBorder({
+    super.side,
+    super.borderRadius = BorderRadius.zero,
+  });
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style == BorderStyle.none) return;
+    final borderRect = borderRadius.resolve(textDirection).toRRect(rect);
+    if (side.width <= 0.0) {
+      canvas.drawRRect(borderRect, side.toPaint());
+      return;
+    }
+    canvas.drawRRect(
+      borderRect.deflate(side.width / 2.0),
+      side.toPaint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = side.width,
+    );
+  }
+
+  @override
+  SmoothRoundedRectangleBorder copyWith({
+    BorderSide? side,
+    BorderRadiusGeometry? borderRadius,
+  }) {
+    return SmoothRoundedRectangleBorder(
+      side: side ?? this.side,
+      borderRadius: borderRadius ?? this.borderRadius,
+    );
+  }
+}
+
 class CommonCard extends StatelessWidget {
   const CommonCard({
     super.key,
@@ -91,7 +125,6 @@ class CommonCard extends StatelessWidget {
     this.enterAnimated = false,
     this.info,
     this.clipBehavior = Clip.antiAlias,
-    this.elevated = true,
   }) : isSelected = isSelected ?? false;
 
   final bool enterAnimated;
@@ -105,7 +138,6 @@ class CommonCard extends StatelessWidget {
   final CommonCardType type;
   final double? radius;
   final Clip clipBehavior;
-  final bool elevated;
 
   // final WidgetStateProperty<Color?>? backgroundColor;
   // final WidgetStateProperty<BorderSide?>? borderSide;
@@ -127,9 +159,7 @@ class CommonCard extends StatelessWidget {
     return BorderSide(
       color: isSelected
           ? colorScheme.primary
-          : colorScheme.outlineVariant.withValues(
-              alpha: elevated ? (isLight ? 0.65 : 0.35) : (isLight ? 0.8 : 0.4),
-            ),
+          : colorScheme.outlineVariant.withValues(alpha: isLight ? 0.45 : 0.25),
       strokeAlign: BorderSide.strokeAlignInside,
     );
   }
@@ -177,16 +207,16 @@ class CommonCard extends StatelessWidget {
     }
 
     final isInteractive = onPressed != null || onLongPress != null;
-    final isLight = context.colorScheme.brightness == Brightness.light;
-    final shape = RoundedSuperellipseBorder(
-      borderRadius: BorderRadius.circular(actualRadius),
-    );
-    Widget card = OutlinedButton(
+    final card = OutlinedButton(
       onLongPress: onLongPress,
       clipBehavior: clipBehavior,
       style: ButtonStyle(
         padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-        shape: WidgetStatePropertyAll(shape),
+        shape: WidgetStatePropertyAll(
+          SmoothRoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(actualRadius),
+          ),
+        ),
         iconColor: WidgetStatePropertyAll(context.colorScheme.primary),
         iconSize: WidgetStateProperty.all(20),
         backgroundColor: WidgetStateProperty.resolveWith(
@@ -201,22 +231,6 @@ class CommonCard extends StatelessWidget {
       onPressed: onPressed,
       child: childWidget,
     );
-
-    if (elevated) {
-      card = DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: shape,
-          shadows: [
-            BoxShadow(
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-              color: Colors.black.withValues(alpha: isLight ? 0.045 : 0.25),
-            ),
-          ],
-        ),
-        child: card,
-      );
-    }
 
     return switch (enterAnimated) {
       true => FadeScaleEnterBox(child: card),

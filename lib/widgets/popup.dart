@@ -256,7 +256,7 @@ class CommonPopupMenu extends StatelessWidget {
     required this.items,
     this.footer,
     this.minWidth = 148,
-    this.minItemVerticalPadding = 13,
+    this.minItemVerticalPadding = 16,
     this.fontSize = 15,
   });
 
@@ -272,15 +272,7 @@ class CommonPopupMenu extends StatelessWidget {
     final color = disabled
         ? colorScheme.onSurface.opacity30
         : colorScheme.onSurface;
-    final iconColor = disabled
-        ? colorScheme.onSurface.opacity30
-        : item.icon == Icons.check_circle_rounded
-        ? colorScheme.primary
-        : colorScheme.onSurfaceVariant;
     return InkWell(
-      customBorder: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
       hoverColor: colorScheme.primary.withValues(alpha: isLight ? 0.08 : 0.12),
       highlightColor: colorScheme.primary.withValues(
         alpha: isLight ? 0.10 : 0.16,
@@ -300,8 +292,8 @@ class CommonPopupMenu extends StatelessWidget {
       child: Container(
         constraints: BoxConstraints(minWidth: minWidth),
         padding: EdgeInsets.only(
-          left: 14,
-          right: 22,
+          left: 16,
+          right: 24,
           top: minItemVerticalPadding,
           bottom: minItemVerticalPadding,
         ),
@@ -309,8 +301,8 @@ class CommonPopupMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.max,
           children: [
             if (item.icon != null) ...[
-              Icon(item.icon, size: fontSize + 5, color: iconColor),
-              const SizedBox(width: 14),
+              Icon(item.icon, size: fontSize + 4, color: color),
+              SizedBox(width: 16),
             ],
             Flexible(
               child: Text(
@@ -329,41 +321,36 @@ class CommonPopupMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final isLight = colorScheme.brightness == Brightness.light;
+    final isLight = context.colorScheme.brightness == Brightness.light;
     return IntrinsicHeight(
       child: IntrinsicWidth(
-        child: Material(
+        child: Card(
           elevation: 8,
-          shadowColor: Colors.black.withValues(alpha: isLight ? 0.5 : 0.8),
           color: isLight
-              ? colorScheme.surfaceContainerLowest
-              : colorScheme.surfaceContainerHighest,
+              ? context.colorScheme.surfaceContainerLowest
+              : context.colorScheme.surfaceContainerHighest,
           clipBehavior: Clip.antiAlias,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(26),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: colorScheme.outlineVariant.withValues(
+              color: context.colorScheme.outlineVariant.withValues(
                 alpha: isLight ? 0.45 : 0.25,
               ),
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final item in items.asMap().entries) ...[
-                  _popupMenuItem(context, item: item.value, index: item.key),
-                  if (item.value != items.last) const SizedBox(height: 2),
-                ],
-                if (footer case final footer?) ...[
-                  const Divider(height: 9, indent: 8, endIndent: 8),
-                  footer,
-                ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final item in items.asMap().entries) ...[
+                _popupMenuItem(context, item: item.value, index: item.key),
+                if (item.value != items.last) Divider(height: 0),
               ],
-            ),
+              if (footer case final footer?) ...[
+                const Divider(height: 0),
+                footer,
+              ],
+            ],
           ),
         ),
       ),
