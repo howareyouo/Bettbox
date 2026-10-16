@@ -57,8 +57,7 @@ GitHub Actions：flutter build windows → 发布 Release
 ## 3. 关键文件与职责
 
 ```
-.github/workflows/windows-only.yml      CI 自动化（cron 轮询 + 手动触发 + 构建发布）
-.github/workflows/export_patches.yml    自动导出：push 到 main 后按清单导出补丁并提交回 main
+.github/workflows/windows_only.yml      CI 自动化（cron 轮询 + push 触发 + 手动触发：导出补丁 → 重建 → 构建发布）
 windows_only/
   build_windows_only.sh                 裁剪脚本：重建 windows-only 分支（幂等）
   delete_manifest.txt                   删除清单：需要物理删除的文件/目录
@@ -71,17 +70,18 @@ windows_only/
     profile_viewer.patch                自有功能④：profile 只读查看器（清单 profile_viewer）
 ```
 
-### 3.1 `.github/workflows/windows-only.yml`
+### 3.1 `.github/workflows/windows_only.yml`
 
-两个 job：
+单一 workflow（已合并原 `export_patches.yml`），两个 job：
 
 | Job | Runner | 做什么 |
 |---|---|---|
-| `sync` | ubuntu | 对比 `upstream/main` SHA 与 windows-only 分支记录的 `.upstream-sha`；有变化则跑 `build_windows_only.sh` 并 force-push 到 `windows-only` |
+| `sync` | ubuntu | ① 跑 `auto_export.sh` 按 `own_files.txt` 清单导出补丁，有变化则提交回 main（GITHUB_TOKEN 的 push 不触发 workflow，无循环）；② 对比 `upstream/main` SHA 与 windows-only 分支记录的 `.upstream-sha`，有变化（或 push/手动强制）则跑 `build_windows_only.sh` 并 force-push 到 `windows-only` |
 | `build` | windows | `flutter build windows --release` → 打 zip → 创建 Release（tag `windows-only-<上游SHA>`）。zip 只走 Release，不传 artifact（Actions 下载 artifact 会再套一层同名 zip，Windows 解压冲突） |
 
-触发方式：`cron: '17 */2 * * *'`（每 2 小时）+ `workflow_dispatch`（手动）。
-无上游变化时 `sync` 快速退出，`build` 通过 `needs` + `if changed == true` 跳过，不烧时间。
+触发方式：`cron: '17 */2 * * *'`（每 2 小时）+ `push`（main）+ `workflow_dispatch`（手动，`force_build` 可强制构建）。
+`concurrency` 串行化，避免 cron 与 push 两个 run 并发提交 main / force-push windows-only。
+无上游变化时 `sync` 的重建步骤与 `build`（`needs` + `if changed == true`）跳过，不烧时间。
 
 ### 3.2 `windows_only/build_windows_only.sh`
 
@@ -111,7 +111,7 @@ windows_only/
 `own_files.txt` 是**补丁清单**：每行「补丁名 <空格> 相对路径」，同一补丁名的多行合并为一个 `.patch`（一功能一补丁）。
 
 - **新增功能**：往 `own_files.txt` 加一行（新功能用新补丁名；属于已有功能就并入该补丁名）→ push 到 main，之后全自动。
-- `auto_export.sh` 在 CI（push 触发，`export_patches.yml`）里自动执行：
+- `auto_export.sh` 在 CI（`windows_only.yml` 的 `sync` job，push/cron/手动触发都会执行）里自动执行：
   1. 对每个补丁名跑 `git diff upstream/main..HEAD -- <路径>` 重新生成 `.patch`
   2. 某补丁名下所有路径都与上游一致（空 diff）→ **删除**该 `.patch`（视为功能已回退）
   3. 有变更时在干净上游 worktree 上**按字母序批量验证**可应用（与 `build_windows_only.sh` 的应用顺序一致，能抓到补丁间依赖冲突）
@@ -247,7 +247,7 @@ git rebase upstream/main        # 解决冲突（生成文件冲突直接 checko
 | windows-only 分支 | 已存在（CI 生成，force-push 维护，`git push --force origin windows-only-rebuild:windows-only`） |
 | 自有功能 | 外部编辑器（external_editor.patch）、悬停预览（profile_hover.patch）——均为清单自动导出 |
 | 手工补丁 | 无（scan 引用已由 main 自身代码移除；strip_scan_page.patch 已删） |
-| 自动导出 | `export_patches.yml`（push 触发）按 `own_files.txt` 清单导出补丁并提交回 main |
+| 自动导出 | `windows_only.yml`（push/cron/手动触发，`sync` job）按 `own_files.txt` 清单导出补丁并提交回 main |
 
 本地 main 提交链（自上而下）：
 ```

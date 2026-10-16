@@ -11,7 +11,7 @@ description: >
 
 本仓库是 fork（origin `howareyouo/Bettbox`，upstream `appshubcc/Bettbox`）。
 自有功能通过补丁导入 windows-only 分支：`windows_only/own_files.txt` 是**唯一入口**，
-CI（`export_patches.yml`，push 触发）按它自动导出/删除 `windows_only/windows_only_patches/*.patch`。
+CI（`windows_only.yml`，push/cron/手动触发）按它自动导出/删除 `windows_only/windows_only_patches/*.patch`。
 
 ## 触发时机
 

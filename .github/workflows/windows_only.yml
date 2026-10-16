@@ -1,6 +1,10 @@
 name: windows-only sync & build
 
-# 每 2 小时检查一次上游；也可手动触发（Actions 页 Run workflow）
+# 单一流水线，三种触发：push 到 main / 每 2 小时 cron / 手动（Actions 页 Run workflow）
+#   sync job：按 own_files.txt 清单导出自有功能补丁（有变化则提交回 main）
+#             → 对比上游 SHA，有变化（或 push/手动强制）则重建 windows-only 分支
+#   build job：构建 Windows 安装包并发布 Release
+# 防循环：使用 GITHUB_TOKEN 的 push 不会触发新的 workflow run（GitHub 官方行为）。
 on:
   schedule:
     - cron: '17 */2 * * *'
@@ -17,9 +21,14 @@ on:
 permissions:
   contents: write
 
+# 串行化，避免 cron 与 push 两个 run 并发 force-push windows-only 分支或并发提交 main
+concurrency:
+  group: windows-only-pipeline
+  cancel-in-progress: false
+
 jobs:
   sync:
-    name: Rebuild windows-only from upstream
+    name: Export patches & rebuild windows-only from upstream
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
@@ -51,10 +60,24 @@ jobs:
             echo "Upstream changed: $LAST_SHA -> $UPSTREAM_SHA"
           fi
 
+      # auto_export.sh 末行输出 CHANGED / CLEAN；CHANGED 时提交补丁回 main。
+      # 提交用的是 GITHUB_TOKEN，不会再触发本 workflow，无循环。
       - name: Auto-export patches from main
         run: |
           chmod +x windows_only/auto_export.sh
-          windows_only/auto_export.sh upstream/main
+          OUTPUT=$(bash windows_only/auto_export.sh upstream/main 2>&1)
+          echo "$OUTPUT"
+          if [ "$(echo "$OUTPUT" | tail -n 1)" = "CHANGED" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add windows_only/windows_only_patches/
+            if git diff --cached --quiet; then
+              echo "No patch changes to commit"
+            else
+              git commit -m "chore(windows_only): auto-export patches [skip ci]"
+              git push origin main
+            fi
+          fi
 
       - name: Run windows-only rebuild script
         if: steps.check.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
