@@ -1612,7 +1612,6 @@ class _LocaleItem extends ConsumerWidget {
       title: Text(appLocalizations.language),
       subtitle: Text(_getLocaleString(currentLocale)),
       delegate: OptionsDelegate(
-        dialogPadding: const EdgeInsets.symmetric(vertical: 16),
         title: appLocalizations.language,
         options: _localeOptions,
         onChanged: (Locale? locale) {

@@ -93,7 +93,6 @@ class OptionsDelegate<T> extends Delegate {
   final T value;
   final String Function(T value) textBuilder;
   final Function(T? value) onChanged;
-  final EdgeInsets? dialogPadding;
 
   const OptionsDelegate({
     required this.title,
@@ -101,7 +100,6 @@ class OptionsDelegate<T> extends Delegate {
     required this.textBuilder,
     required this.value,
     required this.onChanged,
-    this.dialogPadding,
   });
 }
 
@@ -397,7 +395,6 @@ class ListItem<T> extends StatelessWidget {
         onTap: () async {
           final value = await globalState.showCommonDialog<T>(
             child: OptionsDialog<T>(
-              padding: optionsDelegate.dialogPadding,
               title: optionsDelegate.title,
               options: optionsDelegate.options,
               textBuilder: optionsDelegate.textBuilder,
