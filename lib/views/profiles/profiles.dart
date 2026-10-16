@@ -206,6 +206,7 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
                       for (final profile in profilesSelectorState.profiles)
                         GridItem(
                           key: ValueKey(profile.id),
+                          isDeletable: false,
                           child: ProfileItem(
                             key: ValueKey(profile.id),
                             profile: profile,
