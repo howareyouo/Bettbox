@@ -46,8 +46,8 @@ jobs:
       - name: Run windows-only rebuild script
         if: steps.check.outputs.changed == 'true'
         run: |
-          chmod +x tools/build_windows_only.sh
-          tools/build_windows_only.sh upstream/main windows-only-rebuild
+          chmod +x windows_only/build_windows_only.sh
+          windows_only/build_windows_only.sh upstream/main windows-only-rebuild
           git push --force origin windows-only-rebuild:windows-only
 
   build:

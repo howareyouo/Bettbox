@@ -4,13 +4,13 @@
 #
 # 设计（"生成型"同步，无长期分叉历史）：
 #   1. 以 upstream ref 为起点新建 worktree（干净基线，零历史包袱）
-#   2. 按 tools/delete_manifest.txt 删除非 Windows 平台目录/文件
-#   3. 依次应用 tools/windows_only_patches/*.patch（功能补丁 + 引用摘除）
+#   2. 按 windows_only/delete_manifest.txt 删除非 Windows 平台目录/文件
+#   3. 依次应用 windows_only/windows_only_patches/*.patch（功能补丁 + 引用摘除）
 #   4. 提交并记录上游 SHA（.upstream-sha），供下次对比是否变化
 #   5. 新分支保存在 worktree 仓库中，CI 负责 push 到 windows-only
 #
 # 用法:
-#   tools/build_windows_only.sh [upstream-ref] [输出分支名]
+#   windows_only/build_windows_only.sh [upstream-ref] [输出分支名]
 #     upstream-ref   默认 upstream/main（须已存在于本地 refs）
 #     输出分支名      默认 windows-only-rebuild
 # 退出码: 0 成功；非 0 失败（保留现场供排查）
@@ -21,8 +21,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UPSTREAM_REF="${1:-upstream/main}"
 OUT_BRANCH="${2:-windows-only-rebuild}"
 WT_DIR="$REPO_ROOT/.worktrees/$OUT_BRANCH"
-PATCH_DIR="$REPO_ROOT/tools/windows_only_patches"
-MANIFEST="$REPO_ROOT/tools/delete_manifest.txt"
+PATCH_DIR="$REPO_ROOT/windows_only/windows_only_patches"
+MANIFEST="$REPO_ROOT/windows_only/delete_manifest.txt"
 
 cd "$REPO_ROOT"
 

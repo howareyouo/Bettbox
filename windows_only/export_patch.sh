@@ -5,26 +5,26 @@
 # 用法（二选一）:
 #
 #   A. 按提交导出（推荐，功能是独立提交时最干净）:
-#      tools/export_patch.sh feature_my_thing <提交范围>
-#      例: tools/export_patch.sh feature_my_thing 8ae54f3..2b5f376
-#          tools/export_patch.sh feature_my_thing HEAD~2..HEAD
+#      windows_only/export_patch.sh feature_my_thing <提交范围>
+#      例: windows_only/export_patch.sh feature_my_thing 8ae54f3..2b5f376
+#          windows_only/export_patch.sh feature_my_thing HEAD~2..HEAD
 #          验证基线 = 范围的左端点（A..B 中的 A）
 #
 #   B. 按文件路径导出（改动未提交或散在多个提交里时）:
-#      tools/export_patch.sh feature_my_thing <base-ref> -- <路径...>
-#      例: tools/export_patch.sh feature_my_thing upstream/main -- \
+#      windows_only/export_patch.sh feature_my_thing <base-ref> -- <路径...>
+#      例: windows_only/export_patch.sh feature_my_thing upstream/main -- \
 #            lib/common/my_thing.dart lib/views/profiles/my_thing.dart
 #          验证基线 = base-ref
 #
 # 行为:
-#   1. 生成 tools/windows_only_patches/<名字>.patch
+#   1. 生成 windows_only/windows_only_patches/<名字>.patch
 #   2. 立即在干净基线 worktree 上验证补丁可应用（失败则退出非零）
 #   3. 若同名字补丁已存在，自动覆盖前先备份为 .bak
 # ============================================================================
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PATCH_DIR="$REPO_ROOT/tools/windows_only_patches"
+PATCH_DIR="$REPO_ROOT/windows_only/windows_only_patches"
 PATCH_NAME="${1:?用法: export_patch.sh <补丁名> <提交范围|base-ref> [-- 路径...]}"
 shift
 
