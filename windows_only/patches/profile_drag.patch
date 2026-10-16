@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..89cc8729 100644
+index 6e08b220..253e4884 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -54,7 +54,7 @@ index 6e08b220..89cc8729 100644
    });
  
    @override
-@@ -57,6 +66,15 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -57,6 +66,20 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
  
    late AnimationController _transformController;
  
@@ -67,10 +67,15 @@ index 6e08b220..89cc8729 100644
 +  /// so cards feel snappy while following the pointer.
 +  static const Duration _reorderDuration = Duration(milliseconds: 130);
 +
++  /// Fraction of the neighbor card's size the drag probe must penetrate past
++  /// the shared edge before a swap fires, so hovering near the boundary
++  /// between two cards does not make them flip back and forth.
++  static const double _swapHysteresis = 0.15;
++
    Completer? _transformCompleter;
  
    Map<int, Animation<Offset>> _transformAnimationMap = {};
-@@ -122,7 +140,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -122,7 +145,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
  
      _fakeDragWidgetController = AnimationController.unbounded(
        vsync: this,
@@ -79,7 +84,7 @@ index 6e08b220..89cc8729 100644
      );
  
      _shakeController = AnimationController(
-@@ -136,7 +154,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -136,7 +159,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
  
      _transformController = AnimationController(
        vsync: this,
@@ -88,7 +93,7 @@ index 6e08b220..89cc8729 100644
      );
  
      _initState();
-@@ -165,6 +183,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -165,6 +188,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      }
    }
  
@@ -114,7 +119,7 @@ index 6e08b220..89cc8729 100644
    Future _transform() async {
      List<Offset> layoutOffsets = [Offset(_containerSize.width, 0)];
      final List<Offset> nextOffsets = [];
-@@ -237,6 +274,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -237,6 +279,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      if (_targetIndex != -1) {
        _targetOffset = nextOffsets[_targetIndex];
      }
@@ -126,7 +131,7 @@ index 6e08b220..89cc8729 100644
      return _transformController.forward(from: 0);
    }
  
-@@ -263,7 +305,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -263,7 +310,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      if (_targetIndex == -1) {
        return;
      }
@@ -139,10 +144,72 @@ index 6e08b220..89cc8729 100644
      final simulation = SpringSimulation(spring, 0, 1, 0);
      _fakeDragWidgetAnimation = Tween(
        begin: details.offset - _parentOffset,
-@@ -288,6 +334,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -284,10 +335,86 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+   }
+ 
+   void _handleDragUpdate(DragUpdateDetails details) {
+-    _dragRect = _dragRect.translate(0, details.delta.dy);
++    _dragRect = _dragRect.translate(details.delta.dx, details.delta.dy);
++    // Re-evaluate the swap target continuously (not only on DragTarget
++    // entry), so a swap suppressed by the hysteresis still fires once the
++    // probe moves deeper into the neighbor slot.
++    final item = _hitTestIndex(_dragRect.center);
++    if (item != null) {
++      _scheduleWill(item);
++    }
      _edgeDraggingAutoScroller?.startAutoScrollIfNecessary(_dragRect);
    }
  
++  /// Returns the item currently occupying the slot under [globalPoint], or
++  /// null when the point is outside the grid.
++  int? _hitTestIndex(Offset globalPoint) {
++    if (_tempIndexList.isEmpty || _offsets.length != length) {
++      return null;
++    }
++    final local = globalPoint - _parentOffset;
++    for (var slot = 0; slot < _offsets.length; slot++) {
++      final size = _sizes[slot];
++      if (size == Size.zero) {
++        continue;
++      }
++      if (Rect.fromLTWH(
++        _offsets[slot].dx,
++        _offsets[slot].dy,
++        size.width,
++        size.height,
++      ).contains(local)) {
++        return _tempIndexList[slot];
++      }
++    }
++    return null;
++  }
++
++  /// Whether the drag probe has penetrated [candidate]'s slot deep enough
++  /// past the edge shared with the current target slot to justify a swap.
++  bool _penetratesHysteresis(int candidate) {
++    final target = _targetIndex;
++    if (target < 0 || target >= _offsets.length) {
++      return true;
++    }
++    final dx = _offsets[candidate].dx - _offsets[target].dx;
++    final dy = _offsets[candidate].dy - _offsets[target].dy;
++    if (dx == 0 && dy == 0) {
++      return true;
++    }
++    final pointer = _dragRect.center - _parentOffset;
++    final size = _sizes[candidate];
++    if (dy.abs() > dx.abs()) {
++      final margin = size.height * _swapHysteresis;
++      return dy > 0
++          ? pointer.dy - _offsets[candidate].dy >= margin
++          : _offsets[candidate].dy + size.height - pointer.dy >= margin;
++    }
++    final margin = size.width * _swapHysteresis;
++    return dx > 0
++        ? pointer.dx - _offsets[candidate].dx >= margin
++        : _offsets[candidate].dx + size.width - pointer.dx >= margin;
++  }
++
 +  bool _reordering = false;
 +  int? _pendingWillIndex;
 +
@@ -165,7 +232,17 @@ index 6e08b220..89cc8729 100644
    Future<void> _handleWill(int index) async {
      final dragIndex = _dragIndexNotifier.value;
      if (dragIndex < 0 || dragIndex > _offsets.length - 1) {
-@@ -404,9 +469,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -297,6 +424,9 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+     if (_targetIndex == targetIndex) {
+       return;
+     }
++    if (!_penetratesHysteresis(targetIndex)) {
++      return;
++    }
+     _tempIndexList = List.generate(length, (i) {
+       if (i == targetIndex) return _dragIndexNotifier.value;
+       if (_targetIndex > targetIndex && i > targetIndex && i <= _targetIndex) {
+@@ -404,9 +534,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
    }
  
    Widget _buildShake(Widget child) {
@@ -181,7 +258,7 @@ index 6e08b220..89cc8729 100644
      return AnimatedBuilder(
        animation: _shakeAnimation,
        builder: (_, child) {
-@@ -428,10 +497,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -428,10 +562,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
    }) {
      final target = DragTarget<int>(
        builder: (_, _, _) {
@@ -197,7 +274,7 @@ index 6e08b220..89cc8729 100644
          return false;
        },
      );
-@@ -463,22 +535,40 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -463,22 +600,40 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
          child: target,
        ),
      );
@@ -253,7 +330,7 @@ index 6e08b220..89cc8729 100644
          : LongPressDraggable(
              childWhenDragging: childWhenDragging,
              data: index,
-@@ -507,17 +597,26 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -507,17 +662,26 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
        child: Builder(
          builder: (context) {
            _itemContexts[index] = context;
@@ -285,7 +362,7 @@ index 6e08b220..89cc8729 100644
            );
            return _buildTransform(
              _buildDraggable(
-@@ -729,3 +828,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
+@@ -729,3 +893,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
      );
    }
  }
