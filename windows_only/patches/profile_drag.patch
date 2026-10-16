@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..308b79ef 100644
+index 6e08b220..89cc8729 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -61,11 +61,11 @@ index 6e08b220..308b79ef 100644
 +  /// When a reorder interrupts a running animation, the remaining distance is
 +  /// covered in this shorter time, so the card tracks the finger instead of
 +  /// visibly trailing behind it.
-+  final Duration _catchUpDuration = const Duration(milliseconds: 30);
++  final Duration _catchUpDuration = const Duration(milliseconds: 40);
 +
 +  /// Reorder / settle animations run faster than the global [commonDuration]
 +  /// so cards feel snappy while following the pointer.
-+  static const Duration _reorderDuration = Duration(milliseconds: 100);
++  static const Duration _reorderDuration = Duration(milliseconds: 130);
 +
    Completer? _transformCompleter;
  
@@ -133,8 +133,8 @@ index 6e08b220..308b79ef 100644
 -    const spring = SpringDescription(mass: 1, stiffness: 100, damping: 10);
 +    final spring = SpringDescription.withDampingRatio(
 +      mass: 1,
-+      stiffness: 1000,
-+      ratio: 1,
++      stiffness: 700,
++      ratio: 0.95,
 +    );
      final simulation = SpringSimulation(spring, 0, 1, 0);
      _fakeDragWidgetAnimation = Tween(
