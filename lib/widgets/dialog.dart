@@ -75,6 +75,7 @@ class CommonDialog extends ConsumerWidget {
               Navigator.of(context).pop();
             },
       child: AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         title: titleTrailing == null
             ? EmojiText(title)
             : Row(
