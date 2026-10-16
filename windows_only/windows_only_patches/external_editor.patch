@@ -1,5 +1,5 @@
 diff --git a/arb/intl_en.arb b/arb/intl_en.arb
-index 8c16b5c..c1a140a 100644
+index 8c16b5c3..c1a140a0 100644
 --- a/arb/intl_en.arb
 +++ b/arb/intl_en.arb
 @@ -822,11 +822,17 @@
@@ -23,7 +23,7 @@ index 8c16b5c..c1a140a 100644
  
  
 diff --git a/arb/intl_zh_CN.arb b/arb/intl_zh_CN.arb
-index 8123980..b006535 100644
+index 81239805..b0065351 100644
 --- a/arb/intl_zh_CN.arb
 +++ b/arb/intl_zh_CN.arb
 @@ -823,11 +823,17 @@
@@ -47,7 +47,7 @@ index 8123980..b006535 100644
  
  
 diff --git a/lib/common/common.dart b/lib/common/common.dart
-index 5d6a735..a57ed0c 100644
+index 5d6a7352..a57ed0c5 100644
 --- a/lib/common/common.dart
 +++ b/lib/common/common.dart
 @@ -6,6 +6,7 @@ export 'context.dart';
@@ -60,7 +60,7 @@ index 5d6a735..a57ed0c 100644
  export 'function.dart';
 diff --git a/lib/common/external_editor.dart b/lib/common/external_editor.dart
 new file mode 100644
-index 0000000..ef7ead1
+index 00000000..ef7ead11
 --- /dev/null
 +++ b/lib/common/external_editor.dart
 @@ -0,0 +1,76 @@
@@ -142,7 +142,7 @@ index 0000000..ef7ead1
 +}
 \ No newline at end of file
 diff --git a/lib/l10n/intl/messages_en.dart b/lib/l10n/intl/messages_en.dart
-index 61a793a..23176d7 100644
+index 61a793a4..23176d7c 100644
 --- a/lib/l10n/intl/messages_en.dart
 +++ b/lib/l10n/intl/messages_en.dart
 @@ -67,6 +67,9 @@ class MessageLookup extends MessageLookupByLibrary {
@@ -188,7 +188,7 @@ index 61a793a..23176d7 100644
      "fadingCube": MessageLookupByLibrary.simpleMessage("Fading Cube"),
      "fadingFour": MessageLookupByLibrary.simpleMessage("Fading Four"),
 diff --git a/lib/l10n/intl/messages_zh_CN.dart b/lib/l10n/intl/messages_zh_CN.dart
-index b41cd2b..22e56d1 100644
+index b41cd2be..22e56d1c 100644
 --- a/lib/l10n/intl/messages_zh_CN.dart
 +++ b/lib/l10n/intl/messages_zh_CN.dart
 @@ -61,6 +61,9 @@ class MessageLookup extends MessageLookupByLibrary {
@@ -230,7 +230,7 @@ index b41cd2b..22e56d1 100644
      "fadingCube": MessageLookupByLibrary.simpleMessage("方影微漾"),
      "fadingFour": MessageLookupByLibrary.simpleMessage("四方烁动"),
 diff --git a/lib/l10n/l10n.dart b/lib/l10n/l10n.dart
-index dd2919a..19e1ce6 100644
+index dd2919af..19e1ce60 100644
 --- a/lib/l10n/l10n.dart
 +++ b/lib/l10n/l10n.dart
 @@ -6720,7 +6720,7 @@ class AppLocalizations {
@@ -315,7 +315,7 @@ index dd2919a..19e1ce6 100644
  
  class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalizations> {
 diff --git a/lib/models/config.dart b/lib/models/config.dart
-index 1033817..80dd1f9 100644
+index 10338171..80dd1f90 100644
 --- a/lib/models/config.dart
 +++ b/lib/models/config.dart
 @@ -228,6 +228,7 @@ abstract class AppSettingProps with _$AppSettingProps {
@@ -327,7 +327,7 @@ index 1033817..80dd1f9 100644
  
    factory AppSettingProps.fromJson(Map<String, Object?> json) =>
 diff --git a/lib/models/generated/config.freezed.dart b/lib/models/generated/config.freezed.dart
-index a9bfe2b..26cb036 100644
+index a9bfe2be..26cb0364 100644
 --- a/lib/models/generated/config.freezed.dart
 +++ b/lib/models/generated/config.freezed.dart
 @@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
@@ -498,7 +498,7 @@ index a9bfe2b..26cb036 100644
  }
  
 diff --git a/lib/models/generated/config.g.dart b/lib/models/generated/config.g.dart
-index c0de78d..c9956ca 100644
+index c0de78d2..c9956cab 100644
 --- a/lib/models/generated/config.g.dart
 +++ b/lib/models/generated/config.g.dart
 @@ -83,6 +83,7 @@ _AppSettingProps _$AppSettingPropsFromJson(
@@ -519,7 +519,7 @@ index c0de78d..c9956ca 100644
  const _$StartSwitchStyleEnumMap = {
 diff --git a/lib/views/profiles/external_editor.dart b/lib/views/profiles/external_editor.dart
 new file mode 100644
-index 0000000..0474ada
+index 00000000..0474adad
 --- /dev/null
 +++ b/lib/views/profiles/external_editor.dart
 @@ -0,0 +1,245 @@
@@ -770,7 +770,7 @@ index 0000000..0474ada
 +}
 \ No newline at end of file
 diff --git a/lib/views/profiles/scripts.dart b/lib/views/profiles/scripts.dart
-index 5bdba6c..635f449 100644
+index 5bdba6c5..635f4494 100644
 --- a/lib/views/profiles/scripts.dart
 +++ b/lib/views/profiles/scripts.dart
 @@ -6,6 +6,7 @@ import 'package:bett_box/models/models.dart';
