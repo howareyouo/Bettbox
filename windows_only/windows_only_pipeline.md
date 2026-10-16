@@ -58,10 +58,12 @@ GitHub Actions：flutter build windows → 发布 Release
 
 ```
 .github/workflows/windows-only.yml      CI 自动化（cron 轮询 + 手动触发 + 构建发布）
+.github/workflows/export_patches.yml    自动导出：push 到 main 后按清单导出补丁并提交回 main
 windows_only/
   build_windows_only.sh                 裁剪脚本：重建 windows-only 分支（幂等）
   delete_manifest.txt                   删除清单：需要物理删除的文件/目录
-  export_patch.sh                       导出主脚本：把 main 上的功能变成补丁
+  own_files.txt                         补丁清单：「补丁名 路径」，自动导出的唯一入口
+  auto_export.sh                        自动导出脚本：按 own_files.txt 导出/删除补丁并验证
   windows_only_patches/
     external_editor.patch               自有功能①：Set Editor 外部编辑器（12 文件）
     strip_scan_page.patch               裁剪配套：摘除对已删 scan.dart 的引用
@@ -102,27 +104,28 @@ windows_only/
 删了反而扩大与上游的冲突面。**只删"文件/目录"，不删"运行时分支"**——这是分层
 裁剪的关键：硬删除只发生在文件粒度，行级诉求用补丁。
 
-### 3.4 `windows_only/export_patch.sh`（你的功能 → 补丁的入口）
+### 3.4 `windows_only/own_files.txt` + `windows_only/auto_export.sh`（你的功能 → 补丁的唯一入口）
 
-用法二选一：
+`own_files.txt` 是**补丁清单**：每行「补丁名 <空格> 相对路径」，同一补丁名的多行合并为一个 `.patch`（一功能一补丁）。
 
-```bash
-# A. 按提交范围导出（推荐，功能是独立提交时）
-windows_only/export_patch.sh feature_my_thing 8ae54f3..HEAD
-# B. 按文件路径导出（改动散落/未提交时）
-windows_only/export_patch.sh feature_my_thing upstream/main -- lib/xxx.dart lib/yyy.dart
-```
-
-自动：生成 `windows_only/windows_only_patches/<名>.patch` → 在干净基线 worktree 上
-`git apply --check` 自验证 → 已有同名文件时先备份 `.bak`。
+- **新增功能**：往 `own_files.txt` 加一行（新功能用新补丁名；属于已有功能就并入该补丁名）→ push 到 main，之后全自动。
+- `auto_export.sh` 在 CI（push 触发，`export_patches.yml`）里自动执行：
+  1. 对每个补丁名跑 `git diff upstream/main..HEAD -- <路径>` 重新生成 `.patch`
+  2. 某补丁名下所有路径都与上游一致（空 diff）→ **删除**该 `.patch`（视为功能已回退）
+  3. 有变更时在干净上游 worktree 上**按字母序批量验证**可应用（与 `build_windows_only.sh` 的应用顺序一致，能抓到补丁间依赖冲突）
+  4. 通过后提交回 main（`chore(windows_only): auto-export patches [skip ci]`）
+- 输出 `CHANGED`（有增删改）/ `CLEAN`（无变化），由 workflow 决定是否提交。
+- **不要手改 `.patch`**：补丁只从 main 上的代码生成，手改会在下次导出时被覆盖。
+- 本地也可手动跑：`bash windows_only/auto_export.sh`（需先 `git fetch upstream main`）。
 
 ### 3.5 已有补丁内容
 
 - **`external_editor.patch`**：Set Editor 功能（外部编辑器选择/启动/文件监听自动同步）。
-  涉及 l10n（en/zh_CN）、config 模型、scripts 页面等 12 个文件。
-  补丁基于**旧上游基线 `8ae54f3`** 导出。
+  涉及 l10n（en/zh_CN）、config 模型、scripts 页面等 12 个文件（清单 `external_editor`）。
+- **`profile_hover.patch`**：profile 项悬停效果（清单 `profile_hover`）。
 - **`strip_scan_page.patch`**：删除 `lib/pages/scan.dart` 后，摘除 `pages.dart` 的 export
-  与 `add_profile.dart` 的 import + 移动端 QR 分支。
+  与 `add_profile.dart` 的 import + 移动端 QR 分支。**手工维护**：它是对上游文件（`add_profile.dart`）的
+  行级引用摘除，不在 `own_files.txt` 清单内，auto_export 不碰它。
 
 ---
 
@@ -141,12 +144,13 @@ windows_only/export_patch.sh feature_my_thing upstream/main -- lib/xxx.dart lib/
 # 1) 在 main 上正常开发、测试、提交
 git commit -m "feat(xxx): my feature"
 
-# 2) 导出为流水线补丁
-windows_only/export_patch.sh feature_my_thing <提交范围>     # 或路径模式
+# 2) 把功能文件加进补丁清单（新功能加新行；属于已有功能就并入该补丁名）
+#    vim windows_only/own_files.txt
+feature_my_thing lib/common/my_thing.dart
 
-# 3) 提交补丁文件本身
-git add windows_only/windows_only_patches/feature_my_thing.patch
-git commit -m "feat(windows_only): add xxx patch"
+# 3) 提交清单本身并 push → CI 自动导出 + 验证 + 提交补丁回 main
+git add windows_only/own_files.txt
+git commit -m "feat(windows_only): track xxx patch in manifest"
 git push origin main
 ```
 
@@ -154,19 +158,19 @@ git push origin main
 
 **要点**：
 - 新功能尽量做成**独立文件**（如 `lib/common/external_editor.dart`），少改上游已有文件 → 冲突面小。
-- 补丁按字母序应用，同名覆盖前自动备份 `.bak`。
+- 补丁按字母序应用（auto_export 的批量验证顺序与之一致）。
 
 ### 4.3 修改/删除已有功能
 
-- **修改**：改完 main → 重新导出覆盖同名补丁。
-- **删除功能**：删掉对应 `.patch` 文件。
+- **修改**：改完 main 的对应文件 → push → auto_export 自动重新导出（输出 CHANGED）。
+- **删除功能**：删掉 `own_files.txt` 里该补丁名的行 → push → auto_export 检测空 diff 自动删除对应 `.patch`。
 - **删除文件/目录**：往 `delete_manifest.txt` 加一行。
 
 ### 4.4 fork main 是否要跟上新上游？
 
-**不必**。补丁按"提交范围"导出（模式 A），不依赖 main 的位置。
+**不必**。补丁按「清单路径 + upstream/main..HEAD」导出，不依赖 main 与上游的相对位置。
 但建议偶尔（`git fetch upstream && git rebase upstream/main`）把 main 挪到新基线上，
-让未来重导补丁时的基准更近。可选，非必需。
+避免功能代码与上游偏差过大、冲突面扩大。可选，非必需。
 
 ---
 
@@ -179,11 +183,8 @@ git fetch upstream && git log --oneline main..upstream/main
 # 本地重建 windows-only 分支（验证用，不 push）
 bash windows_only/build_windows_only.sh upstream/main windows-only-rebuild
 
-# 导入新功能为补丁（模式 A：按提交范围）
-windows_only/export_patch.sh feature_name <A>..HEAD
-
-# 导入新功能为补丁（模式 B：按路径）
-windows_only/export_patch.sh feature_name upstream/main -- <路径...>
+# 导入新功能为补丁：own_files.txt 加一行后 push，CI 自动导出
+#   手动立即导出（调试用）：bash windows_only/auto_export.sh
 
 # 手动触发 CI（等同 cron）
 #   GitHub → fork 仓库 → Actions → windows-only sync & build → Run workflow
@@ -220,7 +221,8 @@ cd .worktrees/<输出分支> && git apply --3way ../windows_only/windows_only_pa
 # 2) 或：基于新上游重做该功能后重新导出
 git fetch upstream
 git rebase upstream/main        # 解决冲突（生成文件冲突直接 checkout --ours + 重跑 build_runner）
-windows_only/export_patch.sh xxx <新基线>..HEAD
+# 功能修好后 push 到 main → auto_export 自动重新导出
+#   （本地立即导出：bash windows_only/auto_export.sh）
 # 3) 手动 Run workflow 重试
 ```
 
@@ -237,19 +239,20 @@ windows_only/export_patch.sh xxx <新基线>..HEAD
 
 | 项 | 值 |
 |---|---|
-| fork main HEAD | `2be0c14`（merge upstream/main） |
+| fork main HEAD | `21afc66`（CI 缓存优化提交） |
 | 上游基线（upstream/main） | `8ce0b28`（v1.19.6 重发：禁用 signpath + 修 appimage） |
-| 补丁基线 | 已验证补丁可应用于 `8ce0b28`（本地 e2e 重建通过） |
-| windows-only 分支 | 尚未创建（首次 CI 运行时生成） |
-| 自有功能 | 外部编辑器（external_editor.patch）、悬停预览（profile_hover.patch） |
+| 补丁基线 | auto_export 按 `upstream/main..HEAD` 导出，已验证可应用于 `8ce0b28` |
+| windows-only 分支 | 已存在（CI 生成，force-push 维护，`git push --force origin windows-only-rebuild:windows-only`） |
+| 自有功能 | 外部编辑器（external_editor.patch）、悬停预览（profile_hover.patch）——均为清单自动导出 |
+| 手工补丁 | strip_scan_page.patch（对上游 `add_profile.dart` 的行级引用摘除，不在清单内） |
 | 自动导出 | `export_patches.yml`（push 触发）按 `own_files.txt` 清单导出补丁并提交回 main |
 
 本地 main 提交链（自上而下）：
 ```
-2be0c14  Merge remote-tracking branch 'upstream/main'
-b829227  chore(windows_only): auto-export patches [skip ci]
-bf0584b  feat(windows_only): take over external_editor auto-export via manifest
-411cf79  move: tools/ -> windows_only/
+21afc66  fix(ci): move GOCACHE env to step level (runner context invalid in job env)
+1212c7e  ci(windows_only): make patch export deterministic and fix sync step
+5528acb  ci(windows_only): fix auto-export step (multi-line GITHUB_OUTPUT write broke step)
+d312d9c  chore(windows_only): auto-export patches [skip ci]
 …（更早提交略）
 ```
 
@@ -258,9 +261,10 @@ bf0584b  feat(windows_only): take over external_editor auto-export via manifest
 ## 8. 给 AI 协作者的操作基线
 
 - `windows_only/` 下所有改动都要提交到 fork main 才会生效（CI 从 fork main 的分支读取工作流与补丁）。
-- 修补丁 vs 修功能：功能代码在 `main` 上改，补丁文件**只通过 `export_patch.sh` 重新生成**，
+- 修补丁 vs 修功能：功能代码在 `main` 上改，补丁文件**只由 `auto_export.sh`（按 `own_files.txt` 清单）生成**，
   不要手改 `.patch` 内容。
-- `delete_manifest.txt` 加行 = 删除文件；删 `.patch` = 删功能；两者都立即生效于下次重建。
+- `own_files.txt` 加行 = 导出/保留功能；减行 = 删除功能（auto_export 检测空 diff 自动删补丁）；
+  `delete_manifest.txt` 加行 = 删除文件；三者都立即生效于下次重建。
 - 验证一件事是否会影响 windows-only：本地跑
   `bash windows_only/build_windows_only.sh upstream/main windows-only-rebuild && cd .worktrees/windows-only-rebuild && flutter analyze`
   零问题即安全。
