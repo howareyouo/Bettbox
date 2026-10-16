@@ -51,6 +51,8 @@ echo "==> 基线: $UPSTREAM_REF ($UPSTREAM_SHA)"
 # --- 2. 按清单删除非 Windows 文件/目录 ---
 DELETED=0
 while IFS= read -r line || [ -n "$line" ]; do
+  # 兼容 CRLF 检出：Windows autocrlf 会让清单带尾 \r，剥掉再解析
+  line="${line%$'\r'}"
   # 跳过空行与注释
   case "$line" in
     ""|\#*) continue ;;

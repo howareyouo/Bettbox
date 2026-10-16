@@ -66,7 +66,9 @@ windows_only/
   auto_export.sh                        自动导出脚本：按 own_files.txt 导出/删除补丁并验证
   windows_only_patches/
     external_editor.patch               自有功能①：Set Editor 外部编辑器（12 文件）
-    strip_scan_page.patch               裁剪配套：摘除对已删 scan.dart 的引用
+    profile_drag.patch                  自有功能②：profile 卡片拖拽排序（清单 profile_drag）
+    profile_hover.patch                 自有功能③：profile 悬停预览（清单 profile_hover）
+    profile_viewer.patch                自有功能④：profile 只读查看器（清单 profile_viewer）
 ```
 
 ### 3.1 `.github/workflows/windows-only.yml`
@@ -123,9 +125,9 @@ windows_only/
 - **`external_editor.patch`**：Set Editor 功能（外部编辑器选择/启动/文件监听自动同步）。
   涉及 l10n（en/zh_CN）、config 模型、scripts 页面等 12 个文件（清单 `external_editor`）。
 - **`profile_hover.patch`**：profile 项悬停效果（清单 `profile_hover`）。
-- **`strip_scan_page.patch`**：删除 `lib/pages/scan.dart` 后，摘除 `pages.dart` 的 export
-  与 `add_profile.dart` 的 import + 移动端 QR 分支。**手工维护**：它是对上游文件（`add_profile.dart`）的
-  行级引用摘除，不在 `own_files.txt` 清单内，auto_export 不碰它。
+- **scan 引用摘除（已并入 main 代码）**：scan.dart 的引用（`pages.dart` export、
+  `add_profile.dart` 的 import + QR 分支）已由 profile viewer 迁移时在 main 自身删净，
+  无需再保留裁剪补丁（曾用 strip_scan_page.patch 手工摘除，现已删除）。
 
 ---
 
@@ -244,7 +246,7 @@ git rebase upstream/main        # 解决冲突（生成文件冲突直接 checko
 | 补丁基线 | auto_export 按 `upstream/main..HEAD` 导出，已验证可应用于 `8ce0b28` |
 | windows-only 分支 | 已存在（CI 生成，force-push 维护，`git push --force origin windows-only-rebuild:windows-only`） |
 | 自有功能 | 外部编辑器（external_editor.patch）、悬停预览（profile_hover.patch）——均为清单自动导出 |
-| 手工补丁 | strip_scan_page.patch（对上游 `add_profile.dart` 的行级引用摘除，不在清单内） |
+| 手工补丁 | 无（scan 引用已由 main 自身代码移除；strip_scan_page.patch 已删） |
 | 自动导出 | `export_patches.yml`（push 触发）按 `own_files.txt` 清单导出补丁并提交回 main |
 
 本地 main 提交链（自上而下）：

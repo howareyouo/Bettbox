@@ -6,7 +6,9 @@
 #   1. 读 windows_only/own_files.txt（每行「补丁名 路径」）
 #   2. 对每个补丁名：git diff upstream/main..HEAD -- <路径> 生成 .patch
 #      （空 diff 且旧补丁存在 → 删除，表示功能已回退到上游）
-#   3. 在干净上游 worktree 上按字母序验证本清单导出的补丁可应用
+#   3. 有变更时在干净上游 worktree 上按字母序验证 windows_only_patches/ 下
+#      所有补丁可应用（与 build_windows_only.sh 的应用 glob 顺序一致，
+#      能抓到手工补丁与清单补丁的冲突）
 #   4. 输出 CHANGED（有增删改）或 CLEAN（无变化），由 workflow 决定是否提交
 #
 # 用法:
@@ -39,6 +41,8 @@ trap 'rm -rf "$TMP"' EXIT
 # --- 1. 解析清单，按补丁名分组路径 ---
 declare -a NAME_LIST=()
 while IFS= read -r line || [ -n "$line" ]; do
+  # 兼容 CRLF 检出：Windows autocrlf 会让清单带尾 \r，剥掉再解析
+  line="${line%$'\r'}"
   case "$line" in
     ""|\#*) continue ;;
   esac
@@ -84,18 +88,19 @@ if [ "$changed" = "1" ]; then
   git worktree remove --force "$WT" >/dev/null 2>&1 || true
   if git worktree add --quiet "$WT" "$UPSTREAM_REF"; then
     ok=1
-    for name in $(printf '%s\n' "${NAME_LIST[@]}" | sort); do
-      p="$PATCH_DIR/$name.patch"
+    # 与 build_windows_only.sh 的应用顺序一致（同一 glob 字母序）；
+    # 遍历目录下所有补丁而非只看清单，能抓到手工补丁与清单补丁的冲突
+    for p in "$PATCH_DIR"/*.patch; do
       [ -f "$p" ] || continue
       if ! git -C "$WT" apply --check "$p" 2>"$WT/.apply.err"; then
-        echo "ERROR: 补丁无法应用: $name.patch" >&2
+        echo "ERROR: 补丁无法应用: $(basename "$p")" >&2
         cat "$WT/.apply.err" >&2
         echo "现场保留在 $WT；请检查 own_files.txt 与补丁（注意补丁间依赖顺序）。" >&2
         ok=0
         break
       fi
       git -C "$WT" apply --quiet "$p"
-      echo "    ok   $name.patch 可应用于 $UPSTREAM_REF"
+      echo "    ok   $(basename "$p") 可应用于 $UPSTREAM_REF"
     done
     if [ "$ok" = "1" ]; then
       git worktree remove --force "$WT" >/dev/null 2>&1 || true

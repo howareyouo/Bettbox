@@ -4,8 +4,8 @@
 # 设计原则（分层裁剪）：
 #   1. 目录级删除（这里）：平台构建产物，非 Windows 平台不会用到 —— 删
 #   2. 文件级删除（这里）：依赖无 Windows 实现插件的页面 —— 删
-#   3. 行级修改：pages.dart / add_profile.dart 里对已删文件的引用 ——
-#      由 windows_only/windows_only_patches/strip_scan_page.patch 摘除
+#   3. 行级修改（已无）：scan.dart 的引用已由 main 自身代码移除
+#      （profile viewer 迁移时一并删净，曾用 strip_scan_page.patch 手工摘除，已删除）
 #   4. 保留不动：Platform.is*/isAndroidTV 等运行时判断（Windows 上恒为
 #      false，天然正确；删了反而增加与上游的冲突面）
 

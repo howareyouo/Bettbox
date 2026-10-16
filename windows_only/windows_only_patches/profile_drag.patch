@@ -1,3 +1,25 @@
+diff --git a/lib/common/scroll.dart b/lib/common/scroll.dart
+index a0f5bd97..782319d3 100644
+--- a/lib/common/scroll.dart
++++ b/lib/common/scroll.dart
+@@ -17,6 +17,17 @@ class BaseScrollBehavior extends MaterialScrollBehavior {
+   };
+ }
+ 
++class NoMouseDragScrollBehavior extends BaseScrollBehavior {
++  @override
++  Set<PointerDeviceKind> get dragDevices => const {
++    PointerDeviceKind.touch,
++    PointerDeviceKind.stylus,
++    PointerDeviceKind.invertedStylus,
++    PointerDeviceKind.trackpad,
++    PointerDeviceKind.unknown,
++  };
++}
++
+ class HiddenBarScrollBehavior extends BaseScrollBehavior {
+   @override
+   Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
 index 6e08b220..80f33cab 100644
 --- a/lib/widgets/super_grid.dart

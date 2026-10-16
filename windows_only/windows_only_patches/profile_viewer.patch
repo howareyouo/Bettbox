@@ -1,3 +1,154 @@
+diff --git a/lib/pages/pages.dart b/lib/pages/pages.dart
+index cc27ba65..43e71b29 100644
+--- a/lib/pages/pages.dart
++++ b/lib/pages/pages.dart
+@@ -1,4 +1,3 @@
+ export 'home.dart';
+-export 'scan.dart';
+-export 'editor.dart';
++export 'viewer.dart';
+ export 'media_unlock.dart';
+diff --git a/lib/pages/viewer.dart b/lib/pages/viewer.dart
+new file mode 100644
+index 00000000..cb6fbcc5
+--- /dev/null
++++ b/lib/pages/viewer.dart
+@@ -0,0 +1,65 @@
++import 'package:bett_box/common/common.dart';
++import 'package:bett_box/enum/enum.dart';
++import 'package:bett_box/widgets/widgets.dart';
++import 'package:material_ui/material_ui.dart';
++import 'package:flutter/services.dart';
++
++class ViewerPage extends StatefulWidget {
++  final String title;
++  final String content;
++
++  const ViewerPage({
++    super.key,
++    required this.title,
++    required this.content,
++  });
++
++  @override
++  State<ViewerPage> createState() => _ViewerPageState();
++}
++
++class _ViewerPageState extends State<ViewerPage> {
++  final ScrollController _controller = ScrollController();
++
++  Future<void> _handleCopyAll() async {
++    await Clipboard.setData(ClipboardData(text: widget.content));
++    if (!mounted) return;
++    context.showNotifier(appLocalizations.copySuccess);
++  }
++
++  @override
++  void dispose() {
++    _controller.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    return CommonScaffold(
++      scrollEdgeFade: false,
++      appBar: AppBar(
++        title: Text(widget.title),
++        actions: [
++          IconButton(
++            onPressed: _handleCopyAll,
++            tooltip: appLocalizations.copy,
++            icon: const Icon(Icons.copy_all_rounded),
++          ),
++        ],
++      ),
++      body: CommonScrollBar(
++        controller: _controller,
++        child: SingleChildScrollView(
++          controller: _controller,
++          padding: const EdgeInsets.all(16),
++          child: SelectableText(
++            widget.content,
++            style: context.textTheme.bodyMedium?.copyWith(
++              fontFamily: FontFamily.jetBrainsMono.value,
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+\ No newline at end of file
+diff --git a/lib/views/profiles/add_profile.dart b/lib/views/profiles/add_profile.dart
+index 95e13bb3..3637d4e3 100644
+--- a/lib/views/profiles/add_profile.dart
++++ b/lib/views/profiles/add_profile.dart
+@@ -1,13 +1,11 @@
+ import 'package:bett_box/common/common.dart';
+ import 'package:bett_box/enum/enum.dart';
+ import 'package:bett_box/models/models.dart';
+-import 'package:bett_box/pages/scan.dart';
+ import 'package:bett_box/state.dart';
+ import 'package:bett_box/widgets/widgets.dart';
+ import 'package:material_ui/material_ui.dart';
+ import 'package:flutter/services.dart';
+ import 'edit_profile.dart';
+-import 'tv_qr_import_dialog.dart';
+ 
+ class AddProfileView extends StatelessWidget {
+   final BuildContext context;
+@@ -81,26 +79,6 @@ class AddProfileView extends StatelessWidget {
+     }
+   }
+ 
+-  Future<void> _toScan() async {
+-    if (system.isDesktop) {
+-      globalState.appController.addProfileFormQrCode();
+-      return;
+-    }
+-    if (globalState.isAndroidTV) {
+-      await showDialog(
+-        context: context,
+-        builder: (_) => const TvQrImportDialog(),
+-      );
+-      return;
+-    }
+-    final url = await BaseNavigator.push(context, const ScanPage());
+-    if (url != null) {
+-      WidgetsBinding.instance.addPostFrameCallback((_) {
+-        _handleAddProfileFormURL(url);
+-      });
+-    }
+-  }
+-
+   Future<void> _toAdd() async {
+     _handleAddProfileFormURL('');
+   }
+@@ -116,23 +94,6 @@ class AddProfileView extends StatelessWidget {
+             child: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+-                ListItem(
+-                  leading: const Icon(Icons.qr_code_sharp),
+-                  title: Text(appLocalizations.qrcode),
+-                  subtitle: Text(appLocalizations.qrcodeDesc),
+-                  onTap: _toScan,
+-                ),
+-                Divider(
+-                  height: 1,
+-                  thickness: 1,
+-                  color: context.colorScheme.outlineVariant.withValues(
+-                    alpha: context.colorScheme.brightness == Brightness.light
+-                        ? 0.6
+-                        : 0.45,
+-                  ),
+-                  indent: 16,
+-                  endIndent: 16,
+-                ),
+                 ListItem(
+                   leading: const Icon(Icons.content_paste),
+                   title: Text(appLocalizations.clipboard),
 diff --git a/lib/views/profiles/edit_profile.dart b/lib/views/profiles/edit_profile.dart
 index 396c4952..cad23157 100644
 --- a/lib/views/profiles/edit_profile.dart
