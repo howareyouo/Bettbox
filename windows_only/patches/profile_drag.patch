@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..ec0e00ae 100644
+index 6e08b220..ad22519b 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -253,7 +253,7 @@ index 6e08b220..ec0e00ae 100644
          : LongPressDraggable(
              childWhenDragging: childWhenDragging,
              data: index,
-@@ -507,16 +597,22 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -507,17 +597,18 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
        child: Builder(
          builder: (context) {
            _itemContexts[index] = context;
@@ -266,21 +266,18 @@ index 6e08b220..ec0e00ae 100644
              ),
            );
 +          final feedbackCard = widget.wrapCard
-+              ? CommonCard(child: child)
-+              : child;
++              ? CommonCard(isDragFeedback: true, child: child)
++              : Material(elevation: 6, child: child);
            final feedback = ActivateBox(
 -            child: _buildSizeBox(
 -              CommonCard(child: Material(elevation: 6, child: child)),
 -              index,
-+            child: RepaintBoundary(
-+              child: _buildSizeBox(
-+                DragFeedbackScope(child: feedbackCard),
-+                index,
-+              ),
-             ),
+-            ),
++            child: RepaintBoundary(child: _buildSizeBox(feedbackCard, index)),
            );
            return _buildTransform(
-@@ -729,3 +825,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
+             _buildDraggable(
+@@ -729,3 +820,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
      );
    }
  }
