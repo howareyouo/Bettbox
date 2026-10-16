@@ -52,12 +52,9 @@ jobs:
           fi
 
       - name: Auto-export patches from main
-        id: export
         run: |
           chmod +x windows_only/auto_export.sh
-          result=$(windows_only/auto_export.sh upstream/main)
-          echo "result=$result" >> "$GITHUB_OUTPUT"
-          echo "$result"
+          windows_only/auto_export.sh upstream/main
 
       - name: Run windows-only rebuild script
         if: steps.check.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
