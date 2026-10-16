@@ -20,6 +20,18 @@ index 60c762a8..2966295f 100644
                    borderRadius: BorderRadius.circular(16),
                    side: BorderSide(
                      color: colorScheme.outlineVariant.withValues(
+diff --git a/lib/views/profiles/override_profile.dart b/lib/views/profiles/override_profile.dart
+index 1a8f4fe5..bd86a095 100644
+--- a/lib/views/profiles/override_profile.dart
++++ b/lib/views/profiles/override_profile.dart
+@@ -528,7 +528,6 @@ class _RuleRowState extends State<RuleRow> {
+         child: Container(
+           margin: const EdgeInsets.symmetric(vertical: 4),
+           child: CommonCard(
+-            elevated: false,
+             padding: EdgeInsets.zero,
+             radius: 18,
+             type: CommonCardType.filled,
 diff --git a/lib/views/profiles/tv_qr_import_dialog.dart b/lib/views/profiles/tv_qr_import_dialog.dart
 index 5c430edb..f5a1e9aa 100644
 --- a/lib/views/profiles/tv_qr_import_dialog.dart
