@@ -1,5 +1,5 @@
 diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
-index 77bf236a..de138b55 100644
+index 77bf236a..26f36721 100644
 --- a/lib/views/profiles/profiles.dart
 +++ b/lib/views/profiles/profiles.dart
 @@ -1,9 +1,7 @@
@@ -212,7 +212,7 @@ index 77bf236a..de138b55 100644
  
    Future<void> _handlePreviewRuntimeConfig(BuildContext context) async {
      await globalState.appController.safeRun(
-@@ -243,11 +268,10 @@ class ProfileItem extends StatelessWidget {
+@@ -243,11 +268,11 @@ class ProfileItem extends StatelessWidget {
            return;
          }
  
@@ -222,10 +222,11 @@ index 77bf236a..de138b55 100644
                '${appLocalizations.runtimeConfig} - ${profile.label ?? profile.id}',
            content: content,
 -          readOnly: true,
++          highlightMode: editorYamlMode,
          );
          BaseNavigator.push<String>(context, previewPage, maintainState: false);
        },
-@@ -504,13 +528,6 @@ class ProfileItem extends StatelessWidget {
+@@ -504,13 +529,6 @@ class ProfileItem extends StatelessWidget {
            _handleExportFile(context);
          },
        ),
@@ -239,7 +240,7 @@ index 77bf236a..de138b55 100644
      ];
    }
  
-@@ -537,55 +554,53 @@ class ProfileItem extends StatelessWidget {
+@@ -537,55 +555,53 @@ class ProfileItem extends StatelessWidget {
      );
    }
  
@@ -312,7 +313,7 @@ index 77bf236a..de138b55 100644
 -            ],
 +  }
 +
-+  Widget _buildContent(BuildContext context) {
++  Widget _buildContent(BuildContext context, {required bool showTrailing}) {
 +    return Container(
 +      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
 +      child: Column(
@@ -320,7 +321,7 @@ index 77bf236a..de138b55 100644
 +        mainAxisSize: MainAxisSize.min,
 +        children: [
 +          Padding(
-+            padding: const EdgeInsets.only(right: 36),
++            padding: EdgeInsets.only(right: showTrailing ? 36 : 0),
 +            child: _buildTitleRow(context),
            ),
 -        ),
@@ -332,7 +333,7 @@ index 77bf236a..de138b55 100644
      );
    }
  
-@@ -616,113 +631,23 @@ class ProfileItem extends StatelessWidget {
+@@ -616,113 +632,23 @@ class ProfileItem extends StatelessWidget {
    @override
    Widget build(BuildContext context) {
      final isTV = globalState.isAndroidTV;
@@ -390,7 +391,7 @@ index 77bf236a..de138b55 100644
 -          ),
 -        ),
 -      ),
-+      child: isTV ? _buildTVLayout(context) : _buildContent(context),
++      child: isTV ? _buildTVLayout(context) : _buildContent(context, showTrailing: _hovered || profile.isUpdating),
      );
 -  }
 -
@@ -451,7 +452,7 @@ index 77bf236a..de138b55 100644
 +      child: Stack(
 +        children: [
 +          card,
-+          if (_hovered) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
++          if (_hovered || profile.isUpdating) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
 +        ],
        ),
 -      title: appLocalizations.profilesSort,
