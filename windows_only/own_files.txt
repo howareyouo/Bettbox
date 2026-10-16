@@ -5,7 +5,8 @@
 #   - 同一补丁名的多行合并为一个 .patch（一功能一补丁）
 #   - 只列「自有功能」文件；上游代码别加，避免把上游改动导出成补丁
 #   - 新增功能：加一行即可，其余全自动
-profile_hover lib/views/profiles/profiles.dart
+#   - 本文件为手写维护的补丁清单（补丁：一功能一 .patch）
+#   - 每次 push 到 main 后，export_patches.yml 自动按本清单导出补丁；勿手动编辑 .patch
 external_editor arb/intl_en.arb
 external_editor arb/intl_zh_CN.arb
 external_editor lib/common/common.dart
@@ -18,3 +19,4 @@ external_editor lib/models/generated/config.freezed.dart
 external_editor lib/models/generated/config.g.dart
 external_editor lib/views/profiles/external_editor.dart
 external_editor lib/views/profiles/scripts.dart
+profile_hover lib/views/profiles/profiles.dart
