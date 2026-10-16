@@ -110,7 +110,7 @@ jobs:
           git push --force origin windows-only-rebuild:windows-only
 
   build:
-    name: Build Windows installer
+    name: Build for Windows 
     needs: sync
     if: needs.sync.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
     runs-on: windows-latest
@@ -284,7 +284,7 @@ jobs:
       - name: Package zip
         run: |
           $src = "build\windows\x64\runner\Release"
-          $zip = "Bettbox-windows-only.zip"
+          $zip = "Bettbox-windows.zip"
           Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
           echo "ARTIFACT=$zip" >> $env:GITHUB_ENV
 

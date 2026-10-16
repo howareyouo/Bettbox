@@ -78,7 +78,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   /// Fraction of the neighbor card's size the drag probe must penetrate past
   /// the shared edge before a swap fires, so hovering near the boundary
   /// between two cards does not make them flip back and forth.
-  static const double _swapHysteresis = 0.15;
+  static const double _swapHysteresis = 0.05;
 
   Completer? _transformCompleter;
 
