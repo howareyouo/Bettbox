@@ -272,6 +272,7 @@ class _ProfileItemState extends State<ProfileItem> {
           title:
               '${appLocalizations.runtimeConfig} - ${profile.label ?? profile.id}',
           content: content,
+          highlightMode: editorYamlMode,
         );
         BaseNavigator.push<String>(context, previewPage, maintainState: false);
       },
@@ -587,7 +588,7 @@ class _ProfileItemState extends State<ProfileItem> {
     );
   }
 
-  Widget _buildContent(BuildContext context) {
+  Widget _buildContent(BuildContext context, {required bool showTrailing}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
@@ -595,7 +596,7 @@ class _ProfileItemState extends State<ProfileItem> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 36),
+            padding: EdgeInsets.only(right: showTrailing ? 36 : 0),
             child: _buildTitleRow(context),
           ),
           _buildContentInfo(context),
@@ -635,7 +636,7 @@ class _ProfileItemState extends State<ProfileItem> {
       isSelected: profile.id == groupValue,
       onPressed: isTV ? null : () => onChanged(profile.id),
       onLongPress: isTV ? null : () => _handlePreviewRuntimeConfig(context),
-      child: isTV ? _buildTVLayout(context) : _buildContent(context),
+      child: isTV ? _buildTVLayout(context) : _buildContent(context, showTrailing: _hovered || profile.isUpdating),
     );
     if (isTV) return card;
     return MouseRegion(
@@ -645,7 +646,7 @@ class _ProfileItemState extends State<ProfileItem> {
       child: Stack(
         children: [
           card,
-          if (_hovered) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
+          if (_hovered || profile.isUpdating) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
         ],
       ),
     );

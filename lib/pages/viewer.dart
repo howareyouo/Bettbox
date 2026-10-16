@@ -1,17 +1,22 @@
 import 'package:bett_box/common/common.dart';
-import 'package:bett_box/enum/enum.dart';
+import 'package:bett_box/enum/enum.dart' hide Mode;
 import 'package:bett_box/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:re_highlight/re_highlight.dart';
+import 'package:re_highlight/styles/atom-one-dark.dart';
+import 'package:re_highlight/styles/atom-one-light.dart';
 
 class ViewerPage extends StatefulWidget {
   final String title;
   final String content;
+  final Mode? highlightMode;
 
   const ViewerPage({
     super.key,
     required this.title,
     required this.content,
+    this.highlightMode,
   });
 
   @override
@@ -20,11 +25,62 @@ class ViewerPage extends StatefulWidget {
 
 class _ViewerPageState extends State<ViewerPage> {
   final ScrollController _controller = ScrollController();
+  final Highlight _highlight = Highlight();
+
+  TextSpan? _span;
+  Brightness? _spanBrightness;
 
   Future<void> _handleCopyAll() async {
     await Clipboard.setData(ClipboardData(text: widget.content));
     if (!mounted) return;
     context.showNotifier(appLocalizations.copySuccess);
+  }
+
+  TextSpan? _buildSpan(Brightness brightness, TextStyle base) {
+    final mode = widget.highlightMode;
+    if (mode == null) return null;
+    try {
+      final id = mode.name ?? mode.hashCode.toString();
+      _highlight.registerLanguage(id, mode);
+      final theme = brightness == Brightness.dark
+          ? atomOneDarkTheme
+          : atomOneLightTheme;
+      final renderer = TextSpanRenderer(base, theme);
+      _highlight
+          .highlight(code: widget.content, language: id)
+          .render(renderer);
+      return renderer.span;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final base = context.textTheme.bodyMedium?.copyWith(
+      fontFamily: FontFamily.jetBrainsMono.value,
+    );
+    if (widget.highlightMode != null) {
+      final brightness = context.colorScheme.brightness;
+      if (_span == null || _spanBrightness != brightness) {
+        _spanBrightness = brightness;
+        _span = _buildSpan(brightness, base!);
+      }
+    }
+    final span = _span;
+    if (span != null) {
+      return SelectableText.rich(span, style: base);
+    }
+    return SelectableText(widget.content, style: base);
+  }
+
+  @override
+  void didUpdateWidget(covariant ViewerPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content != widget.content ||
+        oldWidget.highlightMode != widget.highlightMode) {
+      _span = null;
+      _spanBrightness = null;
+    }
   }
 
   @override
@@ -52,12 +108,7 @@ class _ViewerPageState extends State<ViewerPage> {
         child: SingleChildScrollView(
           controller: _controller,
           padding: const EdgeInsets.all(16),
-          child: SelectableText(
-            widget.content,
-            style: context.textTheme.bodyMedium?.copyWith(
-              fontFamily: FontFamily.jetBrainsMono.value,
-            ),
-          ),
+          child: _buildContent(context),
         ),
       ),
     );
