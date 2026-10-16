@@ -249,6 +249,7 @@ class ProfileItem extends StatefulWidget {
 
 class _ProfileItemState extends State<ProfileItem> {
   bool _hovered = false;
+  PopupOpen? _menuOpen;
 
   Profile get profile => widget.profile;
 
@@ -575,6 +576,12 @@ class _ProfileItemState extends State<ProfileItem> {
     );
   }
 
+  void _openMenuAtTrailingButton() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    _menuOpen?.call(offset: Offset(box.size.width - 42, 6));
+  }
+
   Widget _buildTrailing(BuildContext context) {
     return SizedBox(
       height: 36,
@@ -591,18 +598,10 @@ class _ProfileItemState extends State<ProfileItem> {
                 ),
               ),
             )
-          : CommonPopupBox(
-              popup: CommonPopupMenu(
-                items: _buildMenuItems(context),
-                minItemVerticalPadding: 10,
-              ),
-              targetBuilder: (open) {
-                return IconButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () { open(); },
-                  icon: const Icon(Icons.more_vert, size: 20),
-                );
-              },
+          : IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: _openMenuAtTrailingButton,
+              icon: const Icon(Icons.more_vert, size: 20),
             ),
       ),
     );
@@ -663,11 +662,30 @@ class _ProfileItemState extends State<ProfileItem> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       cursor: SystemMouseCursors.click,
-      child: Stack(
-        children: [
-          card,
-          if (_hovered || profile.isUpdating) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
-        ],
+      child: CommonPopupBox(
+        popup: CommonPopupMenu(
+          items: _buildMenuItems(context),
+          minItemVerticalPadding: 10,
+        ),
+        targetBuilder: (open) {
+          _menuOpen = open;
+          return Stack(
+            children: [
+              GestureDetector(
+                onSecondaryTapUp: (details) {
+                  open(offset: details.localPosition);
+                },
+                child: card,
+              ),
+              if (_hovered || profile.isUpdating)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: _buildTrailing(context),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
