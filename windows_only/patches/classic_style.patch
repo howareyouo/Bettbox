@@ -70,10 +70,10 @@ index ca3cfc85..d4b63488 100644
        type: CommonCardType.filled,
        onPressed: onToggle,
 diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
-index 4c2a1a3e..221ad3f4 100644
+index 4c2a1a3e..3d97535c 100644
 --- a/lib/widgets/card.dart
 +++ b/lib/widgets/card.dart
-@@ -77,6 +77,40 @@ class InfoHeader extends StatelessWidget {
+@@ -77,6 +77,50 @@ class InfoHeader extends StatelessWidget {
    }
  }
  
@@ -111,10 +111,20 @@ index 4c2a1a3e..221ad3f4 100644
 +  }
 +}
 +
++class DragFeedbackScope extends InheritedWidget {
++  const DragFeedbackScope({super.key, required super.child});
++
++  static bool of(BuildContext context) =>
++      context.dependOnInheritedWidgetOfExactType<DragFeedbackScope>() != null;
++
++  @override
++  bool updateShouldNotify(DragFeedbackScope oldWidget) => false;
++}
++
  class CommonCard extends StatelessWidget {
    const CommonCard({
      super.key,
-@@ -91,7 +125,6 @@ class CommonCard extends StatelessWidget {
+@@ -91,7 +135,6 @@ class CommonCard extends StatelessWidget {
      this.enterAnimated = false,
      this.info,
      this.clipBehavior = Clip.antiAlias,
@@ -122,7 +132,7 @@ index 4c2a1a3e..221ad3f4 100644
    }) : isSelected = isSelected ?? false;
  
    final bool enterAnimated;
-@@ -105,7 +138,6 @@ class CommonCard extends StatelessWidget {
+@@ -105,7 +148,6 @@ class CommonCard extends StatelessWidget {
    final CommonCardType type;
    final double? radius;
    final Clip clipBehavior;
@@ -130,7 +140,7 @@ index 4c2a1a3e..221ad3f4 100644
  
    // final WidgetStateProperty<Color?>? backgroundColor;
    // final WidgetStateProperty<BorderSide?>? borderSide;
-@@ -127,9 +159,7 @@ class CommonCard extends StatelessWidget {
+@@ -127,9 +169,7 @@ class CommonCard extends StatelessWidget {
      return BorderSide(
        color: isSelected
            ? colorScheme.primary
@@ -141,7 +151,7 @@ index 4c2a1a3e..221ad3f4 100644
        strokeAlign: BorderSide.strokeAlignInside,
      );
    }
-@@ -177,16 +207,16 @@ class CommonCard extends StatelessWidget {
+@@ -177,16 +217,17 @@ class CommonCard extends StatelessWidget {
      }
  
      final isInteractive = onPressed != null || onLongPress != null;
@@ -150,6 +160,7 @@ index 4c2a1a3e..221ad3f4 100644
 -      borderRadius: BorderRadius.circular(actualRadius),
 -    );
 -    Widget card = OutlinedButton(
++    final isDragFeedback = DragFeedbackScope.of(context);
 +    final card = OutlinedButton(
        onLongPress: onLongPress,
        clipBehavior: clipBehavior,
@@ -164,7 +175,20 @@ index 4c2a1a3e..221ad3f4 100644
          iconColor: WidgetStatePropertyAll(context.colorScheme.primary),
          iconSize: WidgetStateProperty.all(20),
          backgroundColor: WidgetStateProperty.resolveWith(
-@@ -202,22 +232,6 @@ class CommonCard extends StatelessWidget {
+@@ -195,6 +236,12 @@ class CommonCard extends StatelessWidget {
+         side: WidgetStateProperty.resolveWith(
+           (states) => getBorderSide(context, states),
+         ),
++        elevation: isDragFeedback ? const WidgetStatePropertyAll(12.0) : null,
++        shadowColor: isDragFeedback
++            ? WidgetStatePropertyAll(
++                context.colorScheme.shadow.withValues(alpha: 0.55),
++              )
++            : null,
+         minimumSize: WidgetStatePropertyAll(isInteractive ? null : Size.zero),
+         tapTargetSize: isInteractive ? null : MaterialTapTargetSize.shrinkWrap,
+       ),
+@@ -202,22 +249,6 @@ class CommonCard extends StatelessWidget {
        child: childWidget,
      );
  

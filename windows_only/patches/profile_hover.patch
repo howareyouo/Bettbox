@@ -1,5 +1,5 @@
 diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
-index 77bf236a..56a2f3bb 100644
+index 77bf236a..b011bfd6 100644
 --- a/lib/views/profiles/profiles.dart
 +++ b/lib/views/profiles/profiles.dart
 @@ -1,9 +1,7 @@
@@ -307,7 +307,7 @@ index 77bf236a..56a2f3bb 100644
      );
    }
  
-@@ -616,113 +651,42 @@ class ProfileItem extends StatelessWidget {
+@@ -616,113 +651,37 @@ class ProfileItem extends StatelessWidget {
    @override
    Widget build(BuildContext context) {
      final isTV = globalState.isAndroidTV;
@@ -317,7 +317,8 @@ index 77bf236a..56a2f3bb 100644
        onPressed: isTV ? null : () => onChanged(profile.id),
        onLongPress: isTV ? null : () => _handlePreviewRuntimeConfig(context),
 -      child: isTV ? _buildTVLayout(context) : _buildNormalLayout(context),
--    );
++      child: isTV ? _buildTVLayout(context) : _buildContent(context, showTrailing: _hovered || profile.isUpdating),
+     );
 -  }
 -}
 -
@@ -363,10 +364,18 @@ index 77bf236a..56a2f3bb 100644
 -            contentPadding: const EdgeInsets.only(right: 44, left: 16),
 -            title: EmojiText(profile.label ?? profile.id),
 -          ),
--        ),
++    if (isTV) return card;
++    return MouseRegion(
++      onEnter: (_) => setState(() => _hovered = true),
++      onExit: (_) => setState(() => _hovered = false),
++      cursor: SystemMouseCursors.click,
++      child: CommonPopupBox(
++        popup: CommonPopupMenu(
++          items: _buildMenuItems(context),
++          minItemVerticalPadding: 10,
+         ),
 -      ),
-+      child: isTV ? _buildTVLayout(context) : _buildContent(context, showTrailing: _hovered || profile.isUpdating),
-     );
+-    );
 -  }
 -
 -  @override
@@ -380,16 +389,7 @@ index 77bf236a..56a2f3bb 100644
 -            globalState.appController.setProfiles(profiles);
 -          },
 -          icon: Icon(Icons.save),
-+    if (isTV) return card;
-+    return MouseRegion(
-+      onEnter: (_) => setState(() => _hovered = true),
-+      onExit: (_) => setState(() => _hovered = false),
-+      cursor: SystemMouseCursors.click,
-+      child: CommonPopupBox(
-+        popup: CommonPopupMenu(
-+          items: _buildMenuItems(context),
-+          minItemVerticalPadding: 10,
-         ),
+-        ),
 -      ],
 -      body: Padding(
 -        padding: EdgeInsets.only(bottom: 32, top: 16),
@@ -421,27 +421,22 @@ index 77bf236a..56a2f3bb 100644
 -                    index: index,
 -                    child: const Icon(Icons.drag_handle),
 -                  ),
--                ),
 +        targetBuilder: (open) {
 +          _menuOpen = open;
 +          return Stack(
 +            children: [
-+              GestureDetector(
-+                onSecondaryTapUp: (details) {
-+                  open(offset: details.localPosition);
-+                },
-+                child: card,
-               ),
--            );
--          },
--          itemCount: profiles.length,
--        ),
++              card,
 +              if (_hovered || profile.isUpdating)
 +                Positioned(
 +                  top: 6,
 +                  right: 6,
 +                  child: _buildTrailing(context),
-+                ),
+                 ),
+-              ),
+-            );
+-          },
+-          itemCount: profiles.length,
+-        ),
 +            ],
 +          );
 +        },

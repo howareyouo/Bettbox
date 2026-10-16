@@ -10,10 +10,10 @@ index cc27ba65..43e71b29 100644
  export 'media_unlock.dart';
 diff --git a/lib/pages/viewer.dart b/lib/pages/viewer.dart
 new file mode 100644
-index 00000000..3df146e8
+index 00000000..5dc09a15
 --- /dev/null
 +++ b/lib/pages/viewer.dart
-@@ -0,0 +1,116 @@
+@@ -0,0 +1,117 @@
 +import 'package:bett_box/common/common.dart';
 +import 'package:bett_box/enum/enum.dart' hide Mode;
 +import 'package:bett_box/widgets/widgets.dart';
@@ -56,7 +56,8 @@ index 00000000..3df146e8
 +    final mode = widget.highlightMode;
 +    if (mode == null) return null;
 +    try {
-+      final id = mode.name ?? mode.hashCode.toString();
++      // getLanguage looks up by lowercase name, so the id must be lowercase
++      final id = (mode.name ?? mode.hashCode.toString()).toLowerCase();
 +      _highlight.registerLanguage(id, mode);
 +      final theme = brightness == Brightness.dark
 +          ? atomOneDarkTheme
