@@ -71,7 +71,6 @@ jobs:
     env:
       UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
       GH_TOKEN: ${{ github.token }}
-      GOCACHE: ${{ runner.temp }}\gocache
     steps:
       - name: Checkout windows-only branch
         uses: actions/checkout@v7
@@ -121,6 +120,8 @@ jobs:
           echo "plugins=$(git rev-parse HEAD:plugins)" >> "$GITHUB_OUTPUT"
           echo "arb=$(git rev-parse HEAD:arb)" >> "$GITHUB_OUTPUT"
           echo "lock=$(git rev-parse HEAD:pubspec.lock)" >> "$GITHUB_OUTPUT"
+          echo "pubspec=$(git rev-parse HEAD:pubspec.yaml)" >> "$GITHUB_OUTPUT"
+          echo "buildyaml=$(git rev-parse HEAD:build.yaml)" >> "$GITHUB_OUTPUT"
 
       - name: Restore Go build cache
         id: go
@@ -129,6 +130,8 @@ jobs:
         with:
           path: ${{ runner.temp }}\gocache
           key: gocache-${{ hashFiles('core/go.sum') }}-${{ steps.keys.outputs.go }}
+          restore-keys: |
+            gocache-
 
       - name: Restore Core+Helper cache
         id: clash
@@ -143,7 +146,10 @@ jobs:
         run: flutter pub get
 
       - name: Patch sing-tun for Windows
+        if: steps.clash.outputs.cache-hit != 'true'
         shell: bash
+        env:
+          GOCACHE: ${{ runner.temp }}\gocache
         run: |
           cd core
           SING_TUN_VERSION=$(grep -E 'github\.com/metacubex/sing-tun\s+v[^[:space:]]+' go.mod | awk '{print $2}')
@@ -157,11 +163,15 @@ jobs:
       - name: Build Core (Windows)
         if: steps.clash.outputs.cache-hit != 'true'
         shell: bash
+        env:
+          GOCACHE: ${{ runner.temp }}\gocache
         run: dart setup.dart windows --arch amd64 --out core-only
 
       - name: Build HelperService (Windows)
         if: steps.clash.outputs.cache-hit != 'true'
         shell: bash
+        env:
+          GOCACHE: ${{ runner.temp }}\gocache
         run: |
           CORE_HASH=$(sha256sum libclash/windows/BettboxCore.exe | awk '{print $1}')
           echo "Core SHA256 (TOKEN for Helper): $CORE_HASH"
@@ -183,7 +193,7 @@ jobs:
           path: |
             .dart_tool
             build/windows
-          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
+          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
 
       - name: Build Bettbox (Windows)
         if: steps.fb.outputs.cache-hit != 'true'
@@ -215,7 +225,7 @@ jobs:
           path: |
             .dart_tool
             build/windows
-          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
+          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
 
       - name: Package zip
         run: |
