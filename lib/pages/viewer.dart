@@ -40,7 +40,8 @@ class _ViewerPageState extends State<ViewerPage> {
     final mode = widget.highlightMode;
     if (mode == null) return null;
     try {
-      final id = mode.name ?? mode.hashCode.toString();
+      // getLanguage looks up by lowercase name, so the id must be lowercase
+      final id = (mode.name ?? mode.hashCode.toString()).toLowerCase();
       _highlight.registerLanguage(id, mode);
       final theme = brightness == Brightness.dark
           ? atomOneDarkTheme

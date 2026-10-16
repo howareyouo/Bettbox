@@ -111,6 +111,16 @@ class SmoothRoundedRectangleBorder extends RoundedRectangleBorder {
   }
 }
 
+class DragFeedbackScope extends InheritedWidget {
+  const DragFeedbackScope({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DragFeedbackScope>() != null;
+
+  @override
+  bool updateShouldNotify(DragFeedbackScope oldWidget) => false;
+}
+
 class CommonCard extends StatelessWidget {
   const CommonCard({
     super.key,
@@ -207,6 +217,7 @@ class CommonCard extends StatelessWidget {
     }
 
     final isInteractive = onPressed != null || onLongPress != null;
+    final isDragFeedback = DragFeedbackScope.of(context);
     final card = OutlinedButton(
       onLongPress: onLongPress,
       clipBehavior: clipBehavior,
@@ -225,6 +236,12 @@ class CommonCard extends StatelessWidget {
         side: WidgetStateProperty.resolveWith(
           (states) => getBorderSide(context, states),
         ),
+        elevation: isDragFeedback ? const WidgetStatePropertyAll(12.0) : null,
+        shadowColor: isDragFeedback
+            ? WidgetStatePropertyAll(
+                context.colorScheme.shadow.withValues(alpha: 0.55),
+              )
+            : null,
         minimumSize: WidgetStatePropertyAll(isInteractive ? null : Size.zero),
         tapTargetSize: isInteractive ? null : MaterialTapTargetSize.shrinkWrap,
       ),

@@ -604,14 +604,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
               child: _buildSizeBox(cardChild, index),
             ),
           );
+          final feedbackCard = widget.wrapCard
+              ? CommonCard(child: child)
+              : child;
           final feedback = ActivateBox(
             child: RepaintBoundary(
               child: _buildSizeBox(
-                widget.wrapCard
-                    ? CommonCard(
-                        child: Material(elevation: 6, child: child),
-                      )
-                    : Material(elevation: 6, child: child),
+                DragFeedbackScope(child: feedbackCard),
                 index,
               ),
             ),

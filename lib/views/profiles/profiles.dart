@@ -671,12 +671,7 @@ class _ProfileItemState extends State<ProfileItem> {
           _menuOpen = open;
           return Stack(
             children: [
-              GestureDetector(
-                onSecondaryTapUp: (details) {
-                  open(offset: details.localPosition);
-                },
-                child: card,
-              ),
+              card,
               if (_hovered || profile.isUpdating)
                 Positioned(
                   top: 6,
