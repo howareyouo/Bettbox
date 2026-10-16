@@ -1,5 +1,5 @@
 diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
-index 77bf236a..809901a8 100644
+index 77bf236a..56a2f3bb 100644
 --- a/lib/views/profiles/profiles.dart
 +++ b/lib/views/profiles/profiles.dart
 @@ -1,9 +1,7 @@
@@ -181,7 +181,7 @@ index 77bf236a..809901a8 100644
    final Profile profile;
    final String? groupValue;
    final void Function(String? value) onChanged;
-@@ -218,6 +243,19 @@ class ProfileItem extends StatelessWidget {
+@@ -218,6 +243,20 @@ class ProfileItem extends StatelessWidget {
      required this.onChanged,
    });
  
@@ -191,6 +191,7 @@ index 77bf236a..809901a8 100644
 +
 +class _ProfileItemState extends State<ProfileItem> {
 +  bool _hovered = false;
++  PopupOpen? _menuOpen;
 +
 +  Profile get profile => widget.profile;
 +
@@ -201,7 +202,7 @@ index 77bf236a..809901a8 100644
    Future<void> _handleDeleteProfile(BuildContext context) async {
      final res = await globalState.showMessage(
        title: appLocalizations.tip,
-@@ -243,11 +281,11 @@ class ProfileItem extends StatelessWidget {
+@@ -243,11 +282,11 @@ class ProfileItem extends StatelessWidget {
            return;
          }
  
@@ -215,12 +216,18 @@ index 77bf236a..809901a8 100644
          );
          BaseNavigator.push<String>(context, previewPage, maintainState: false);
        },
-@@ -537,55 +575,53 @@ class ProfileItem extends StatelessWidget {
+@@ -537,55 +576,51 @@ class ProfileItem extends StatelessWidget {
      );
    }
  
 -  Widget _buildNormalLayout(BuildContext context) {
 -    final trailingWidget = SizedBox(
++  void _openMenuAtTrailingButton() {
++    final box = context.findRenderObject() as RenderBox?;
++    if (box == null) return;
++    _menuOpen?.call(offset: Offset(box.size.width - 42, 6));
++  }
++
 +  Widget _buildTrailing(BuildContext context) {
 +    return SizedBox(
        height: 36,
@@ -257,18 +264,10 @@ index 77bf236a..809901a8 100644
 -                },
                ),
 +            )
-+          : CommonPopupBox(
-+              popup: CommonPopupMenu(
-+                items: _buildMenuItems(context),
-+                minItemVerticalPadding: 10,
-+              ),
-+              targetBuilder: (open) {
-+                return IconButton(
-+                  padding: EdgeInsets.zero,
-+                  onPressed: () { open(); },
-+                  icon: const Icon(Icons.more_vert, size: 20),
-+                );
-+              },
++          : IconButton(
++              padding: EdgeInsets.zero,
++              onPressed: _openMenuAtTrailingButton,
++              icon: const Icon(Icons.more_vert, size: 20),
 +            ),
        ),
      );
@@ -308,7 +307,7 @@ index 77bf236a..809901a8 100644
      );
    }
  
-@@ -616,113 +652,23 @@ class ProfileItem extends StatelessWidget {
+@@ -616,113 +651,42 @@ class ProfileItem extends StatelessWidget {
    @override
    Widget build(BuildContext context) {
      final isTV = globalState.isAndroidTV;
@@ -381,7 +380,16 @@ index 77bf236a..809901a8 100644
 -            globalState.appController.setProfiles(profiles);
 -          },
 -          icon: Icon(Icons.save),
--        ),
++    if (isTV) return card;
++    return MouseRegion(
++      onEnter: (_) => setState(() => _hovered = true),
++      onExit: (_) => setState(() => _hovered = false),
++      cursor: SystemMouseCursors.click,
++      child: CommonPopupBox(
++        popup: CommonPopupMenu(
++          items: _buildMenuItems(context),
++          minItemVerticalPadding: 10,
+         ),
 -      ],
 -      body: Padding(
 -        padding: EdgeInsets.only(bottom: 32, top: 16),
@@ -414,21 +422,29 @@ index 77bf236a..809901a8 100644
 -                    child: const Icon(Icons.drag_handle),
 -                  ),
 -                ),
--              ),
++        targetBuilder: (open) {
++          _menuOpen = open;
++          return Stack(
++            children: [
++              GestureDetector(
++                onSecondaryTapUp: (details) {
++                  open(offset: details.localPosition);
++                },
++                child: card,
+               ),
 -            );
 -          },
 -          itemCount: profiles.length,
 -        ),
-+    if (isTV) return card;
-+    return MouseRegion(
-+      onEnter: (_) => setState(() => _hovered = true),
-+      onExit: (_) => setState(() => _hovered = false),
-+      cursor: SystemMouseCursors.click,
-+      child: Stack(
-+        children: [
-+          card,
-+          if (_hovered || profile.isUpdating) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
-+        ],
++              if (_hovered || profile.isUpdating)
++                Positioned(
++                  top: 6,
++                  right: 6,
++                  child: _buildTrailing(context),
++                ),
++            ],
++          );
++        },
        ),
 -      title: appLocalizations.profilesSort,
      );
