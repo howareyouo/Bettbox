@@ -60,6 +60,18 @@ index ca3cfc85..d4b63488 100644
        radius: 16,
        type: CommonCardType.filled,
        onPressed: onToggle,
+diff --git a/lib/views/tools.dart b/lib/views/tools.dart
+index 9cccc00a..f16c7e6d 100644
+--- a/lib/views/tools.dart
++++ b/lib/views/tools.dart
+@@ -1608,6 +1608,7 @@ class _LocaleItem extends ConsumerWidget {
+     final currentLocale =
+         utils.getLocaleForString(locale) ?? utils.getSystemLocale();
+     return ListItem<Locale>.options(
++      padding: EdgeInsets.zero,
+       leading: const Icon(Icons.language_outlined),
+       title: Text(appLocalizations.language),
+       subtitle: Text(_getLocaleString(currentLocale)),
 diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
 index 4c2a1a3e..0e7dd511 100644
 --- a/lib/widgets/card.dart
