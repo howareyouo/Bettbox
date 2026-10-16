@@ -110,6 +110,7 @@ class ApplicationState extends ConsumerState<Application>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    pageNavigationController.onNavigate = globalState.appController.toPage;
     if (system.isAndroid) {
       unawaited(SystemNavigator.setFrameworkHandlesBack(true));
     }
@@ -287,10 +288,17 @@ class ApplicationState extends ConsumerState<Application>
                   child: ValueListenableBuilder<bool>(
                     valueListenable: globalState.animationEnabled,
                     builder: (_, enabled, _) {
-                      return TickerMode(
-                        enabled: enabled,
-                        child: _buildApp(
-                          AppSidebarContainer(child: _buildPlatformApp(child!)),
+                      return Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown:
+                            pageNavigationController.handlePointerDown,
+                        child: TickerMode(
+                          enabled: enabled,
+                          child: _buildApp(
+                            AppSidebarContainer(
+                              child: _buildPlatformApp(child!),
+                            ),
+                          ),
                         ),
                       );
                     },

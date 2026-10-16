@@ -26,3 +26,7 @@ profile_viewer lib/pages/pages.dart
 profile_viewer lib/pages/viewer.dart
 profile_viewer lib/views/profiles/add_profile.dart
 profile_viewer lib/views/profiles/edit_profile.dart
+side_button_nav lib/application.dart
+side_button_nav lib/common/page_navigation_history.dart
+side_button_nav lib/controller.dart
+side_button_nav lib/pages/home.dart

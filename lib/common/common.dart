@@ -27,6 +27,7 @@ export 'navigator.dart';
 export 'network.dart';
 export 'num.dart';
 export 'package.dart';
+export 'page_navigation_history.dart';
 export 'path.dart';
 export 'picker.dart';
 export 'preferences.dart';
