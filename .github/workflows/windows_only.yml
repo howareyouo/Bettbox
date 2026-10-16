@@ -63,6 +63,7 @@ jobs:
     runs-on: windows-latest
     env:
       UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout windows-only branch
         uses: actions/checkout@v7
