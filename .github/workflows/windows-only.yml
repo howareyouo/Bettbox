@@ -1,0 +1,98 @@
+name: windows-only sync & build
+
+# 每 2 小时检查一次上游；也可手动触发（Actions 页 Run workflow）
+on:
+  schedule:
+    - cron: '17 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Rebuild windows-only from upstream
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+      upstream_sha: ${{ steps.check.outputs.upstream_sha }}
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream main
+        run: |
+          git remote add upstream https://github.com/appshubcc/Bettbox.git
+          git fetch --depth=200 upstream main
+          git fetch origin windows-only || true
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main)
+          echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+          LAST_SHA=$(git show origin/windows-only:.upstream-sha 2>/dev/null || echo "none")
+          echo "last_sha=$LAST_SHA"
+          if [ "$LAST_SHA" = "$UPSTREAM_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No upstream changes (still $UPSTREAM_SHA)"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream changed: $LAST_SHA -> $UPSTREAM_SHA"
+          fi
+
+      - name: Run windows-only rebuild script
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          chmod +x tools/build_windows_only.sh
+          tools/build_windows_only.sh upstream/main windows-only-rebuild
+          git push --force origin windows-only-rebuild:windows-only
+
+  build:
+    name: Build Windows installer
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    runs-on: windows-latest
+    env:
+      UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
+    steps:
+      - name: Checkout windows-only branch
+        uses: actions/checkout@v4
+        with:
+          ref: windows-only
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build Windows release
+        run: |
+          flutter pub get
+          flutter build windows --release
+
+      - name: Package zip
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          $zip = "Bettbox-windows-only-$env:UPSTREAM_SHA.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
+          echo "ARTIFACT=$zip" >> $env:GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bettbox-windows-only-${{ env.UPSTREAM_SHA }}
+          path: Bettbox-windows-only-*.zip
+
+      - name: Create GitHub Release
+        run: |
+          $tag = "windows-only-$env:UPSTREAM_SHA"
+          gh release create "$tag" "$env:ARTIFACT" `
+            --title "Bettbox Windows-only (upstream $($env:UPSTREAM_SHA.Substring(0,8)))" `
+            --notes "Automatically rebuilt from upstream main @ $env:UPSTREAM_SHA`nWindows-only build with mobile platform code removed." `
+            --repo "$env:GITHUB_REPOSITORY" || `
+            gh release upload "$tag" "$env:ARTIFACT" --repo "$env:GITHUB_REPOSITORY" --clobber || true

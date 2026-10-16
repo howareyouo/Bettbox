@@ -1,0 +1,52 @@
+diff --git a/lib/pages/pages.dart b/lib/pages/pages.dart
+index cc27ba6..9869b8a 100644
+--- a/lib/pages/pages.dart
++++ b/lib/pages/pages.dart
+@@ -1,4 +1,3 @@
+ export 'home.dart';
+-export 'scan.dart';
+ export 'editor.dart';
+ export 'media_unlock.dart';
+diff --git a/lib/views/profiles/add_profile.dart b/lib/views/profiles/add_profile.dart
+index 95e13bb..0b02146 100644
+--- a/lib/views/profiles/add_profile.dart
++++ b/lib/views/profiles/add_profile.dart
+@@ -1,13 +1,11 @@
+ import 'package:bett_box/common/common.dart';
+ import 'package:bett_box/enum/enum.dart';
+ import 'package:bett_box/models/models.dart';
+-import 'package:bett_box/pages/scan.dart';
+ import 'package:bett_box/state.dart';
+ import 'package:bett_box/widgets/widgets.dart';
+ import 'package:material_ui/material_ui.dart';
+ import 'package:flutter/services.dart';
+ import 'edit_profile.dart';
+-import 'tv_qr_import_dialog.dart';
+ 
+ class AddProfileView extends StatelessWidget {
+   final BuildContext context;
+@@ -82,23 +80,7 @@ class AddProfileView extends StatelessWidget {
+   }
+ 
+   Future<void> _toScan() async {
+-    if (system.isDesktop) {
+-      globalState.appController.addProfileFormQrCode();
+-      return;
+-    }
+-    if (globalState.isAndroidTV) {
+-      await showDialog(
+-        context: context,
+-        builder: (_) => const TvQrImportDialog(),
+-      );
+-      return;
+-    }
+-    final url = await BaseNavigator.push(context, const ScanPage());
+-    if (url != null) {
+-      WidgetsBinding.instance.addPostFrameCallback((_) {
+-        _handleAddProfileFormURL(url);
+-      });
+-    }
++    globalState.appController.addProfileFormQrCode();
+   }
+ 
+   Future<void> _toAdd() async {

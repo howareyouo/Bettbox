@@ -1,0 +1,20 @@
+# Windows-only 裁剪清单：每行一个要删除的路径（git rm 目标）
+# 支持 # 注释与空行；不存在的路径自动跳过（--ignore-unmatch）
+#
+# 设计原则（分层裁剪）：
+#   1. 目录级删除（这里）：平台构建产物，非 Windows 平台不会用到 —— 删
+#   2. 文件级删除（这里）：依赖无 Windows 实现插件的页面 —— 删
+#   3. 行级修改：pages.dart / add_profile.dart 里对已删文件的引用 ——
+#      由 tools/windows_only_patches/strip_scan_page.patch 摘除
+#   4. 保留不动：Platform.is*/isAndroidTV 等运行时判断（Windows 上恒为
+#      false，天然正确；删了反而增加与上游的冲突面）
+
+# --- 非 Windows 平台构建目录 ---
+android/
+ios/
+linux/
+macos/
+web/
+
+# --- 移动端专属源码（依赖 mobile_scanner 等无/弱 Windows 实现插件） ---
+lib/pages/scan.dart
