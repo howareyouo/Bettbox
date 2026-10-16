@@ -48,7 +48,7 @@ if [ "${2:-}" = "--" ]; then
     exit 1
   fi
   VERIFY_BASE="$BASE_REF"
-  git diff "$BASE_REF"..HEAD -- "$@" > "$TARGET"
+  git -c core.abbrev=8 diff "$BASE_REF"..HEAD -- "$@" > "$TARGET"
 else
   # ================= 模式 A：按提交范围导出 =================
   RANGE="${1:?用法: export_patch.sh <补丁名> <提交范围>}"

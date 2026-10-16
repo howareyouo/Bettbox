@@ -72,7 +72,7 @@ for name in "${NAME_LIST[@]}"; do
     fi
     continue
   fi
-  git diff "$UPSTREAM_REF"..HEAD -- $(<"$TMP/$name.paths") > "$target"
+  git -c core.abbrev=8 diff "$UPSTREAM_REF"..HEAD -- $(<"$TMP/$name.paths") > "$target"
   new_hash="$(git hash-object "$target")"
   if [ "$old_hash" != "$new_hash" ]; then changed=1; fi
   echo "    exp  $name.patch ($(wc -l < "$target") 行)"

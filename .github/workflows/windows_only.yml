@@ -71,14 +71,16 @@ jobs:
     env:
       UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
       GH_TOKEN: ${{ github.token }}
+      GOCACHE: ${{ runner.temp }}\gocache
     steps:
       - name: Checkout windows-only branch
         uses: actions/checkout@v7
         with:
           ref: windows-only
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Setup Flutter
+        id: flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -89,6 +91,13 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      - name: Cache Rust dependencies
+        if: github.event.inputs.force_build != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/helper
+          key: windows-only-helper
+
       - name: Enable Git long paths (Windows)
         run: git config --global core.longpaths true
 
@@ -97,6 +106,41 @@ jobs:
         with:
           go-version: '1.25.x'
           cache-dependency-path: core/go.sum
+
+      - name: Compute cache keys
+        id: keys
+        shell: bash
+        run: |
+          echo "go=$(go version | awk '{print $3}')" >> "$GITHUB_OUTPUT"
+          echo "rust=$(rustc --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+          echo "core=$(git rev-parse HEAD:core)" >> "$GITHUB_OUTPUT"
+          echo "helper=$(git rev-parse HEAD:services/helper)" >> "$GITHUB_OUTPUT"
+          echo "lib=$(git rev-parse HEAD:lib)" >> "$GITHUB_OUTPUT"
+          echo "windows=$(git rev-parse HEAD:windows)" >> "$GITHUB_OUTPUT"
+          echo "assets=$(git rev-parse HEAD:assets)" >> "$GITHUB_OUTPUT"
+          echo "plugins=$(git rev-parse HEAD:plugins)" >> "$GITHUB_OUTPUT"
+          echo "arb=$(git rev-parse HEAD:arb)" >> "$GITHUB_OUTPUT"
+          echo "lock=$(git rev-parse HEAD:pubspec.lock)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Go build cache
+        id: go
+        if: github.event.inputs.force_build != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}\gocache
+          key: gocache-${{ hashFiles('core/go.sum') }}-${{ steps.keys.outputs.go }}
+
+      - name: Restore Core+Helper cache
+        id: clash
+        if: github.event.inputs.force_build != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: libclash/windows
+          key: libclash-${{ steps.keys.outputs.core }}-${{ steps.keys.outputs.helper }}-${{ steps.keys.outputs.go }}-${{ steps.keys.outputs.rust }}
+
+      - name: Prepare Flutter deps
+        shell: bash
+        run: flutter pub get
 
       - name: Patch sing-tun for Windows
         shell: bash
@@ -111,27 +155,67 @@ jobs:
           chmod +w "${FILE}"
 
       - name: Build Core (Windows)
+        if: steps.clash.outputs.cache-hit != 'true'
         shell: bash
-        run: |
-          flutter pub get
-          dart run build_runner build
-          dart setup.dart windows --arch amd64 --out core-only
+        run: dart setup.dart windows --arch amd64 --out core-only
 
       - name: Build HelperService (Windows)
+        if: steps.clash.outputs.cache-hit != 'true'
         shell: bash
         run: |
           CORE_HASH=$(sha256sum libclash/windows/BettboxCore.exe | awk '{print $1}')
           echo "Core SHA256 (TOKEN for Helper): $CORE_HASH"
           dart setup.dart windows --arch amd64 --out helper --core-hash "$CORE_HASH"
 
-      - name: Build Bettbox (Windows)
+      - name: Compute Core hash
+        id: corehash
         shell: bash
         run: |
           CORE_HASH=$(sha256sum libclash/windows/BettboxCore.exe | awk '{print $1}')
+          echo "core_hash=$CORE_HASH" >> "$GITHUB_OUTPUT"
           echo "Core SHA256: $CORE_HASH"
-          flutter build windows --release --verbose \
-            --dart-define=CORE_SHA256=$CORE_HASH \
+
+      - name: Restore Flutter build cache
+        id: fb
+        if: github.event.inputs.force_build != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .dart_tool
+            build/windows
+          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
+
+      - name: Build Bettbox (Windows)
+        if: steps.fb.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          dart run build_runner build
+          flutter build windows --release \
+            --dart-define=CORE_SHA256=${{ steps.corehash.outputs.core_hash }} \
             --dart-define=APP_ENV=stable
+
+      - name: Save Go build cache
+        if: success() && github.event.inputs.force_build != 'true' && steps.clash.outputs.cache-hit != 'true' && steps.go.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}\gocache
+          key: gocache-${{ hashFiles('core/go.sum') }}-${{ steps.keys.outputs.go }}
+
+      - name: Save Core+Helper cache
+        if: success() && github.event.inputs.force_build != 'true' && steps.clash.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: libclash/windows
+          key: libclash-${{ steps.keys.outputs.core }}-${{ steps.keys.outputs.helper }}-${{ steps.keys.outputs.go }}-${{ steps.keys.outputs.rust }}
+
+      - name: Save Flutter build cache
+        if: success() && github.event.inputs.force_build != 'true' && steps.fb.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .dart_tool
+            build/windows
+          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
 
       - name: Package zip
         run: |
