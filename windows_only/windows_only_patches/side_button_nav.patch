@@ -1,15 +1,15 @@
 diff --git a/lib/application.dart b/lib/application.dart
-index d0ffd63d..3446876a 100644
+index d0ffd63d..8d71f090 100644
 --- a/lib/application.dart
 +++ b/lib/application.dart
-@@ -110,6 +110,7 @@ class ApplicationState extends ConsumerState<Application>
-   void initState() {
-     super.initState();
-     WidgetsBinding.instance.addObserver(this);
+@@ -116,6 +116,7 @@ class ApplicationState extends ConsumerState<Application>
+     globalState.backgroundMode.addListener(_syncAutoUpdateTasks);
+     _syncAutoUpdateTasks();
+     globalState.appController = AppController(context, ref);
 +    pageNavigationController.onNavigate = globalState.appController.toPage;
-     if (system.isAndroid) {
-       unawaited(SystemNavigator.setFrameworkHandlesBack(true));
-     }
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       unawaited(_initApp());
+     });
 @@ -287,10 +288,17 @@ class ApplicationState extends ConsumerState<Application>
                    child: ValueListenableBuilder<bool>(
                      valueListenable: globalState.animationEnabled,
