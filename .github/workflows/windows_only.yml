@@ -234,12 +234,8 @@ jobs:
           Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
           echo "ARTIFACT=$zip" >> $env:GITHUB_ENV
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: bettbox-windows-only-${{ env.UPSTREAM_SHA }}
-          path: Bettbox-windows-only-*.zip
-
+      # 注意：不要给 zip 上传 actions artifact——GitHub 下载 artifact 时会再套一层
+      # 同名 zip（双层 zip，Windows 下解压冲突），Release 即唯一分发渠道。
       - name: Create GitHub Release
         run: |
           $tag = "windows-only-$env:UPSTREAM_SHA"

@@ -47,7 +47,7 @@ index 81239805..b0065351 100644
  
  
 diff --git a/lib/common/common.dart b/lib/common/common.dart
-index 5d6a7352..a57ed0c5 100644
+index 5d6a7352..a944deb2 100644
 --- a/lib/common/common.dart
 +++ b/lib/common/common.dart
 @@ -6,6 +6,7 @@ export 'context.dart';
@@ -58,6 +58,14 @@ index 5d6a7352..a57ed0c5 100644
  export 'fixed.dart';
  export 'identity.dart';
  export 'function.dart';
+@@ -26,6 +27,7 @@ export 'navigator.dart';
+ export 'network.dart';
+ export 'num.dart';
+ export 'package.dart';
++export 'page_navigation_history.dart';
+ export 'path.dart';
+ export 'picker.dart';
+ export 'preferences.dart';
 diff --git a/lib/common/external_editor.dart b/lib/common/external_editor.dart
 new file mode 100644
 index 00000000..ef7ead11

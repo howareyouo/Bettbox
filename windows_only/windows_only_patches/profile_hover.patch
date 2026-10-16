@@ -1,5 +1,5 @@
 diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
-index 77bf236a..828e6f79 100644
+index 77bf236a..de138b55 100644
 --- a/lib/views/profiles/profiles.dart
 +++ b/lib/views/profiles/profiles.dart
 @@ -1,9 +1,7 @@
@@ -75,7 +75,7 @@ index 77bf236a..828e6f79 100644
    }
  
    Widget _buildFAB() {
-@@ -155,47 +171,55 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
+@@ -155,47 +171,56 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
                      profilesSelectorState.columns
                ? profilesSelectorState.profiles.length
                : profilesSelectorState.columns;
@@ -152,6 +152,7 @@ index 77bf236a..828e6f79 100644
 +                      for (final profile in profilesSelectorState.profiles)
 +                        GridItem(
 +                          key: ValueKey(profile.id),
++                          isDeletable: false,
 +                          child: ProfileItem(
 +                            key: ValueKey(profile.id),
 +                            profile: profile,
@@ -171,7 +172,7 @@ index 77bf236a..828e6f79 100644
                  ),
                ),
              ),
-@@ -206,7 +230,7 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
+@@ -206,7 +231,7 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
    }
  }
  
@@ -180,7 +181,7 @@ index 77bf236a..828e6f79 100644
    final Profile profile;
    final String? groupValue;
    final void Function(String? value) onChanged;
-@@ -218,18 +242,18 @@ class ProfileItem extends StatelessWidget {
+@@ -218,18 +243,18 @@ class ProfileItem extends StatelessWidget {
      required this.onChanged,
    });
  
@@ -211,7 +212,7 @@ index 77bf236a..828e6f79 100644
  
    Future<void> _handlePreviewRuntimeConfig(BuildContext context) async {
      await globalState.appController.safeRun(
-@@ -243,11 +267,10 @@ class ProfileItem extends StatelessWidget {
+@@ -243,11 +268,10 @@ class ProfileItem extends StatelessWidget {
            return;
          }
  
@@ -224,7 +225,7 @@ index 77bf236a..828e6f79 100644
          );
          BaseNavigator.push<String>(context, previewPage, maintainState: false);
        },
-@@ -504,13 +527,6 @@ class ProfileItem extends StatelessWidget {
+@@ -504,13 +528,6 @@ class ProfileItem extends StatelessWidget {
            _handleExportFile(context);
          },
        ),
@@ -238,7 +239,7 @@ index 77bf236a..828e6f79 100644
      ];
    }
  
-@@ -537,55 +553,53 @@ class ProfileItem extends StatelessWidget {
+@@ -537,55 +554,53 @@ class ProfileItem extends StatelessWidget {
      );
    }
  
@@ -331,7 +332,7 @@ index 77bf236a..828e6f79 100644
      );
    }
  
-@@ -616,113 +630,23 @@ class ProfileItem extends StatelessWidget {
+@@ -616,113 +631,23 @@ class ProfileItem extends StatelessWidget {
    @override
    Widget build(BuildContext context) {
      final isTV = globalState.isAndroidTV;

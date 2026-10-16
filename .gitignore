@@ -4,7 +4,8 @@
 *.log
 *.pyc
 *.swp
-.DS_Store
+!.github/
+!.agents/
 migrate_working_dir/
 
 # IntelliJ related
@@ -36,7 +37,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
 /android/core/.cxx
 
 #libclash

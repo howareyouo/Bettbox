@@ -1,0 +1,282 @@
+diff --git a/lib/application.dart b/lib/application.dart
+index d0ffd63d..3446876a 100644
+--- a/lib/application.dart
++++ b/lib/application.dart
+@@ -110,6 +110,7 @@ class ApplicationState extends ConsumerState<Application>
+   void initState() {
+     super.initState();
+     WidgetsBinding.instance.addObserver(this);
++    pageNavigationController.onNavigate = globalState.appController.toPage;
+     if (system.isAndroid) {
+       unawaited(SystemNavigator.setFrameworkHandlesBack(true));
+     }
+@@ -287,10 +288,17 @@ class ApplicationState extends ConsumerState<Application>
+                   child: ValueListenableBuilder<bool>(
+                     valueListenable: globalState.animationEnabled,
+                     builder: (_, enabled, _) {
+-                      return TickerMode(
+-                        enabled: enabled,
+-                        child: _buildApp(
+-                          AppSidebarContainer(child: _buildPlatformApp(child!)),
++                      return Listener(
++                        behavior: HitTestBehavior.translucent,
++                        onPointerDown:
++                            pageNavigationController.handlePointerDown,
++                        child: TickerMode(
++                          enabled: enabled,
++                          child: _buildApp(
++                            AppSidebarContainer(
++                              child: _buildPlatformApp(child!),
++                            ),
++                          ),
+                         ),
+                       );
+                     },
+diff --git a/lib/common/page_navigation_history.dart b/lib/common/page_navigation_history.dart
+new file mode 100644
+index 00000000..54558a75
+--- /dev/null
++++ b/lib/common/page_navigation_history.dart
+@@ -0,0 +1,159 @@
++import 'package:bett_box/common/system.dart';
++import 'package:bett_box/enum/enum.dart';
++import 'package:flutter/gestures.dart';
++import 'package:flutter/widgets.dart';
++
++/// 浏览器式页面导航历史(后退/前进),条目为 [PageLabel.name]。
++class PageNavigationHistory {
++  PageNavigationHistory({this.maxLength = 30});
++
++  final int maxLength;
++  final List<String> _entries = [];
++  int _index = -1;
++
++  int get length => _entries.length;
++
++  String? get current => _index >= 0 && _index < _entries.length
++      ? _entries[_index]
++      : null;
++
++  bool get canGoBack => _index > 0;
++
++  bool get canGoForward => _index < _entries.length - 1;
++
++  void visit(String entry) {
++    if (_index < _entries.length - 1) {
++      _entries.removeRange(_index + 1, _entries.length);
++    }
++    _entries.add(entry);
++    if (_entries.length > maxLength) {
++      _entries.removeAt(0);
++    }
++    _index = _entries.length - 1;
++  }
++
++  String? back() {
++    if (!canGoBack) return null;
++    _index -= 1;
++    return current;
++  }
++
++  String? forward() {
++    if (!canGoForward) return null;
++    _index += 1;
++    return current;
++  }
++
++  void clear() {
++    _entries.clear();
++    _index = -1;
++  }
++}
++
++/// 鼠标侧键(后退/前进)页面导航控制器。
++///
++/// 接入点:
++/// - [onNavigate] 由应用层注入([AppController.toPage])
++/// - MaterialApp 的 builder 用 Listener 把指针事件交给 [handlePointerDown]
++/// - 桌面端每个标签页的私有 Navigator 经 [register] 登记,
++///   后退时优先关闭当前标签已打开的子页,再沿历史切回上一个标签
++class PageNavigationController {
++  PageNavigationController._();
++
++  static final PageNavigationController instance =
++      PageNavigationController._();
++
++  /// 页面跳转回调(注入 AppController.toPage,避免与全局状态循环 import)。
++  void Function(PageLabel label)? onNavigate;
++
++  final PageNavigationHistory _history = PageNavigationHistory();
++  final Map<PageLabel, GlobalKey<NavigatorState>> _navigators = {};
++  PageLabel _active = PageLabel.dashboard;
++  bool _suppressNextVisit = false;
++  bool _pending = false;
++
++  /// 应用启动时把起始页作为历史基准,确保首次后退能回到起点。
++  void seed(PageLabel label) {
++    if (_history.length == 0) {
++      _history.visit(label.name);
++    }
++    _active = label;
++  }
++
++  void register(PageLabel label, GlobalKey<NavigatorState> key) {
++    _navigators[label] = key;
++  }
++
++  void unregister(PageLabel label) {
++    _navigators.remove(label);
++  }
++
++  /// 记录一次页面切换,由 [AppController.toPage] 调用。
++  /// 由后退/前进触发的切换会被抑制(不污染历史)。
++  void visit(PageLabel label) {
++    _active = label;
++    if (_suppressNextVisit) {
++      _suppressNextVisit = false;
++      return;
++    }
++    _history.visit(label.name);
++  }
++
++  bool get canGoBack => _history.canGoBack;
++
++  bool get canGoForward => _history.canGoForward;
++
++  void handlePointerDown(PointerDownEvent event) {
++    if (!system.isDesktop || _pending || event.kind != PointerDeviceKind.mouse) {
++      return;
++    }
++    final buttons = event.buttons;
++    if ((buttons & kBackMouseButton) != 0) {
++      goBack();
++    } else if ((buttons & kForwardMouseButton) != 0) {
++      goForward();
++    }
++  }
++
++  Future<void> goBack() async {
++    if (!system.isDesktop || _pending) return;
++    // 当前标签有打开的子页时,后退先关闭子页,不切标签
++    final navigator = _navigators[_active]?.currentState;
++    if (navigator != null && navigator.canPop()) {
++      navigator.pop();
++      return;
++    }
++    if (!_history.canGoBack) return;
++    _pending = true;
++    try {
++      _navigateTo(_history.back());
++    } finally {
++      _pending = false;
++    }
++  }
++
++  Future<void> goForward() async {
++    if (!system.isDesktop || _pending) return;
++    if (!_history.canGoForward) return;
++    _pending = true;
++    try {
++      _navigateTo(_history.forward());
++    } finally {
++      _pending = false;
++    }
++  }
++
++  void _navigateTo(String? name) {
++    if (name == null) return;
++    for (final label in PageLabel.values) {
++      if (label.name == name) {
++        _suppressNextVisit = true;
++        onNavigate?.call(label);
++        return;
++      }
++    }
++  }
++}
++
++/// 全局鼠标侧键导航控制器单例。
++final pageNavigationController = PageNavigationController.instance;
+\ No newline at end of file
+diff --git a/lib/controller.dart b/lib/controller.dart
+index f3c8f4cc..d0261255 100644
+--- a/lib/controller.dart
++++ b/lib/controller.dart
+@@ -1487,6 +1487,7 @@ class AppController {
+       ).popUntil((route) => route.isFirst);
+     }
+     _ref.read(currentPageLabelProvider.notifier).value = pageLabel;
++    pageNavigationController.visit(pageLabel);
+   }
+ 
+   void toProfiles() {
+diff --git a/lib/pages/home.dart b/lib/pages/home.dart
+index 42825dc9..afb09efc 100644
+--- a/lib/pages/home.dart
++++ b/lib/pages/home.dart
+@@ -19,8 +19,15 @@ class HomePage extends StatefulWidget {
+ 
+ class _HomePageState extends State<HomePage> {
+   final Map<int, FocusNode> _navFocusNodes = {};
++  final Map<PageLabel, GlobalKey<NavigatorState>> _navigatorKeys = {};
+   int _currentNavIndex = 0;
+ 
++  GlobalKey<NavigatorState> _getNavigatorKey(PageLabel label) {
++    final key = _navigatorKeys.putIfAbsent(label, () => GlobalKey());
++    pageNavigationController.register(label, key);
++    return key;
++  }
++
+   FocusNode _getNavFocusNode(int index) {
+     return _navFocusNodes.putIfAbsent(index, () => FocusNode());
+   }
+@@ -44,6 +51,7 @@ class _HomePageState extends State<HomePage> {
+   @override
+   void initState() {
+     super.initState();
++    pageNavigationController.seed(globalState.appState.pageLabel);
+     if (globalState.isAndroidTV) {
+       _requestNavFocus(0);
+     }
+@@ -54,6 +62,9 @@ class _HomePageState extends State<HomePage> {
+     for (final node in _navFocusNodes.values) {
+       node.dispose();
+     }
++    for (final label in _navigatorKeys.keys) {
++      pageNavigationController.unregister(label);
++    }
+     super.dispose();
+   }
+ 
+@@ -163,6 +174,7 @@ class _HomePageState extends State<HomePage> {
+                   item: navigationItem,
+                   isMobile: isMobile,
+                   keep: navigationItem.keep || keepAll,
++                  navigatorKey: _getNavigatorKey(navigationItem.label),
+                   view: navigationItem.builder(context),
+                 );
+               },
+@@ -335,12 +347,14 @@ class _NavigationPage extends StatelessWidget {
+     required this.item,
+     required this.isMobile,
+     required this.keep,
++    required this.navigatorKey,
+     required this.view,
+   });
+ 
+   final NavigationItem item;
+   final bool isMobile;
+   final bool keep;
++  final GlobalKey<NavigatorState>? navigatorKey;
+   final Widget view;
+ 
+   @override
+@@ -351,7 +365,7 @@ class _NavigationPage extends StatelessWidget {
+       child: isMobile
+           ? view
+           : Navigator(
+-              key: ValueKey('${item.label.name}_navigator'),
++              key: navigatorKey,
+               pages: [MaterialPage(child: view)],
+               onDidRemovePage: (_) {},
+             ),

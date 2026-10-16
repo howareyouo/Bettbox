@@ -78,7 +78,7 @@ windows_only/
 | Job | Runner | 做什么 |
 |---|---|---|
 | `sync` | ubuntu | 对比 `upstream/main` SHA 与 windows-only 分支记录的 `.upstream-sha`；有变化则跑 `build_windows_only.sh` 并 force-push 到 `windows-only` |
-| `build` | windows | `flutter build windows --release` → 打 zip → 上传 artifact → 创建 Release（tag `windows-only-<上游SHA>`） |
+| `build` | windows | `flutter build windows --release` → 打 zip → 创建 Release（tag `windows-only-<上游SHA>`）。zip 只走 Release，不传 artifact（Actions 下载 artifact 会再套一层同名 zip，Windows 解压冲突） |
 
 触发方式：`cron: '17 */2 * * *'`（每 2 小时）+ `workflow_dispatch`（手动）。
 无上游变化时 `sync` 快速退出，`build` 通过 `needs` + `if changed == true` 跳过，不烧时间。
@@ -137,7 +137,7 @@ windows_only/
 
 1. cron 每 2 小时（或手动 Run workflow）检查上游。
 2. 上游 SHA 变化 → `sync` 重建分支 → `build` 构建发布。
-3. 产物：Actions artifact + Release `windows-only-<上游SHA>`。
+3. 产物：Release `windows-only-<上游SHA>`（唯一下载渠道）。
 4. 若补丁 apply 失败：构建中止，**工作区保留**，日志提示是哪个补丁失败（见 §6.3）。
 
 ### 4.2 你加一个新功能（手动，核心流程）
