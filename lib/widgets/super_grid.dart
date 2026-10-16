@@ -69,11 +69,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   /// When a reorder interrupts a running animation, the remaining distance is
   /// covered in this shorter time, so the card tracks the finger instead of
   /// visibly trailing behind it.
-  final Duration _catchUpDuration = const Duration(milliseconds: 50);
+  final Duration _catchUpDuration = const Duration(milliseconds: 30);
 
   /// Reorder / settle animations run faster than the global [commonDuration]
   /// so cards feel snappy while following the pointer.
-  static const Duration _reorderDuration = Duration(milliseconds: 150);
+  static const Duration _reorderDuration = Duration(milliseconds: 100);
 
   Completer? _transformCompleter;
 
@@ -277,7 +277,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
 
     _transformController.duration = _transformController.isAnimating
         ? _catchUpDuration
-        : commonDuration;
+        : _reorderDuration;
 
     return _transformController.forward(from: 0);
   }
@@ -307,8 +307,8 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     }
     final spring = SpringDescription.withDampingRatio(
       mass: 1,
-      stiffness: 550,
-      ratio: 0.9,
+      stiffness: 1000,
+      ratio: 1,
     );
     final simulation = SpringSimulation(spring, 0, 1, 0);
     _fakeDragWidgetAnimation = Tween(
@@ -606,7 +606,15 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
           );
           final feedbackCard = widget.wrapCard
               ? CommonCard(isDragFeedback: true, child: child)
-              : Material(elevation: 6, child: child);
+              : Material(
+                  elevation: 6,
+                  shape: SmoothRoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      CommonCard.defaultRadius,
+                    ),
+                  ),
+                  child: child,
+                );
           final feedback = ActivateBox(
             child: RepaintBoundary(child: _buildSizeBox(feedbackCard, index)),
           );

@@ -112,6 +112,8 @@ class SmoothRoundedRectangleBorder extends RoundedRectangleBorder {
 }
 
 class CommonCard extends StatelessWidget {
+  static const double defaultRadius = 20.0;
+
   const CommonCard({
     super.key,
     bool? isSelected,
@@ -185,7 +187,7 @@ class CommonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actualRadius = radius ?? 20.0;
+    final actualRadius = radius ?? defaultRadius;
     var childWidget = child;
 
     if (info != null) {
