@@ -61,6 +61,9 @@ class MessageLookup extends MessageLookupByLibrary {
 
   static String m19(count) => "${Intl.plural(count, other: '年')}";
 
+  static String m20(editor) =>
+      "无法启动编辑器“${editor}”，请检查编辑器是否已安装、路径是否正确，或选择自动检测";
+
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
     "about": MessageLookupByLibrary.simpleMessage("关于"),
@@ -137,6 +140,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "autoRun": MessageLookupByLibrary.simpleMessage("自动连接"),
     "autoRunDesc": MessageLookupByLibrary.simpleMessage("应用打开后自动连接"),
     "autoScroll": MessageLookupByLibrary.simpleMessage("自动滚动"),
+    "autoDetect": MessageLookupByLibrary.simpleMessage("自动检测"),
     "autoSetSystemDns": MessageLookupByLibrary.simpleMessage("自动设置系统 DNS"),
     "autoStickyHeader": MessageLookupByLibrary.simpleMessage("自动吸顶"),
     "autoUpdate": MessageLookupByLibrary.simpleMessage("自动更新"),
@@ -317,6 +321,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "dnsMode": MessageLookupByLibrary.simpleMessage("DNS模式"),
     "dnsResolution": MessageLookupByLibrary.simpleMessage("DNS 解析"),
     "doYouWantToPass": MessageLookupByLibrary.simpleMessage("是否要通过"),
+    "done": MessageLookupByLibrary.simpleMessage("完成"),
     "domain": MessageLookupByLibrary.simpleMessage("域名"),
     "doubleBounce": MessageLookupByLibrary.simpleMessage("双重弹奏"),
     "download": MessageLookupByLibrary.simpleMessage("下载"),
@@ -371,6 +376,11 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "externalLink": MessageLookupByLibrary.simpleMessage("外部链接"),
     "externalResources": MessageLookupByLibrary.simpleMessage("外部资源"),
+    "externalEditor": MessageLookupByLibrary.simpleMessage("外部编辑器"),
+    "setEditor": MessageLookupByLibrary.simpleMessage("设置编辑器"),
+    "externalEditorLaunchFailed": m20,
+    "externalEditorNotFound": MessageLookupByLibrary.simpleMessage("未找到编辑器，请输入编辑器可执行文件的完整路径"),
+    "externalEditorTip": MessageLookupByLibrary.simpleMessage("已在外部编辑器中打开，保存文件后将自动同步到应用"),
     "fadingCircle": MessageLookupByLibrary.simpleMessage("环影隐渐"),
     "fadingCube": MessageLookupByLibrary.simpleMessage("方影微漾"),
     "fadingFour": MessageLookupByLibrary.simpleMessage("四方烁动"),

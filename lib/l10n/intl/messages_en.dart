@@ -67,6 +67,9 @@ class MessageLookup extends MessageLookupByLibrary {
   static String m19(count) =>
       "${Intl.plural(count, one: 'year', other: 'years')}";
 
+  static String m20(editor) =>
+      "Failed to launch editor \"${editor}\". Make sure it is installed and the path is correct, or select Auto Detect.";
+
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
     "about": MessageLookupByLibrary.simpleMessage("About"),
@@ -183,6 +186,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Connect on app launch",
     ),
     "autoScroll": MessageLookupByLibrary.simpleMessage("Auto Scroll"),
+    "autoDetect": MessageLookupByLibrary.simpleMessage("Auto Detect"),
     "autoSetSystemDns": MessageLookupByLibrary.simpleMessage(
       "Auto Set System DNS",
     ),
@@ -441,6 +445,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "doYouWantToPass": MessageLookupByLibrary.simpleMessage(
       "Do you want to pass",
     ),
+    "done": MessageLookupByLibrary.simpleMessage("Done"),
     "domain": MessageLookupByLibrary.simpleMessage("Domain"),
     "doubleBounce": MessageLookupByLibrary.simpleMessage("Double Bounce"),
     "download": MessageLookupByLibrary.simpleMessage("Download"),
@@ -506,6 +511,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "externalLink": MessageLookupByLibrary.simpleMessage("External Link"),
     "externalResources": MessageLookupByLibrary.simpleMessage(
       "External Resources",
+    ),
+    "externalEditor": MessageLookupByLibrary.simpleMessage("External Editor"),
+    "setEditor": MessageLookupByLibrary.simpleMessage("Set Editor"),
+    "externalEditorLaunchFailed": m20,
+    "externalEditorNotFound": MessageLookupByLibrary.simpleMessage(
+      "Editor not found. Enter the full path to the editor executable.",
+    ),
+    "externalEditorTip": MessageLookupByLibrary.simpleMessage(
+      "Opened in an external editor. Changes are synced back to the app automatically when you save the file.",
     ),
     "fadingCircle": MessageLookupByLibrary.simpleMessage("Fading Circle"),
     "fadingCube": MessageLookupByLibrary.simpleMessage("Fading Cube"),
