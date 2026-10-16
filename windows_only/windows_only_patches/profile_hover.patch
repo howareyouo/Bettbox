@@ -1,0 +1,149 @@
+diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
+index 77bf236..73c5d5d 100644
+--- a/lib/views/profiles/profiles.dart
++++ b/lib/views/profiles/profiles.dart
+@@ -206,7 +206,7 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
+   }
+ }
+ 
+-class ProfileItem extends StatelessWidget {
++class ProfileItem extends StatefulWidget {
+   final Profile profile;
+   final String? groupValue;
+   final void Function(String? value) onChanged;
+@@ -218,6 +218,19 @@ class ProfileItem extends StatelessWidget {
+     required this.onChanged,
+   });
+ 
++  @override
++  State<ProfileItem> createState() => _ProfileItemState();
++}
++
++class _ProfileItemState extends State<ProfileItem> {
++  bool _hovered = false;
++
++  Profile get profile => widget.profile;
++
++  String? get groupValue => widget.groupValue;
++
++  void Function(String? value) get onChanged => widget.onChanged;
++
+   Future<void> _handleDeleteProfile(BuildContext context) async {
+     final res = await globalState.showMessage(
+       title: appLocalizations.tip,
+@@ -537,55 +550,50 @@ class ProfileItem extends StatelessWidget {
+     );
+   }
+ 
+-  Widget _buildNormalLayout(BuildContext context) {
+-    final trailingWidget = SizedBox(
++  Widget _buildTrailing(BuildContext context) {
++    return SizedBox(
+       height: 36,
+       width: 36,
+       child: FadeThroughBox(
+         child: profile.isUpdating
+-            ? Padding(
+-                padding: const EdgeInsets.all(6),
+-                child: SyncedLoading(
++          ? Padding(
++              padding: const EdgeInsets.all(6),
++              child: SyncedLoading(
++                size: 24,
++                child: SpinKitFadingCircle(
++                  color: context.colorScheme.primary,
+                   size: 24,
+-                  child: SpinKitFadingCircle(
+-                    color: context.colorScheme.primary,
+-                    size: 24,
+-                  ),
+                 ),
+-              )
+-            : CommonPopupBox(
+-                popup: CommonPopupMenu(items: _buildMenuItems(context)),
+-                targetBuilder: (open) {
+-                  return IconButton(
+-                    padding: EdgeInsets.zero,
+-                    onPressed: () {
+-                      open();
+-                    },
+-                    tooltip: appLocalizations.more,
+-                    icon: const Icon(Icons.more_vert, size: 20),
+-                  );
+-                },
+               ),
++            )
++          : CommonPopupBox(
++              popup: CommonPopupMenu(items: _buildMenuItems(context)),
++              targetBuilder: (open) {
++                return IconButton(
++                  padding: EdgeInsets.zero,
++                  onPressed: () { open(); },
++                  icon: const Icon(Icons.more_vert, size: 20),
++                );
++              },
++            ),
+       ),
+     );
+-    return Stack(
+-      children: [
+-        Container(
+-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+-          child: Column(
+-            crossAxisAlignment: CrossAxisAlignment.stretch,
+-            mainAxisSize: MainAxisSize.min,
+-            children: [
+-              Padding(
+-                padding: const EdgeInsets.only(right: 36),
+-                child: _buildTitleRow(context),
+-              ),
+-              _buildContentInfo(context),
+-            ],
++  }
++
++  Widget _buildContent(BuildContext context) {
++    return Container(
++      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
++      child: Column(
++        crossAxisAlignment: CrossAxisAlignment.stretch,
++        mainAxisSize: MainAxisSize.min,
++        children: [
++          Padding(
++            padding: const EdgeInsets.only(right: 36),
++            child: _buildTitleRow(context),
+           ),
+-        ),
+-        Positioned(top: 6, right: 6, child: trailingWidget),
+-      ],
++          _buildContentInfo(context),
++        ],
++      ),
+     );
+   }
+ 
+@@ -616,11 +624,23 @@ class ProfileItem extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final isTV = globalState.isAndroidTV;
+-    return CommonCard(
++    final card = CommonCard(
+       isSelected: profile.id == groupValue,
+       onPressed: isTV ? null : () => onChanged(profile.id),
+       onLongPress: isTV ? null : () => _handlePreviewRuntimeConfig(context),
+-      child: isTV ? _buildTVLayout(context) : _buildNormalLayout(context),
++      child: isTV ? _buildTVLayout(context) : _buildContent(context),
++    );
++    if (isTV) return card;
++    return MouseRegion(
++      onEnter: (_) => setState(() => _hovered = true),
++      onExit: (_) => setState(() => _hovered = false),
++      cursor: SystemMouseCursors.click,
++      child: Stack(
++        children: [
++          card,
++          if (_hovered) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
++        ],
++      ),
+     );
+   }
+ }
