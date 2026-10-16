@@ -1,0 +1,52 @@
+name: auto-export patches
+
+# 用户 push 到 main 后，自动把自有功能文件（own_files.txt 清单）的改动
+# 导出为补丁并提交回 main；下次 windows-only 重建自动带上。
+# 防循环：使用 GITHUB_TOKEN 的 push 不会触发新的 workflow run（GitHub 官方行为）。
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    name: Auto-export own patches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream main
+        run: |
+          git remote add upstream https://github.com/appshubcc/Bettbox.git
+          git fetch --depth=200 upstream main
+
+      - name: Run auto-export
+        id: export
+        run: |
+          OUTPUT=$(bash windows_only/auto_export.sh 2>&1)
+          echo "$OUTPUT"
+          STATUS=$(echo "$OUTPUT" | tail -n 1)
+          if [ "$STATUS" = "CHANGED" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push patches back
+        if: steps.export.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add windows_only/windows_only_patches/
+          if git diff --cached --quiet; then
+            echo "No patch changes to commit"
+          else
+            git commit -m "chore(windows_only): auto-export patches [skip ci]"
+            git push origin main
+          fi

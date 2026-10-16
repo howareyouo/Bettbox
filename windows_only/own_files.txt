@@ -1,0 +1,8 @@
+# 自有功能文件清单：每行「补丁名 <空格> 相对路径」
+# 用途：push 到 main 后，CI 自动把清单内文件的改动导出为补丁
+#       （windows_only/windows_only_patches/<补丁名>.patch）
+# 规则：
+#   - 同一补丁名的多行合并为一个 .patch（一功能一补丁）
+#   - 只列「自有功能」文件；上游代码别加，避免把上游改动导出成补丁
+#   - 新增功能：加一行即可，其余全自动
+profile_hover lib/views/profiles/profiles.dart
