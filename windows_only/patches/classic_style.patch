@@ -61,10 +61,10 @@ index ca3cfc85..d4b63488 100644
        type: CommonCardType.filled,
        onPressed: onToggle,
 diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
-index 4c2a1a3e..6b7e4aa7 100644
+index 4c2a1a3e..0e7dd511 100644
 --- a/lib/widgets/card.dart
 +++ b/lib/widgets/card.dart
-@@ -77,6 +77,40 @@ class InfoHeader extends StatelessWidget {
+@@ -77,7 +77,43 @@ class InfoHeader extends StatelessWidget {
    }
  }
  
@@ -103,9 +103,12 @@ index 4c2a1a3e..6b7e4aa7 100644
 +}
 +
  class CommonCard extends StatelessWidget {
++  static const double defaultRadius = 20.0;
++
    const CommonCard({
      super.key,
-@@ -89,12 +123,13 @@ class CommonCard extends StatelessWidget {
+     bool? isSelected,
+@@ -89,12 +125,13 @@ class CommonCard extends StatelessWidget {
      required this.child,
      this.padding,
      this.enterAnimated = false,
@@ -120,7 +123,7 @@ index 4c2a1a3e..6b7e4aa7 100644
    final bool isSelected;
    final void Function()? onPressed;
    final void Function()? onLongPress;
-@@ -105,7 +140,6 @@ class CommonCard extends StatelessWidget {
+@@ -105,7 +142,6 @@ class CommonCard extends StatelessWidget {
    final CommonCardType type;
    final double? radius;
    final Clip clipBehavior;
@@ -128,7 +131,7 @@ index 4c2a1a3e..6b7e4aa7 100644
  
    // final WidgetStateProperty<Color?>? backgroundColor;
    // final WidgetStateProperty<BorderSide?>? borderSide;
-@@ -127,9 +161,7 @@ class CommonCard extends StatelessWidget {
+@@ -127,9 +163,7 @@ class CommonCard extends StatelessWidget {
      return BorderSide(
        color: isSelected
            ? colorScheme.primary
@@ -139,7 +142,16 @@ index 4c2a1a3e..6b7e4aa7 100644
        strokeAlign: BorderSide.strokeAlignInside,
      );
    }
-@@ -177,11 +209,10 @@ class CommonCard extends StatelessWidget {
+@@ -153,7 +187,7 @@ class CommonCard extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    final actualRadius = radius ?? 20.0;
++    final actualRadius = radius ?? defaultRadius;
+     var childWidget = child;
+ 
+     if (info != null) {
+@@ -177,11 +211,10 @@ class CommonCard extends StatelessWidget {
      }
  
      final isInteractive = onPressed != null || onLongPress != null;
@@ -153,7 +165,7 @@ index 4c2a1a3e..6b7e4aa7 100644
        onLongPress: onLongPress,
        clipBehavior: clipBehavior,
        style: ButtonStyle(
-@@ -202,25 +233,19 @@ class CommonCard extends StatelessWidget {
+@@ -202,25 +235,19 @@ class CommonCard extends StatelessWidget {
        child: childWidget,
      );
  

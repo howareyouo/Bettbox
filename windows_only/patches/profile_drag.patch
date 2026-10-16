@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..ad22519b 100644
+index 6e08b220..308b79ef 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -61,11 +61,11 @@ index 6e08b220..ad22519b 100644
 +  /// When a reorder interrupts a running animation, the remaining distance is
 +  /// covered in this shorter time, so the card tracks the finger instead of
 +  /// visibly trailing behind it.
-+  final Duration _catchUpDuration = const Duration(milliseconds: 50);
++  final Duration _catchUpDuration = const Duration(milliseconds: 30);
 +
 +  /// Reorder / settle animations run faster than the global [commonDuration]
 +  /// so cards feel snappy while following the pointer.
-+  static const Duration _reorderDuration = Duration(milliseconds: 150);
++  static const Duration _reorderDuration = Duration(milliseconds: 100);
 +
    Completer? _transformCompleter;
  
@@ -121,7 +121,7 @@ index 6e08b220..ad22519b 100644
 +
 +    _transformController.duration = _transformController.isAnimating
 +        ? _catchUpDuration
-+        : commonDuration;
++        : _reorderDuration;
 +
      return _transformController.forward(from: 0);
    }
@@ -133,8 +133,8 @@ index 6e08b220..ad22519b 100644
 -    const spring = SpringDescription(mass: 1, stiffness: 100, damping: 10);
 +    final spring = SpringDescription.withDampingRatio(
 +      mass: 1,
-+      stiffness: 550,
-+      ratio: 0.9,
++      stiffness: 1000,
++      ratio: 1,
 +    );
      final simulation = SpringSimulation(spring, 0, 1, 0);
      _fakeDragWidgetAnimation = Tween(
@@ -253,7 +253,7 @@ index 6e08b220..ad22519b 100644
          : LongPressDraggable(
              childWhenDragging: childWhenDragging,
              data: index,
-@@ -507,17 +597,18 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -507,17 +597,26 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
        child: Builder(
          builder: (context) {
            _itemContexts[index] = context;
@@ -267,7 +267,15 @@ index 6e08b220..ad22519b 100644
            );
 +          final feedbackCard = widget.wrapCard
 +              ? CommonCard(isDragFeedback: true, child: child)
-+              : Material(elevation: 6, child: child);
++              : Material(
++                  elevation: 6,
++                  shape: SmoothRoundedRectangleBorder(
++                    borderRadius: BorderRadius.circular(
++                      CommonCard.defaultRadius,
++                    ),
++                  ),
++                  child: child,
++                );
            final feedback = ActivateBox(
 -            child: _buildSizeBox(
 -              CommonCard(child: Material(elevation: 6, child: child)),
@@ -277,7 +285,7 @@ index 6e08b220..ad22519b 100644
            );
            return _buildTransform(
              _buildDraggable(
-@@ -729,3 +820,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
+@@ -729,3 +828,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
      );
    }
  }
