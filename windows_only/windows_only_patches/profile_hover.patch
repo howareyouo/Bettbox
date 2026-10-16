@@ -1,5 +1,5 @@
 diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
-index 77bf236a..26f36721 100644
+index 77bf236a..809901a8 100644
 --- a/lib/views/profiles/profiles.dart
 +++ b/lib/views/profiles/profiles.dart
 @@ -1,9 +1,7 @@
@@ -181,22 +181,10 @@ index 77bf236a..26f36721 100644
    final Profile profile;
    final String? groupValue;
    final void Function(String? value) onChanged;
-@@ -218,18 +243,18 @@ class ProfileItem extends StatelessWidget {
+@@ -218,6 +243,19 @@ class ProfileItem extends StatelessWidget {
      required this.onChanged,
    });
  
--  Future<void> _handleDeleteProfile(BuildContext context) async {
--    final res = await globalState.showMessage(
--      title: appLocalizations.tip,
--      message: TextSpan(
--        text: appLocalizations.deleteTip(appLocalizations.profile),
--      ),
--    );
--    if (res != true) {
--      return;
--    }
--    await globalState.appController.deleteProfile(profile.id);
--  }
 +  @override
 +  State<ProfileItem> createState() => _ProfileItemState();
 +}
@@ -209,10 +197,11 @@ index 77bf236a..26f36721 100644
 +  String? get groupValue => widget.groupValue;
 +
 +  void Function(String? value) get onChanged => widget.onChanged;
- 
-   Future<void> _handlePreviewRuntimeConfig(BuildContext context) async {
-     await globalState.appController.safeRun(
-@@ -243,11 +268,11 @@ class ProfileItem extends StatelessWidget {
++
+   Future<void> _handleDeleteProfile(BuildContext context) async {
+     final res = await globalState.showMessage(
+       title: appLocalizations.tip,
+@@ -243,11 +281,11 @@ class ProfileItem extends StatelessWidget {
            return;
          }
  
@@ -226,21 +215,7 @@ index 77bf236a..26f36721 100644
          );
          BaseNavigator.push<String>(context, previewPage, maintainState: false);
        },
-@@ -504,13 +529,6 @@ class ProfileItem extends StatelessWidget {
-           _handleExportFile(context);
-         },
-       ),
--      PopupMenuItemData(
--        icon: Icons.delete_outlined,
--        label: appLocalizations.delete,
--        onPressed: () {
--          _handleDeleteProfile(context);
--        },
--      ),
-     ];
-   }
- 
-@@ -537,55 +555,53 @@ class ProfileItem extends StatelessWidget {
+@@ -537,55 +575,53 @@ class ProfileItem extends StatelessWidget {
      );
    }
  
@@ -333,7 +308,7 @@ index 77bf236a..26f36721 100644
      );
    }
  
-@@ -616,113 +632,23 @@ class ProfileItem extends StatelessWidget {
+@@ -616,113 +652,23 @@ class ProfileItem extends StatelessWidget {
    @override
    Widget build(BuildContext context) {
      final isTV = globalState.isAndroidTV;
