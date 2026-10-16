@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..80f33cab 100644
+index 6e08b220..4afd2858 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -54,19 +54,41 @@ index 6e08b220..80f33cab 100644
    });
  
    @override
-@@ -57,6 +66,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -57,6 +66,15 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
  
    late AnimationController _transformController;
  
 +  /// When a reorder interrupts a running animation, the remaining distance is
 +  /// covered in this shorter time, so the card tracks the finger instead of
 +  /// visibly trailing behind it.
-+  final Duration _catchUpDuration = const Duration(milliseconds: 90);
++  final Duration _catchUpDuration = const Duration(milliseconds: 50);
++
++  /// Reorder / settle animations run faster than the global [commonDuration]
++  /// so cards feel snappy while following the pointer.
++  static const Duration _reorderDuration = Duration(milliseconds: 150);
 +
    Completer? _transformCompleter;
  
    Map<int, Animation<Offset>> _transformAnimationMap = {};
-@@ -165,6 +179,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -122,7 +140,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+ 
+     _fakeDragWidgetController = AnimationController.unbounded(
+       vsync: this,
+-      duration: commonDuration,
++      duration: _reorderDuration,
+     );
+ 
+     _shakeController = AnimationController(
+@@ -136,7 +154,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+ 
+     _transformController = AnimationController(
+       vsync: this,
+-      duration: commonDuration,
++      duration: _reorderDuration,
+     );
+ 
+     _initState();
+@@ -165,6 +183,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      }
    }
  
@@ -92,7 +114,7 @@ index 6e08b220..80f33cab 100644
    Future _transform() async {
      List<Offset> layoutOffsets = [Offset(_containerSize.width, 0)];
      final List<Offset> nextOffsets = [];
-@@ -237,6 +270,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -237,6 +274,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      if (_targetIndex != -1) {
        _targetOffset = nextOffsets[_targetIndex];
      }
@@ -104,20 +126,20 @@ index 6e08b220..80f33cab 100644
      return _transformController.forward(from: 0);
    }
  
-@@ -263,7 +301,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -263,7 +305,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      if (_targetIndex == -1) {
        return;
      }
 -    const spring = SpringDescription(mass: 1, stiffness: 100, damping: 10);
 +    final spring = SpringDescription.withDampingRatio(
 +      mass: 1,
-+      stiffness: 300,
-+      ratio: 0.8,
++      stiffness: 550,
++      ratio: 0.9,
 +    );
      final simulation = SpringSimulation(spring, 0, 1, 0);
      _fakeDragWidgetAnimation = Tween(
        begin: details.offset - _parentOffset,
-@@ -288,6 +330,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -288,6 +334,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
      _edgeDraggingAutoScroller?.startAutoScrollIfNecessary(_dragRect);
    }
  
@@ -143,7 +165,7 @@ index 6e08b220..80f33cab 100644
    Future<void> _handleWill(int index) async {
      final dragIndex = _dragIndexNotifier.value;
      if (dragIndex < 0 || dragIndex > _offsets.length - 1) {
-@@ -404,9 +465,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -404,9 +469,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
    }
  
    Widget _buildShake(Widget child) {
@@ -159,7 +181,7 @@ index 6e08b220..80f33cab 100644
      return AnimatedBuilder(
        animation: _shakeAnimation,
        builder: (_, child) {
-@@ -428,10 +493,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -428,10 +497,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
    }) {
      final target = DragTarget<int>(
        builder: (_, _, _) {
@@ -175,7 +197,7 @@ index 6e08b220..80f33cab 100644
          return false;
        },
      );
-@@ -463,22 +531,40 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -463,22 +535,40 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
          child: target,
        ),
      );
@@ -231,7 +253,7 @@ index 6e08b220..80f33cab 100644
          : LongPressDraggable(
              childWhenDragging: childWhenDragging,
              data: index,
-@@ -507,16 +593,23 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
+@@ -507,16 +597,23 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
        child: Builder(
          builder: (context) {
            _itemContexts[index] = context;
@@ -259,7 +281,7 @@ index 6e08b220..80f33cab 100644
              ),
            );
            return _buildTransform(
-@@ -729,3 +822,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
+@@ -729,3 +826,76 @@ class _DeletableContainerState extends State<_DeletableContainer>
      );
    }
  }
