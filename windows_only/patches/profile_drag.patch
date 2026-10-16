@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..253e4884 100644
+index 6e08b220..36399f0b 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -70,7 +70,7 @@ index 6e08b220..253e4884 100644
 +  /// Fraction of the neighbor card's size the drag probe must penetrate past
 +  /// the shared edge before a swap fires, so hovering near the boundary
 +  /// between two cards does not make them flip back and forth.
-+  static const double _swapHysteresis = 0.15;
++  static const double _swapHysteresis = 0.05;
 +
    Completer? _transformCompleter;
  
