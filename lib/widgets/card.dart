@@ -111,16 +111,6 @@ class SmoothRoundedRectangleBorder extends RoundedRectangleBorder {
   }
 }
 
-class DragFeedbackScope extends InheritedWidget {
-  const DragFeedbackScope({super.key, required super.child});
-
-  static bool of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<DragFeedbackScope>() != null;
-
-  @override
-  bool updateShouldNotify(DragFeedbackScope oldWidget) => false;
-}
-
 class CommonCard extends StatelessWidget {
   const CommonCard({
     super.key,
@@ -133,11 +123,13 @@ class CommonCard extends StatelessWidget {
     required this.child,
     this.padding,
     this.enterAnimated = false,
+    this.isDragFeedback = false,
     this.info,
     this.clipBehavior = Clip.antiAlias,
   }) : isSelected = isSelected ?? false;
 
   final bool enterAnimated;
+  final bool isDragFeedback;
   final bool isSelected;
   final void Function()? onPressed;
   final void Function()? onLongPress;
@@ -217,17 +209,15 @@ class CommonCard extends StatelessWidget {
     }
 
     final isInteractive = onPressed != null || onLongPress != null;
-    final isDragFeedback = DragFeedbackScope.of(context);
+    final shape = SmoothRoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(actualRadius),
+    );
     final card = OutlinedButton(
       onLongPress: onLongPress,
       clipBehavior: clipBehavior,
       style: ButtonStyle(
         padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-        shape: WidgetStatePropertyAll(
-          SmoothRoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(actualRadius),
-          ),
-        ),
+        shape: WidgetStatePropertyAll(shape),
         iconColor: WidgetStatePropertyAll(context.colorScheme.primary),
         iconSize: WidgetStateProperty.all(20),
         backgroundColor: WidgetStateProperty.resolveWith(
@@ -236,12 +226,6 @@ class CommonCard extends StatelessWidget {
         side: WidgetStateProperty.resolveWith(
           (states) => getBorderSide(context, states),
         ),
-        elevation: isDragFeedback ? const WidgetStatePropertyAll(12.0) : null,
-        shadowColor: isDragFeedback
-            ? WidgetStatePropertyAll(
-                context.colorScheme.shadow.withValues(alpha: 0.55),
-              )
-            : null,
         minimumSize: WidgetStatePropertyAll(isInteractive ? null : Size.zero),
         tapTargetSize: isInteractive ? null : MaterialTapTargetSize.shrinkWrap,
       ),
@@ -249,9 +233,19 @@ class CommonCard extends StatelessWidget {
       child: childWidget,
     );
 
+    final cardWithShadow = isDragFeedback
+        ? Material(
+            color: Colors.transparent,
+            elevation: 12,
+            shadowColor: context.colorScheme.shadow.withValues(alpha: 0.55),
+            shape: shape,
+            child: card,
+          )
+        : card;
+
     return switch (enterAnimated) {
-      true => FadeScaleEnterBox(child: card),
-      false => card,
+      true => FadeScaleEnterBox(child: cardWithShadow),
+      false => cardWithShadow,
     };
   }
 }
