@@ -256,6 +256,19 @@ class _ProfileItemState extends State<ProfileItem> {
 
   void Function(String? value) get onChanged => widget.onChanged;
 
+  Future<void> _handleDeleteProfile(BuildContext context) async {
+    final res = await globalState.showMessage(
+      title: appLocalizations.tip,
+      message: TextSpan(
+        text: appLocalizations.deleteTip(appLocalizations.profile),
+      ),
+    );
+    if (res != true) {
+      return;
+    }
+    await globalState.appController.deleteProfile(profile.id);
+  }
+
   Future<void> _handlePreviewRuntimeConfig(BuildContext context) async {
     await globalState.appController.safeRun(
       () async {
@@ -527,6 +540,13 @@ class _ProfileItemState extends State<ProfileItem> {
         label: appLocalizations.exportFile,
         onPressed: () {
           _handleExportFile(context);
+        },
+      ),
+      PopupMenuItemData(
+        icon: Icons.delete_outlined,
+        label: appLocalizations.delete,
+        onPressed: () {
+          _handleDeleteProfile(context);
         },
       ),
     ];
