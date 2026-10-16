@@ -216,7 +216,12 @@ jobs:
           path: |
             .dart_tool
             build/windows
-          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
+          key: flutter-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}
+          # 前缀复用：同 Flutter 版本 + 同 core（CORE_SHA256 未变）时，
+          # 用最近一次的 build/windows 做 CMake/MSVC 增量编译；
+          # restore 命中不算 cache-hit，build 步骤照跑，产物正确性不受影响
+          restore-keys: |
+            flutter-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}-
 
       - name: Build Bettbox (Windows)
         if: steps.fb.outputs.cache-hit != 'true'
@@ -248,7 +253,7 @@ jobs:
           path: |
             .dart_tool
             build/windows
-          key: flutter-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}
+          key: flutter-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}
 
       - name: Package zip
         run: |
