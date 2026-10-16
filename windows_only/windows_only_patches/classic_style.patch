@@ -188,10 +188,18 @@ index 4c2a1a3e..221ad3f4 100644
        true => FadeScaleEnterBox(child: card),
        false => card,
 diff --git a/lib/widgets/dialog.dart b/lib/widgets/dialog.dart
-index c9898496..329c1217 100644
+index c9898496..ab34ba32 100644
 --- a/lib/widgets/dialog.dart
 +++ b/lib/widgets/dialog.dart
-@@ -134,11 +134,7 @@ class CommonModal extends ConsumerWidget {
+@@ -75,6 +75,7 @@ class CommonDialog extends ConsumerWidget {
+               Navigator.of(context).pop();
+             },
+       child: AlertDialog(
++        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+         title: titleTrailing == null
+             ? EmojiText(title)
+             : Row(
+@@ -134,11 +135,7 @@ class CommonModal extends ConsumerWidget {
        child: Container(
          width: size.width * 0.85,
          height: size.height * 0.85,
