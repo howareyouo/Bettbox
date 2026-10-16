@@ -39,6 +39,7 @@ classic_style lib/views/tools.dart
 classic_style lib/widgets/card.dart
 classic_style lib/widgets/dialog.dart
 classic_style lib/widgets/input.dart
+classic_style lib/widgets/list.dart
 classic_style lib/widgets/pop_scope.dart
 classic_style lib/widgets/popup.dart
 classic_style lib/widgets/sheet.dart

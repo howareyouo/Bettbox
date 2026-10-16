@@ -1608,11 +1608,11 @@ class _LocaleItem extends ConsumerWidget {
     final currentLocale =
         utils.getLocaleForString(locale) ?? utils.getSystemLocale();
     return ListItem<Locale>.options(
-      padding: EdgeInsets.zero,
       leading: const Icon(Icons.language_outlined),
       title: Text(appLocalizations.language),
       subtitle: Text(_getLocaleString(currentLocale)),
       delegate: OptionsDelegate(
+        dialogPadding: const EdgeInsets.symmetric(vertical: 16),
         title: appLocalizations.language,
         options: _localeOptions,
         onChanged: (Locale? locale) {

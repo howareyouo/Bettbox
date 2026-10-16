@@ -69,11 +69,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   /// When a reorder interrupts a running animation, the remaining distance is
   /// covered in this shorter time, so the card tracks the finger instead of
   /// visibly trailing behind it.
-  final Duration _catchUpDuration = const Duration(milliseconds: 30);
+  final Duration _catchUpDuration = const Duration(milliseconds: 40);
 
   /// Reorder / settle animations run faster than the global [commonDuration]
   /// so cards feel snappy while following the pointer.
-  static const Duration _reorderDuration = Duration(milliseconds: 100);
+  static const Duration _reorderDuration = Duration(milliseconds: 130);
 
   Completer? _transformCompleter;
 
@@ -307,8 +307,8 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     }
     final spring = SpringDescription.withDampingRatio(
       mass: 1,
-      stiffness: 1000,
-      ratio: 1,
+      stiffness: 700,
+      ratio: 0.95,
     );
     final simulation = SpringSimulation(spring, 0, 1, 0);
     _fakeDragWidgetAnimation = Tween(

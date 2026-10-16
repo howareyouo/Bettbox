@@ -19,6 +19,7 @@ class OptionsDialog<T> extends StatelessWidget {
   final List<T> options;
   final T value;
   final String Function(T value) textBuilder;
+  final EdgeInsets? padding;
 
   const OptionsDialog({
     super.key,
@@ -26,13 +27,15 @@ class OptionsDialog<T> extends StatelessWidget {
     required this.options,
     required this.textBuilder,
     required this.value,
+    this.padding,
   });
 
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
       title: title,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
