@@ -70,7 +70,7 @@ jobs:
           if [ "$(echo "$OUTPUT" | tail -n 1)" = "CHANGED" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add windows_only/windows_only_patches/
+            git add windows_only/patches/
             if git diff --cached --quiet; then
               echo "No patch changes to commit"
             else
@@ -106,6 +106,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # 固定版本：SDK 缓存 key 恒定、稳定命中（省 ~2min 下载/解压），
+          # 且避免 stable 漂移触发全量重编。升级 Flutter 时同步改这里。
+          flutter-version: 3.47.7
           cache: true
 
       - name: Setup Rust (Windows)
