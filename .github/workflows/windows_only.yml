@@ -253,7 +253,7 @@ jobs:
       - name: Package zip
         run: |
           $src = "build\windows\x64\runner\Release"
-          $zip = "Bettbox-windows-only-$env:UPSTREAM_SHA.zip"
+          $zip = "Bettbox-windows-only.zip"
           Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
           echo "ARTIFACT=$zip" >> $env:GITHUB_ENV
 
