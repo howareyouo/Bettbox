@@ -5,6 +5,12 @@ on:
   schedule:
     - cron: '17 */2 * * *'
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even if upstream unchanged (manual verification)'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
   contents: write
@@ -53,7 +59,7 @@ jobs:
   build:
     name: Build Windows installer
     needs: sync
-    if: needs.sync.outputs.changed == 'true'
+    if: needs.sync.outputs.changed == 'true' || github.event.inputs.force_build == 'true'
     runs-on: windows-latest
     env:
       UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
