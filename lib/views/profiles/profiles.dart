@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
@@ -131,21 +129,7 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
           },
         ),
       ),
-      IconButton(
-        onPressed: () {
-          final profiles = globalState.config.profiles;
-          showSheet(
-            context: context,
-            builder: (_, type) {
-              return ReorderableProfilesSheet(type: type, profiles: profiles);
-            },
-          );
-        },
-        tooltip: appLocalizations.sort,
-        icon: const Icon(Icons.sort),
-        iconSize: 26,
-      ),
-    ];
+      ];
   }
 
   Widget _buildFAB() {
@@ -270,19 +254,6 @@ class _ProfileItemState extends State<ProfileItem> {
   String? get groupValue => widget.groupValue;
 
   void Function(String? value) get onChanged => widget.onChanged;
-
-  Future<void> _handleDeleteProfile(BuildContext context) async {
-    final res = await globalState.showMessage(
-      title: appLocalizations.tip,
-      message: TextSpan(
-        text: appLocalizations.deleteTip(appLocalizations.profile),
-      ),
-    );
-    if (res != true) {
-      return;
-    }
-    await globalState.appController.deleteProfile(profile.id);
-  }
 
   Future<void> _handlePreviewRuntimeConfig(BuildContext context) async {
     await globalState.appController.safeRun(
@@ -557,13 +528,6 @@ class _ProfileItemState extends State<ProfileItem> {
           _handleExportFile(context);
         },
       ),
-      PopupMenuItemData(
-        icon: Icons.delete_outlined,
-        label: appLocalizations.delete,
-        onPressed: () {
-          _handleDeleteProfile(context);
-        },
-      ),
     ];
   }
 
@@ -607,7 +571,10 @@ class _ProfileItemState extends State<ProfileItem> {
               ),
             )
           : CommonPopupBox(
-              popup: CommonPopupMenu(items: _buildMenuItems(context)),
+              popup: CommonPopupMenu(
+                items: _buildMenuItems(context),
+                minItemVerticalPadding: 10,
+              ),
               targetBuilder: (open) {
                 return IconButton(
                   padding: EdgeInsets.zero,
@@ -681,108 +648,6 @@ class _ProfileItemState extends State<ProfileItem> {
           if (_hovered) Positioned(top: 6, right: 6, child: _buildTrailing(context)),
         ],
       ),
-    );
-  }
-}
-
-class ReorderableProfilesSheet extends StatefulWidget {
-  final List<Profile> profiles;
-  final SheetType type;
-
-  const ReorderableProfilesSheet({
-    super.key,
-    required this.profiles,
-    required this.type,
-  });
-
-  @override
-  State<ReorderableProfilesSheet> createState() =>
-      _ReorderableProfilesSheetState();
-}
-
-class _ReorderableProfilesSheetState extends State<ReorderableProfilesSheet> {
-  late List<Profile> profiles;
-
-  @override
-  void initState() {
-    super.initState();
-    profiles = List.from(widget.profiles);
-  }
-
-  Widget proxyDecorator(Widget child, int index, Animation<double> animation) {
-    final profile = profiles[index];
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (_, Widget? child) {
-        final double animValue = Curves.easeInOut.transform(animation.value);
-        final double scale = lerpDouble(1, 1.02, animValue)!;
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Container(
-        key: Key(profile.id),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: CommonCard(
-          type: CommonCardType.filled,
-          child: ListTile(
-            contentPadding: const EdgeInsets.only(right: 44, left: 16),
-            title: EmojiText(profile.label ?? profile.id),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AdaptiveSheetScaffold(
-      type: widget.type,
-      actions: [
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            globalState.appController.setProfiles(profiles);
-          },
-          icon: Icon(Icons.save),
-        ),
-      ],
-      body: Padding(
-        padding: EdgeInsets.only(bottom: 32, top: 16),
-        child: ReorderableListView.builder(
-          buildDefaultDragHandles: false,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          proxyDecorator: proxyDecorator,
-          // ignore: deprecated_member_use
-          onReorder: (oldIndex, newIndex) {
-            setState(() {
-              if (oldIndex < newIndex) {
-                newIndex -= 1;
-              }
-              final profile = profiles.removeAt(oldIndex);
-              profiles.insert(newIndex, profile);
-            });
-          },
-          itemBuilder: (_, index) {
-            final profile = profiles[index];
-            return Container(
-              key: Key(profile.id),
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: CommonCard(
-                type: CommonCardType.filled,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.only(right: 16, left: 16),
-                  title: EmojiText(profile.label ?? profile.id),
-                  trailing: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle),
-                  ),
-                ),
-              ),
-            );
-          },
-          itemCount: profiles.length,
-        ),
-      ),
-      title: appLocalizations.profilesSort,
     );
   }
 }
