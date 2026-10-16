@@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
 import 'package:bett_box/widgets/grid.dart';
 import 'package:defer_pointer/defer_pointer.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/physics.dart';
 
 typedef VoidCallback = void Function();
@@ -19,6 +20,10 @@ class SuperGrid extends StatefulWidget {
   final double crossAxisSpacing;
   final int crossAxisCount;
   final VoidCallback? onUpdate;
+  final bool wrapCard;
+  final bool shake;
+  final bool absorbItem;
+  final double? mouseDragSlop;
 
   const SuperGrid({
     super.key,
@@ -27,6 +32,10 @@ class SuperGrid extends StatefulWidget {
     this.mainAxisSpacing = 0,
     this.crossAxisSpacing = 0,
     this.onUpdate,
+    this.wrapCard = true,
+    this.shake = true,
+    this.absorbItem = true,
+    this.mouseDragSlop,
   });
 
   @override
@@ -56,6 +65,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   final _dragIndexNotifier = ValueNotifier(-1);
 
   late AnimationController _transformController;
+
+  /// When a reorder interrupts a running animation, the remaining distance is
+  /// covered in this shorter time, so the card tracks the finger instead of
+  /// visibly trailing behind it.
+  final Duration _catchUpDuration = const Duration(milliseconds: 90);
 
   Completer? _transformCompleter;
 
@@ -165,6 +179,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     }
   }
 
+  @override
+  void didUpdateWidget(SuperGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextChildren = widget.children;
+    final currentChildren = _childrenNotifier.value;
+    if (identical(nextChildren, currentChildren)) return;
+    if (!_hasComparableKeys(nextChildren) &&
+        !_hasComparableKeys(currentChildren)) {
+      return;
+    }
+    if (_animating.value || _dragIndexNotifier.value != -1) return;
+    _childrenNotifier.value = nextChildren;
+    _initState();
+  }
+
+  bool _hasComparableKeys(List<GridItem> items) {
+    return items.every((item) => item.key != null);
+  }
+
   Future _transform() async {
     List<Offset> layoutOffsets = [Offset(_containerSize.width, 0)];
     final List<Offset> nextOffsets = [];
@@ -237,6 +270,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     if (_targetIndex != -1) {
       _targetOffset = nextOffsets[_targetIndex];
     }
+
+    _transformController.duration = _transformController.isAnimating
+        ? _catchUpDuration
+        : commonDuration;
+
     return _transformController.forward(from: 0);
   }
 
@@ -263,7 +301,11 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
     if (_targetIndex == -1) {
       return;
     }
-    const spring = SpringDescription(mass: 1, stiffness: 100, damping: 10);
+    final spring = SpringDescription.withDampingRatio(
+      mass: 1,
+      stiffness: 300,
+      ratio: 0.8,
+    );
     final simulation = SpringSimulation(spring, 0, 1, 0);
     _fakeDragWidgetAnimation = Tween(
       begin: details.offset - _parentOffset,
@@ -286,6 +328,25 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   void _handleDragUpdate(DragUpdateDetails details) {
     _dragRect = _dragRect.translate(0, details.delta.dy);
     _edgeDraggingAutoScroller?.startAutoScrollIfNecessary(_dragRect);
+  }
+
+  bool _reordering = false;
+  int? _pendingWillIndex;
+
+  void _scheduleWill(int index) {
+    if (_reordering) {
+      _pendingWillIndex = index;
+      return;
+    }
+    _reordering = true;
+    unawaited(
+      _handleWill(index).whenComplete(() {
+        _reordering = false;
+        final pending = _pendingWillIndex;
+        _pendingWillIndex = null;
+        if (pending != null) _scheduleWill(pending);
+      }),
+    );
   }
 
   Future<void> _handleWill(int index) async {
@@ -404,9 +465,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }
 
   Widget _buildShake(Widget child) {
+    if (!widget.shake) {
+      return child;
+    }
     final random = 0.7 + Random().nextDouble() * 0.3;
-    _shakeController.stop();
-    _shakeController.repeat(reverse: true);
+    if (!_shakeController.isAnimating) {
+      _shakeController.repeat(reverse: true);
+    }
     return AnimatedBuilder(
       animation: _shakeAnimation,
       builder: (_, child) {
@@ -428,10 +493,13 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
   }) {
     final target = DragTarget<int>(
       builder: (_, _, _) {
-        return AbsorbPointer(child: item);
+        if (widget.absorbItem) {
+          return AbsorbPointer(child: item);
+        }
+        return item;
       },
       onWillAcceptWithDetails: (_) {
-        debouncer.call(FunctionTag.handleWill, _handleWill, args: [index]);
+        _scheduleWill(index);
         return false;
       },
     );
@@ -463,22 +531,40 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
         child: target,
       ),
     );
+    final slop = widget.mouseDragSlop;
     final draggableChild = system.isDesktop
-        ? Draggable(
-            childWhenDragging: childWhenDragging,
-            data: index,
-            feedback: feedback,
-            onDragStarted: () {
-              _handleDragStarted(index);
-            },
-            onDragUpdate: (details) {
-              _handleDragUpdate(details);
-            },
-            onDragEnd: (details) {
-              _handleDragEnd(details);
-            },
-            child: shakeTarget,
-          )
+        ? (slop == null || slop <= 0
+              ? Draggable(
+                  childWhenDragging: childWhenDragging,
+                  data: index,
+                  feedback: feedback,
+                  onDragStarted: () {
+                    _handleDragStarted(index);
+                  },
+                  onDragUpdate: (details) {
+                    _handleDragUpdate(details);
+                  },
+                  onDragEnd: (details) {
+                    _handleDragEnd(details);
+                  },
+                  child: shakeTarget,
+                )
+              : _PointerSlopDraggable(
+                  slop: slop,
+                  childWhenDragging: childWhenDragging,
+                  data: index,
+                  feedback: feedback,
+                  onDragStarted: () {
+                    _handleDragStarted(index);
+                  },
+                  onDragUpdate: (details) {
+                    _handleDragUpdate(details);
+                  },
+                  onDragEnd: (details) {
+                    _handleDragEnd(details);
+                  },
+                  child: shakeTarget,
+                ))
         : LongPressDraggable(
             childWhenDragging: childWhenDragging,
             data: index,
@@ -507,16 +593,23 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
       child: Builder(
         builder: (context) {
           _itemContexts[index] = context;
+          final cardChild = widget.wrapCard ? CommonCard(child: child) : child;
           final childWhenDragging = ActivateBox(
             child: Opacity(
               opacity: 0.6,
-              child: _buildSizeBox(CommonCard(child: child), index),
+              child: _buildSizeBox(cardChild, index),
             ),
           );
           final feedback = ActivateBox(
-            child: _buildSizeBox(
-              CommonCard(child: Material(elevation: 6, child: child)),
-              index,
+            child: RepaintBoundary(
+              child: _buildSizeBox(
+                widget.wrapCard
+                    ? CommonCard(
+                        child: Material(elevation: 6, child: child),
+                      )
+                    : Material(elevation: 6, child: child),
+                index,
+              ),
             ),
           );
           return _buildTransform(
@@ -727,5 +820,78 @@ class _DeletableContainerState extends State<_DeletableContainer>
           ),
       ],
     );
+  }
+}
+
+class _PointerSlopDraggable<T extends Object> extends Draggable<T> {
+  const _PointerSlopDraggable({
+    required this.slop,
+    required super.child,
+    required super.feedback,
+    super.data,
+    super.childWhenDragging,
+    super.feedbackOffset,
+    super.maxSimultaneousDrags,
+    super.onDragStarted,
+    super.onDragUpdate,
+    super.onDraggableCanceled,
+    super.onDragEnd,
+    super.onDragCompleted,
+    super.hitTestBehavior,
+    super.rootOverlay,
+  });
+
+  final double slop;
+
+  @override
+  MultiDragGestureRecognizer createRecognizer(GestureMultiDragStartCallback onStart) {
+    return _PointerSlopMultiDragGestureRecognizer(slop: slop)..onStart = onStart;
+  }
+}
+
+class _PointerSlopMultiDragGestureRecognizer extends MultiDragGestureRecognizer {
+  _PointerSlopMultiDragGestureRecognizer({
+    required this.slop,
+    super.debugOwner,
+  });
+
+  final double slop;
+
+  @override
+  MultiDragPointerState createNewPointerState(PointerDownEvent event) {
+    return _PointerSlopPointerState(
+      event.position,
+      event.kind,
+      gestureSettings,
+      slop,
+    );
+  }
+
+  @override
+  String get debugDescription => 'pointer slop multidrag';
+}
+
+class _PointerSlopPointerState extends MultiDragPointerState {
+  _PointerSlopPointerState(
+    super.initialPosition,
+    super.kind,
+    super.gestureSettings,
+    this.slop,
+  );
+
+  final double slop;
+
+  @override
+  void checkForResolutionAfterMove() {
+    assert(pendingDelta != null);
+    final threshold = max(slop, computeHitSlop(kind, gestureSettings));
+    if (pendingDelta!.distance > threshold) {
+      resolve(GestureDisposition.accepted);
+    }
+  }
+
+  @override
+  void accepted(GestureMultiDragStartCallback starter) {
+    starter(initialPosition);
   }
 }

@@ -24,6 +24,38 @@ class ProfilesView extends ConsumerStatefulWidget {
 }
 
 class _ProfilesViewState extends ConsumerState<ProfilesView> {
+  final _gridKey = GlobalKey<SuperGridState>();
+
+  void _handleGridUpdate() {
+    final children = _gridKey.currentState?.children;
+    if (children == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ids = children
+          .map((item) => item.key)
+          .whereType<ValueKey<String>>()
+          .map((key) => key.value)
+          .toList();
+      final profiles = globalState.config.profiles;
+      if (ids.length != profiles.length) return;
+      final profileMap = {for (final profile in profiles) profile.id: profile};
+      final sorted = [
+        for (final id in ids)
+          if (profileMap[id] != null) profileMap[id]!,
+      ];
+      if (sorted.length != profiles.length) return;
+      var isSame = true;
+      for (int i = 0; i < ids.length; i++) {
+        if (profiles[i].id != ids[i]) {
+          isSame = false;
+          break;
+        }
+      }
+      if (isSame) return;
+      globalState.appController.setProfiles(sorted);
+    });
+  }
+
   Function? applyConfigDebounce;
 
   void _handleShowAddExtendPage() {
@@ -155,47 +187,55 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
                     profilesSelectorState.columns
               ? profilesSelectorState.profiles.length
               : profilesSelectorState.columns;
-          return ScrollEdgeRise(
-            builder: (context, rise) => Align(
-              alignment: Alignment.topCenter,
-              child: SingleChildScrollView(
-                key: profilesStoreKey,
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 16 + rise,
-                  bottom:
-                      (profilesSelectorState.profiles.isNotEmpty &&
-                              profilesSelectorState.profiles.length % columns ==
-                                  0
-                          ? 88
-                          : 16) +
-                      (isMobileView
-                          ? getFloatingBottomBarReserveHeight(context)
-                          : 0),
-                ),
-                child: Grid(
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  crossAxisCount: columns,
-                  children: [
-                    for (
-                      int i = 0;
-                      i < profilesSelectorState.profiles.length;
-                      i++
-                    )
-                      GridItem(
-                        child: ProfileItem(
-                          key: Key(profilesSelectorState.profiles[i].id),
-                          profile: profilesSelectorState.profiles[i],
-                          groupValue: profilesSelectorState.currentProfileId,
-                          onChanged: (profileId) {
-                            ref.read(currentProfileIdProvider.notifier).value =
-                                profileId;
-                          },
+          return ScrollConfiguration(
+            behavior: NoMouseDragScrollBehavior(),
+            child: ScrollEdgeRise(
+              builder: (context, rise) => Align(
+                alignment: Alignment.topCenter,
+                child: SingleChildScrollView(
+                  key: profilesStoreKey,
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16 + rise,
+                    bottom:
+                        (profilesSelectorState.profiles.isNotEmpty &&
+                                profilesSelectorState.profiles.length % columns ==
+                                    0
+                            ? 88
+                            : 16) +
+                        (isMobileView
+                            ? getFloatingBottomBarReserveHeight(context)
+                            : 0),
+                  ),
+                  child: SuperGrid(
+                    key: _gridKey,
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    wrapCard: false,
+                    shake: false,
+                    absorbItem: false,
+                    mouseDragSlop: 8,
+                    onUpdate: _handleGridUpdate,
+                    children: [
+                      for (final profile in profilesSelectorState.profiles)
+                        GridItem(
+                          key: ValueKey(profile.id),
+                          child: ProfileItem(
+                            key: ValueKey(profile.id),
+                            profile: profile,
+                            groupValue:
+                                profilesSelectorState.currentProfileId,
+                            onChanged: (profileId) {
+                              ref.read(
+                                    currentProfileIdProvider.notifier,
+                                  ).value = profileId;
+                            },
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -20,3 +20,5 @@ external_editor lib/models/generated/config.g.dart
 external_editor lib/views/profiles/external_editor.dart
 external_editor lib/views/profiles/scripts.dart
 profile_hover lib/views/profiles/profiles.dart
+profile_drag lib/common/scroll.dart
+profile_drag lib/widgets/super_grid.dart
