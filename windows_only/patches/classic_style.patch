@@ -60,18 +60,6 @@ index ca3cfc85..d4b63488 100644
        radius: 16,
        type: CommonCardType.filled,
        onPressed: onToggle,
-diff --git a/lib/views/tools.dart b/lib/views/tools.dart
-index 9cccc00a..b5aad22f 100644
---- a/lib/views/tools.dart
-+++ b/lib/views/tools.dart
-@@ -1612,6 +1612,7 @@ class _LocaleItem extends ConsumerWidget {
-       title: Text(appLocalizations.language),
-       subtitle: Text(_getLocaleString(currentLocale)),
-       delegate: OptionsDelegate(
-+        dialogPadding: const EdgeInsets.symmetric(vertical: 16),
-         title: appLocalizations.language,
-         options: _localeOptions,
-         onChanged: (Locale? locale) {
 diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
 index 4c2a1a3e..0e7dd511 100644
 --- a/lib/widgets/card.dart
@@ -240,35 +228,19 @@ index c9898496..ab34ba32 100644
          child: child,
        ),
 diff --git a/lib/widgets/input.dart b/lib/widgets/input.dart
-index 809f61f2..de3914f0 100644
+index 809f61f2..fcb79ecf 100644
 --- a/lib/widgets/input.dart
 +++ b/lib/widgets/input.dart
-@@ -19,6 +19,7 @@ class OptionsDialog<T> extends StatelessWidget {
-   final List<T> options;
-   final T value;
-   final String Function(T value) textBuilder;
-+  final EdgeInsets? padding;
- 
-   const OptionsDialog({
-     super.key,
-@@ -26,13 +27,15 @@ class OptionsDialog<T> extends StatelessWidget {
-     required this.options,
-     required this.textBuilder,
-     required this.value,
-+    this.padding,
-   });
- 
-   @override
+@@ -32,7 +32,7 @@ class OptionsDialog<T> extends StatelessWidget {
    Widget build(BuildContext context) {
      return CommonDialog(
        title: title,
 -      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-+      padding:
-+          padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
++      padding: const EdgeInsets.symmetric(vertical: 16),
        child: Column(
          mainAxisSize: MainAxisSize.min,
          children: [
-@@ -340,7 +343,6 @@ class ListInputPage extends StatelessWidget {
+@@ -340,7 +340,6 @@ class ListInputPage extends StatelessWidget {
                      ReorderableDelayedDragStartListener(
                        index: index,
                        child: CommonCard(
@@ -276,7 +248,7 @@ index 809f61f2..de3914f0 100644
                          child: ListItem(
                            leading: leadingBuilder != null
                                ? leadingBuilder!(e)
-@@ -490,7 +492,6 @@ class MapInputPage extends StatelessWidget {
+@@ -490,7 +489,6 @@ class MapInputPage extends StatelessWidget {
                      ReorderableDelayedDragStartListener(
                        index: index,
                        child: CommonCard(
@@ -284,34 +256,6 @@ index 809f61f2..de3914f0 100644
                          child: ListItem(
                            leading: leadingBuilder != null
                                ? leadingBuilder!(e)
-diff --git a/lib/widgets/list.dart b/lib/widgets/list.dart
-index 62a28711..62d02590 100644
---- a/lib/widgets/list.dart
-+++ b/lib/widgets/list.dart
-@@ -93,6 +93,7 @@ class OptionsDelegate<T> extends Delegate {
-   final T value;
-   final String Function(T value) textBuilder;
-   final Function(T? value) onChanged;
-+  final EdgeInsets? dialogPadding;
- 
-   const OptionsDelegate({
-     required this.title,
-@@ -100,6 +101,7 @@ class OptionsDelegate<T> extends Delegate {
-     required this.textBuilder,
-     required this.value,
-     required this.onChanged,
-+    this.dialogPadding,
-   });
- }
- 
-@@ -395,6 +397,7 @@ class ListItem<T> extends StatelessWidget {
-         onTap: () async {
-           final value = await globalState.showCommonDialog<T>(
-             child: OptionsDialog<T>(
-+              padding: optionsDelegate.dialogPadding,
-               title: optionsDelegate.title,
-               options: optionsDelegate.options,
-               textBuilder: optionsDelegate.textBuilder,
 diff --git a/lib/widgets/pop_scope.dart b/lib/widgets/pop_scope.dart
 index 1053d8dd..d4bcfdf0 100644
 --- a/lib/widgets/pop_scope.dart
