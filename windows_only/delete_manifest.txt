@@ -16,5 +16,9 @@ linux/
 macos/
 web/
 
+# --- 上游 CI workflow（windows-only 是纯产物分支，不需要 workflow 文件；
+#     分支上保留 .github/workflows/ 会让 GITHUB_TOKEN push 被拒） ---
+.github/workflows/
+
 # --- 移动端专属源码（依赖 mobile_scanner 等无/弱 Windows 实现插件） ---
 lib/pages/scan.dart
