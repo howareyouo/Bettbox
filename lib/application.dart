@@ -110,13 +110,13 @@ class ApplicationState extends ConsumerState<Application>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    pageNavigationController.onNavigate = globalState.appController.toPage;
     if (system.isAndroid) {
       unawaited(SystemNavigator.setFrameworkHandlesBack(true));
     }
     globalState.backgroundMode.addListener(_syncAutoUpdateTasks);
     _syncAutoUpdateTasks();
     globalState.appController = AppController(context, ref);
+    pageNavigationController.onNavigate = globalState.appController.toPage;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_initApp());
     });
