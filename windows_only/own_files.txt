@@ -33,6 +33,7 @@ side_button_nav lib/pages/home.dart
 classic_style lib/manager/app_manager.dart
 classic_style lib/views/proxies/card.dart
 classic_style lib/views/proxies/list.dart
+classic_style lib/views/profiles/override_profile.dart
 classic_style lib/views/profiles/tv_qr_import_dialog.dart
 classic_style lib/widgets/card.dart
 classic_style lib/widgets/dialog.dart
