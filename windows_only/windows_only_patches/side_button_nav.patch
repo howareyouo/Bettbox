@@ -1,5 +1,5 @@
 diff --git a/lib/application.dart b/lib/application.dart
-index cf757390..8d71f090 100644
+index cf757390..8498acc3 100644
 --- a/lib/application.dart
 +++ b/lib/application.dart
 @@ -116,6 +116,7 @@ class ApplicationState extends ConsumerState<Application>
@@ -48,6 +48,60 @@ index cf757390..8d71f090 100644
                          ),
                        );
                      },
+@@ -342,7 +350,7 @@ class ApplicationState extends ConsumerState<Application>
+                   surfaceTintColor: Colors.transparent,
+                   elevation: 10,
+                   shadowColor: Colors.black.withValues(alpha: 0.3),
+-                  shape: RoundedSuperellipseBorder(
++                  shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(20),
+                     side: BorderSide(
+                       color: _getAppColorScheme(
+@@ -353,7 +361,7 @@ class ApplicationState extends ConsumerState<Application>
+                   ),
+                 ),
+                 bottomSheetTheme: const BottomSheetThemeData(
+-                  shape: RoundedSuperellipseBorder(
++                  shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.vertical(
+                       top: Radius.circular(28),
+                     ),
+@@ -361,7 +369,7 @@ class ApplicationState extends ConsumerState<Application>
+                   clipBehavior: Clip.antiAlias,
+                 ),
+                 popupMenuTheme: const PopupMenuThemeData(
+-                  shape: RoundedSuperellipseBorder(
++                  shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.all(Radius.circular(16)),
+                   ),
+                 ),
+@@ -456,7 +464,7 @@ class ApplicationState extends ConsumerState<Application>
+                   surfaceTintColor: Colors.transparent,
+                   elevation: 10,
+                   shadowColor: Colors.black.withValues(alpha: 0.6),
+-                  shape: RoundedSuperellipseBorder(
++                  shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(20),
+                     side: BorderSide(
+                       color:
+@@ -471,7 +479,7 @@ class ApplicationState extends ConsumerState<Application>
+                   ),
+                 ),
+                 bottomSheetTheme: const BottomSheetThemeData(
+-                  shape: RoundedSuperellipseBorder(
++                  shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.vertical(
+                       top: Radius.circular(28),
+                     ),
+@@ -479,7 +487,7 @@ class ApplicationState extends ConsumerState<Application>
+                   clipBehavior: Clip.antiAlias,
+                 ),
+                 popupMenuTheme: const PopupMenuThemeData(
+-                  shape: RoundedSuperellipseBorder(
++                  shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.all(Radius.circular(16)),
+                   ),
+                 ),
 diff --git a/lib/common/page_navigation_history.dart b/lib/common/page_navigation_history.dart
 new file mode 100644
 index 00000000..54558a75

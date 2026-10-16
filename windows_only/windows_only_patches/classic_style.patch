@@ -1,0 +1,476 @@
+diff --git a/lib/manager/app_manager.dart b/lib/manager/app_manager.dart
+index 60c762a8..2966295f 100644
+--- a/lib/manager/app_manager.dart
++++ b/lib/manager/app_manager.dart
+@@ -88,7 +88,7 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
+         return;
+       }
+       final shouldSet = next.a == true && next.b == true;
+-      await system.updateDns(!shouldSet);
++      await macOS?.updateDns(!shouldSet);
+     });
+     ref.listenManual(currentBrightnessProvider, (prev, next) {
+       if (prev == next) {
+@@ -1178,7 +1178,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
+                 shadowColor: Colors.black.withValues(
+                   alpha: isLight ? 0.35 : 0.6,
+                 ),
+-                shape: RoundedSuperellipseBorder(
++                shape: RoundedRectangleBorder(
+                   borderRadius: BorderRadius.circular(16),
+                   side: BorderSide(
+                     color: colorScheme.outlineVariant.withValues(
+diff --git a/lib/views/profiles/tv_qr_import_dialog.dart b/lib/views/profiles/tv_qr_import_dialog.dart
+index 5c430edb..f5a1e9aa 100644
+--- a/lib/views/profiles/tv_qr_import_dialog.dart
++++ b/lib/views/profiles/tv_qr_import_dialog.dart
+@@ -228,7 +228,7 @@ class _TvQrImportDialogState extends State<TvQrImportDialog> {
+     final hasNetwork = _ip != null && _ip!.isNotEmpty;
+ 
+     return Dialog(
+-      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(20)),
++      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+       backgroundColor: context.colorScheme.surfaceContainerHigh,
+       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+       child: ConstrainedBox(
+diff --git a/lib/views/proxies/card.dart b/lib/views/proxies/card.dart
+index 2ae9b5b7..ff295692 100644
+--- a/lib/views/proxies/card.dart
++++ b/lib/views/proxies/card.dart
+@@ -248,7 +248,6 @@ class ProxyCard extends StatelessWidget {
+         return Stack(
+           children: [
+             CommonCard(
+-              elevated: false,
+               clipBehavior: Clip.none,
+               onPressed: () {
+                 _changeProxy(ref);
+diff --git a/lib/views/proxies/list.dart b/lib/views/proxies/list.dart
+index ca3cfc85..d4b63488 100644
+--- a/lib/views/proxies/list.dart
++++ b/lib/views/proxies/list.dart
+@@ -393,7 +393,6 @@ class _GroupHeader extends ConsumerWidget {
+     final selectedProxyIcon = ref.watch(proxyIconProvider(selectedProxyName));
+ 
+     return CommonCard(
+-      elevated: false,
+       radius: 16,
+       type: CommonCardType.filled,
+       onPressed: onToggle,
+diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
+index 4c2a1a3e..221ad3f4 100644
+--- a/lib/widgets/card.dart
++++ b/lib/widgets/card.dart
+@@ -77,6 +77,40 @@ class InfoHeader extends StatelessWidget {
+   }
+ }
+ 
++class SmoothRoundedRectangleBorder extends RoundedRectangleBorder {
++  const SmoothRoundedRectangleBorder({
++    super.side,
++    super.borderRadius = BorderRadius.zero,
++  });
++
++  @override
++  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
++    if (side.style == BorderStyle.none) return;
++    final borderRect = borderRadius.resolve(textDirection).toRRect(rect);
++    if (side.width <= 0.0) {
++      canvas.drawRRect(borderRect, side.toPaint());
++      return;
++    }
++    canvas.drawRRect(
++      borderRect.deflate(side.width / 2.0),
++      side.toPaint()
++        ..style = PaintingStyle.stroke
++        ..strokeWidth = side.width,
++    );
++  }
++
++  @override
++  SmoothRoundedRectangleBorder copyWith({
++    BorderSide? side,
++    BorderRadiusGeometry? borderRadius,
++  }) {
++    return SmoothRoundedRectangleBorder(
++      side: side ?? this.side,
++      borderRadius: borderRadius ?? this.borderRadius,
++    );
++  }
++}
++
+ class CommonCard extends StatelessWidget {
+   const CommonCard({
+     super.key,
+@@ -91,7 +125,6 @@ class CommonCard extends StatelessWidget {
+     this.enterAnimated = false,
+     this.info,
+     this.clipBehavior = Clip.antiAlias,
+-    this.elevated = true,
+   }) : isSelected = isSelected ?? false;
+ 
+   final bool enterAnimated;
+@@ -105,7 +138,6 @@ class CommonCard extends StatelessWidget {
+   final CommonCardType type;
+   final double? radius;
+   final Clip clipBehavior;
+-  final bool elevated;
+ 
+   // final WidgetStateProperty<Color?>? backgroundColor;
+   // final WidgetStateProperty<BorderSide?>? borderSide;
+@@ -127,9 +159,7 @@ class CommonCard extends StatelessWidget {
+     return BorderSide(
+       color: isSelected
+           ? colorScheme.primary
+-          : colorScheme.outlineVariant.withValues(
+-              alpha: elevated ? (isLight ? 0.65 : 0.35) : (isLight ? 0.8 : 0.4),
+-            ),
++          : colorScheme.outlineVariant.withValues(alpha: isLight ? 0.45 : 0.25),
+       strokeAlign: BorderSide.strokeAlignInside,
+     );
+   }
+@@ -177,16 +207,16 @@ class CommonCard extends StatelessWidget {
+     }
+ 
+     final isInteractive = onPressed != null || onLongPress != null;
+-    final isLight = context.colorScheme.brightness == Brightness.light;
+-    final shape = RoundedSuperellipseBorder(
+-      borderRadius: BorderRadius.circular(actualRadius),
+-    );
+-    Widget card = OutlinedButton(
++    final card = OutlinedButton(
+       onLongPress: onLongPress,
+       clipBehavior: clipBehavior,
+       style: ButtonStyle(
+         padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+-        shape: WidgetStatePropertyAll(shape),
++        shape: WidgetStatePropertyAll(
++          SmoothRoundedRectangleBorder(
++            borderRadius: BorderRadius.circular(actualRadius),
++          ),
++        ),
+         iconColor: WidgetStatePropertyAll(context.colorScheme.primary),
+         iconSize: WidgetStateProperty.all(20),
+         backgroundColor: WidgetStateProperty.resolveWith(
+@@ -202,22 +232,6 @@ class CommonCard extends StatelessWidget {
+       child: childWidget,
+     );
+ 
+-    if (elevated) {
+-      card = DecoratedBox(
+-        decoration: ShapeDecoration(
+-          shape: shape,
+-          shadows: [
+-            BoxShadow(
+-              blurRadius: 10,
+-              offset: const Offset(0, 2),
+-              color: Colors.black.withValues(alpha: isLight ? 0.045 : 0.25),
+-            ),
+-          ],
+-        ),
+-        child: card,
+-      );
+-    }
+-
+     return switch (enterAnimated) {
+       true => FadeScaleEnterBox(child: card),
+       false => card,
+diff --git a/lib/widgets/dialog.dart b/lib/widgets/dialog.dart
+index c9898496..329c1217 100644
+--- a/lib/widgets/dialog.dart
++++ b/lib/widgets/dialog.dart
+@@ -134,11 +134,7 @@ class CommonModal extends ConsumerWidget {
+       child: Container(
+         width: size.width * 0.85,
+         height: size.height * 0.85,
+-        decoration: ShapeDecoration(
+-          shape: RoundedSuperellipseBorder(
+-            borderRadius: BorderRadius.circular(20),
+-          ),
+-        ),
++        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+         clipBehavior: Clip.antiAlias,
+         child: child,
+       ),
+diff --git a/lib/widgets/input.dart b/lib/widgets/input.dart
+index 809f61f2..a9b3731d 100644
+--- a/lib/widgets/input.dart
++++ b/lib/widgets/input.dart
+@@ -340,7 +340,6 @@ class ListInputPage extends StatelessWidget {
+                     ReorderableDelayedDragStartListener(
+                       index: index,
+                       child: CommonCard(
+-                        elevated: false,
+                         child: ListItem(
+                           leading: leadingBuilder != null
+                               ? leadingBuilder!(e)
+@@ -490,7 +489,6 @@ class MapInputPage extends StatelessWidget {
+                     ReorderableDelayedDragStartListener(
+                       index: index,
+                       child: CommonCard(
+-                        elevated: false,
+                         child: ListItem(
+                           leading: leadingBuilder != null
+                               ? leadingBuilder!(e)
+diff --git a/lib/widgets/pop_scope.dart b/lib/widgets/pop_scope.dart
+index 1053d8dd..d4bcfdf0 100644
+--- a/lib/widgets/pop_scope.dart
++++ b/lib/widgets/pop_scope.dart
+@@ -1,7 +1,6 @@
+ import 'dart:async';
+ 
+ import 'package:bett_box/state.dart';
+-import 'package:bett_box/widgets/keep_scope.dart';
+ import 'package:material_ui/material_ui.dart';
+ 
+ bool dismissTvInputFocus() {
+@@ -29,8 +28,7 @@ class CommonPopScope extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final isTv = globalState.isAndroidTV;
+-    final intercept =
+-        (onPop != null || isTv) && PageActivityScope.isActiveOf(context);
++    final intercept = onPop != null || isTv;
+     return PopScope(
+       canPop: !intercept,
+       onPopInvokedWithResult: !intercept
+@@ -64,7 +62,6 @@ class SystemBackBlock extends StatefulWidget {
+ 
+ class _SystemBackBlockState extends State<SystemBackBlock> {
+   static int _count = 0;
+-  bool _counted = false;
+ 
+   static void _sync() {
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+@@ -76,23 +73,18 @@ class _SystemBackBlockState extends State<SystemBackBlock> {
+     });
+   }
+ 
+-  void _setCounted(bool counted) {
+-    if (_counted == counted) return;
+-    _counted = counted;
+-    _count += counted ? 1 : -1;
+-    _sync();
+-  }
+-
+   @override
+-  void didChangeDependencies() {
+-    super.didChangeDependencies();
+-    _setCounted(PageActivityScope.isActiveOf(context));
++  void initState() {
++    super.initState();
++    _count++;
++    _sync();
+   }
+ 
+   @override
+   void dispose() {
+     super.dispose();
+-    _setCounted(false);
++    _count--;
++    _sync();
+   }
+ 
+   @override
+diff --git a/lib/widgets/popup.dart b/lib/widgets/popup.dart
+index 52a9e054..ff331b7d 100644
+--- a/lib/widgets/popup.dart
++++ b/lib/widgets/popup.dart
+@@ -256,7 +256,7 @@ class CommonPopupMenu extends StatelessWidget {
+     required this.items,
+     this.footer,
+     this.minWidth = 148,
+-    this.minItemVerticalPadding = 13,
++    this.minItemVerticalPadding = 16,
+     this.fontSize = 15,
+   });
+ 
+@@ -272,15 +272,7 @@ class CommonPopupMenu extends StatelessWidget {
+     final color = disabled
+         ? colorScheme.onSurface.opacity30
+         : colorScheme.onSurface;
+-    final iconColor = disabled
+-        ? colorScheme.onSurface.opacity30
+-        : item.icon == Icons.check_circle_rounded
+-        ? colorScheme.primary
+-        : colorScheme.onSurfaceVariant;
+     return InkWell(
+-      customBorder: RoundedSuperellipseBorder(
+-        borderRadius: BorderRadius.circular(20),
+-      ),
+       hoverColor: colorScheme.primary.withValues(alpha: isLight ? 0.08 : 0.12),
+       highlightColor: colorScheme.primary.withValues(
+         alpha: isLight ? 0.10 : 0.16,
+@@ -300,8 +292,8 @@ class CommonPopupMenu extends StatelessWidget {
+       child: Container(
+         constraints: BoxConstraints(minWidth: minWidth),
+         padding: EdgeInsets.only(
+-          left: 14,
+-          right: 22,
++          left: 16,
++          right: 24,
+           top: minItemVerticalPadding,
+           bottom: minItemVerticalPadding,
+         ),
+@@ -309,8 +301,8 @@ class CommonPopupMenu extends StatelessWidget {
+           mainAxisSize: MainAxisSize.max,
+           children: [
+             if (item.icon != null) ...[
+-              Icon(item.icon, size: fontSize + 5, color: iconColor),
+-              const SizedBox(width: 14),
++              Icon(item.icon, size: fontSize + 4, color: color),
++              SizedBox(width: 16),
+             ],
+             Flexible(
+               child: Text(
+@@ -329,41 +321,36 @@ class CommonPopupMenu extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    final colorScheme = context.colorScheme;
+-    final isLight = colorScheme.brightness == Brightness.light;
++    final isLight = context.colorScheme.brightness == Brightness.light;
+     return IntrinsicHeight(
+       child: IntrinsicWidth(
+-        child: Material(
++        child: Card(
+           elevation: 8,
+-          shadowColor: Colors.black.withValues(alpha: isLight ? 0.5 : 0.8),
+           color: isLight
+-              ? colorScheme.surfaceContainerLowest
+-              : colorScheme.surfaceContainerHighest,
++              ? context.colorScheme.surfaceContainerLowest
++              : context.colorScheme.surfaceContainerHighest,
+           clipBehavior: Clip.antiAlias,
+-          shape: RoundedSuperellipseBorder(
+-            borderRadius: BorderRadius.circular(26),
++          shape: RoundedRectangleBorder(
++            borderRadius: BorderRadius.circular(16),
+             side: BorderSide(
+-              color: colorScheme.outlineVariant.withValues(
++              color: context.colorScheme.outlineVariant.withValues(
+                 alpha: isLight ? 0.45 : 0.25,
+               ),
+             ),
+           ),
+-          child: Padding(
+-            padding: const EdgeInsets.all(6),
+-            child: Column(
+-              mainAxisSize: MainAxisSize.min,
+-              crossAxisAlignment: CrossAxisAlignment.stretch,
+-              children: [
+-                for (final item in items.asMap().entries) ...[
+-                  _popupMenuItem(context, item: item.value, index: item.key),
+-                  if (item.value != items.last) const SizedBox(height: 2),
+-                ],
+-                if (footer case final footer?) ...[
+-                  const Divider(height: 9, indent: 8, endIndent: 8),
+-                  footer,
+-                ],
++          child: Column(
++            mainAxisSize: MainAxisSize.min,
++            crossAxisAlignment: CrossAxisAlignment.start,
++            children: [
++              for (final item in items.asMap().entries) ...[
++                _popupMenuItem(context, item: item.value, index: item.key),
++                if (item.value != items.last) Divider(height: 0),
+               ],
+-            ),
++              if (footer case final footer?) ...[
++                const Divider(height: 0),
++                footer,
++              ],
++            ],
+           ),
+         ),
+       ),
+diff --git a/lib/widgets/sheet.dart b/lib/widgets/sheet.dart
+index 12d3a18a..f0d6719c 100644
+--- a/lib/widgets/sheet.dart
++++ b/lib/widgets/sheet.dart
+@@ -139,11 +139,9 @@ class AdaptiveSheetScaffold extends StatelessWidget {
+     final content = bottomSheet
+         ? Container(
+             clipBehavior: Clip.antiAlias,
+-            decoration: ShapeDecoration(
++            decoration: BoxDecoration(
+               color: backgroundColor,
+-              shape: const RoundedSuperellipseBorder(
+-                borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
+-              ),
++              borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
+             ),
+             child: Column(
+               mainAxisSize: MainAxisSize.min,
+diff --git a/lib/widgets/text.dart b/lib/widgets/text.dart
+index be7e8305..386e3d2c 100644
+--- a/lib/widgets/text.dart
++++ b/lib/widgets/text.dart
+@@ -65,50 +65,34 @@ class EmojiText extends StatelessWidget {
+   });
+ 
+   static List<TextSpan> buildSpans(String text, TextStyle style) {
+-    if (text.isEmpty) {
+-      return const [];
+-    }
+-
+-    if (!_emojiRegex.hasMatch(text)) {
+-      return [TextSpan(text: text, style: style)];
+-    }
+-
+-    final emojiStyle = style.merge(
+-      TextStyle(
+-        fontFamily: FontFamily.twEmoji.value,
+-        fontFamilyFallback: [FontFamily.twEmoji.value],
+-      ),
+-    );
+-
+     final List<TextSpan> spans = [];
+-    int segmentStart = 0;
+-    int currentIndex = 0;
+-    bool? isEmojiSegment;
++    final matches = _emojiRegex.allMatches(text);
+ 
+-    for (final char in text.characters) {
+-      final isEmoji = _emojiRegex.hasMatch(char);
+-      if (isEmojiSegment == null) {
+-        isEmojiSegment = isEmoji;
+-      } else if (isEmojiSegment != isEmoji) {
++    int lastMatchEnd = 0;
++    for (final match in matches) {
++      if (match.start > lastMatchEnd) {
+         spans.add(
+           TextSpan(
+-            text: text.substring(segmentStart, currentIndex),
+-            style: isEmojiSegment ? emojiStyle : style,
++            text: text.substring(lastMatchEnd, match.start),
++            style: style,
+           ),
+         );
+-        segmentStart = currentIndex;
+-        isEmojiSegment = isEmoji;
+       }
+-      currentIndex += char.length;
+-    }
+-
+-    if (segmentStart < text.length && isEmojiSegment != null) {
+       spans.add(
+         TextSpan(
+-          text: text.substring(segmentStart, text.length),
+-          style: isEmojiSegment ? emojiStyle : style,
++          text: match.group(0),
++          style: style.merge(
++            TextStyle(
++              fontFamily: FontFamily.twEmoji.value,
++              fontFamilyFallback: [FontFamily.twEmoji.value],
++            ),
++          ),
+         ),
+       );
++      lastMatchEnd = match.end;
++    }
++    if (lastMatchEnd < text.length) {
++      spans.add(TextSpan(text: text.substring(lastMatchEnd), style: style));
+     }
+ 
+     return spans;

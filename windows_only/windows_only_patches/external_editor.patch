@@ -778,7 +778,7 @@ index 00000000..0474adad
 +}
 \ No newline at end of file
 diff --git a/lib/views/profiles/scripts.dart b/lib/views/profiles/scripts.dart
-index 5bdba6c5..635f4494 100644
+index 5bdba6c5..b636023c 100644
 --- a/lib/views/profiles/scripts.dart
 +++ b/lib/views/profiles/scripts.dart
 @@ -6,6 +6,7 @@ import 'package:bett_box/models/models.dart';
@@ -819,7 +819,15 @@ index 5bdba6c5..635f4494 100644
    Widget _buildScriptTag({required IconData icon, required String label}) {
      return Container(
        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-@@ -300,6 +317,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -211,7 +228,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+                 final hasTags = hasRemote || hasCustom;
+                 return CommonCard(
+                   key: ValueKey(script.id),
+-                  elevated: false,
+                   isSelected: isSelected,
+                   radius: 16,
+                   type: CommonCardType.filled,
+@@ -300,6 +316,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                                    _handleToEditor(script: script);
                                  },
                                ),
@@ -833,7 +841,7 @@ index 5bdba6c5..635f4494 100644
                                if (script.compatible)
                                  PopupMenuItemData(
                                    icon: Icons.tune,
-@@ -452,6 +476,19 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -452,6 +475,19 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
    }
  
@@ -853,7 +861,7 @@ index 5bdba6c5..635f4494 100644
    Future<void> _handleImport() async {
      final option = await globalState.showCommonDialog<ImportOption>(
        child: const _ScriptImportOptionsDialog(),
-@@ -530,6 +567,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -530,6 +566,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
          child: Icon(Icons.add),
        ),
        actions: [
@@ -865,3 +873,11 @@ index 5bdba6c5..635f4494 100644
          IconButton(
            onPressed: _handleShowScriptSettings,
            tooltip: appLocalizations.settings,
+@@ -565,7 +606,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
+                   return Container(
+                     padding: const EdgeInsets.symmetric(vertical: 4),
+                     child: CommonCard(
+-                      elevated: false,
+                       type: CommonCardType.filled,
+                       child: ListTile(
+                         contentPadding: const EdgeInsets.only(
