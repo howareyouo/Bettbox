@@ -33,6 +33,7 @@ jobs:
     outputs:
       changed: ${{ steps.check.outputs.changed }}
       upstream_sha: ${{ steps.check.outputs.upstream_sha }}
+      flutter_version: ${{ steps.fver.outputs.flutter_version }}
     steps:
       - name: Checkout fork
         uses: actions/checkout@v7
@@ -59,6 +60,28 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Upstream changed: $LAST_SHA -> $UPSTREAM_SHA"
           fi
+
+      # 跟随上游:上游 CI(build.yaml)pin 的 Flutter 版本即权威版本,上游升级时自动跟进。
+      # 解析失败时兜底读上游 pubspec environment.flutter;仍失败回退默认值并打 warning,
+      # 不静默用错版本。SDK/构建缓存 key 含版本号,版本没变则缓存照常命中,稳态不受影响。
+      - name: Detect upstream Flutter version
+        id: fver
+        run: |
+          V=$(git show upstream/main:.github/workflows/build.yaml 2>/dev/null \
+              | grep -E 'flutter-version:' \
+              | grep -oE '[0-9]+\.[0-9x]+\.[0-9x]+' | tail -n 1)
+          if [ -z "$V" ]; then
+            V=$(git show upstream/main:pubspec.yaml 2>/dev/null \
+                | sed -n '/^environment:/,/^[^ ]/p' \
+                | grep -E 'flutter:' \
+                | grep -oE '[0-9]+(\.[0-9x]+)+' | tail -n 1)
+          fi
+          if [ -z "$V" ]; then
+            V='3.47.7'
+            echo "::warning::Failed to detect upstream Flutter version, falling back to ${V}"
+          fi
+          echo "Upstream Flutter version: ${V}"
+          echo "flutter_version=${V}" >> "$GITHUB_OUTPUT"
 
       # auto_export.sh 末行输出 CHANGED / CLEAN；CHANGED 时提交补丁回 main。
       # 提交用的是 GITHUB_TOKEN，不会再触发本 workflow，无循环。
@@ -106,9 +129,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          # 固定版本：SDK 缓存 key 恒定、稳定命中（省 ~2min 下载/解压），
-          # 且避免 stable 漂移触发全量重编。升级 Flutter 时同步改这里。
-          flutter-version: 3.47.7
+          # 版本号由 sync job 从上游 build.yaml 的 pin 解析(fver 步骤),上游升级自动跟进;
+          # 缓存 key 含解析出的 VERSION,版本不变则命中不变。
+          flutter-version: ${{ needs.sync.outputs.flutter_version }}
           cache: true
 
       - name: Setup Rust (Windows)
