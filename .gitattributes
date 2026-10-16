@@ -3,4 +3,4 @@
 # 导致 auto_export.sh 导出的补丁漏文件、build_windows_only.sh 的 git rm 静默失败。
 windows_only/*.txt text eol=lf
 windows_only/*.sh text eol=lf
-windows_only/windows_only_patches/*.patch text eol=lf
+windows_only/patches/*.patch text eol=lf
