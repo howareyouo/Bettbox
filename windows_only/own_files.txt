@@ -29,6 +29,7 @@ profile_viewer lib/pages/viewer.dart
 profile_viewer lib/views/profiles/add_profile.dart
 profile_viewer lib/views/profiles/edit_profile.dart
 profile_viewer lib/views/proxies/providers.dart
+profile_viewer lib/widgets/editor_modes.dart
 profile_viewer lib/widgets/widgets.dart
 profile_viewer plugins/code_forge/pubspec.lock
 profile_viewer plugins/code_forge/pubspec.yaml
