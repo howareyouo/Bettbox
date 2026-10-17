@@ -66,6 +66,19 @@ index 5d6a7352..a944deb2 100644
  export 'path.dart';
  export 'picker.dart';
  export 'preferences.dart';
+diff --git a/lib/common/constant.dart b/lib/common/constant.dart
+index 8f81ab2e..d0db1c44 100644
+--- a/lib/common/constant.dart
++++ b/lib/common/constant.dart
+@@ -156,8 +156,3 @@ const legacyPrimaryColors = [
+   0xFFD97706,
+   0xFF334155,
+ ];
+-
+-const scriptTemplate = '''
+-const main = (config) => {
+-  return config;
+-}''';
 diff --git a/lib/common/external_editor.dart b/lib/common/external_editor.dart
 new file mode 100644
 index 00000000..ef7ead11
@@ -149,6 +162,21 @@ index 00000000..ef7ead11
 +  }
 +}
 \ No newline at end of file
+diff --git a/lib/enum/enum.dart b/lib/enum/enum.dart
+index 3054ea2d..2012319f 100644
+--- a/lib/enum/enum.dart
++++ b/lib/enum/enum.dart
+@@ -500,9 +500,7 @@ enum SidebarFlyoutDelay {
+ 
+ enum CacheTag { logs, rules, requests, proxiesList }
+ 
+-enum Language { yaml, javaScript }
+-
+-enum ImportOption { code, url, file }
++enum ImportOption { url, file }
+ 
+ enum ScrollPositionCacheKeys { tools, profiles, proxiesList, proxiesTabList }
+ 
 diff --git a/lib/l10n/intl/messages_en.dart b/lib/l10n/intl/messages_en.dart
 index 61a793a4..23176d7c 100644
 --- a/lib/l10n/intl/messages_en.dart
@@ -778,23 +806,21 @@ index 00000000..0474adad
 +}
 \ No newline at end of file
 diff --git a/lib/views/profiles/scripts.dart b/lib/views/profiles/scripts.dart
-index 5bdba6c5..65b0cd88 100644
+index 5bdba6c5..f30f3131 100644
 --- a/lib/views/profiles/scripts.dart
 +++ b/lib/views/profiles/scripts.dart
-@@ -3,9 +3,11 @@ import 'dart:convert';
+@@ -3,9 +3,9 @@ import 'dart:convert';
  import 'package:bett_box/common/common.dart';
  import 'package:bett_box/enum/enum.dart';
  import 'package:bett_box/models/models.dart';
 -import 'package:bett_box/pages/editor.dart';
-+import 'package:bett_box/pages/viewer.dart';
  import 'package:bett_box/providers/providers.dart';
  import 'package:bett_box/state.dart';
 +import 'package:bett_box/views/profiles/external_editor.dart';
-+import 'package:bett_box/widgets/editor_modes.dart';
  import 'package:bett_box/widgets/card.dart';
  import 'package:bett_box/widgets/dialog.dart';
  import 'package:bett_box/widgets/fade_box.dart';
-@@ -102,6 +104,15 @@ class ScriptsView extends ConsumerStatefulWidget {
+@@ -102,6 +102,15 @@ class ScriptsView extends ConsumerStatefulWidget {
  }
  
  class _ScriptsViewState extends ConsumerState<ScriptsView> {
@@ -810,7 +836,7 @@ index 5bdba6c5..65b0cd88 100644
    Future<void> _handleDelScript(String label) async {
      final res = await globalState.showMessage(
        message: TextSpan(
-@@ -155,6 +166,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -155,6 +164,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
    }
  
@@ -824,7 +850,7 @@ index 5bdba6c5..65b0cd88 100644
    Widget _buildScriptTag({required IconData icon, required String label}) {
      return Container(
        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-@@ -211,7 +229,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -211,7 +227,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                  final hasTags = hasRemote || hasCustom;
                  return CommonCard(
                    key: ValueKey(script.id),
@@ -832,7 +858,7 @@ index 5bdba6c5..65b0cd88 100644
                    isSelected: isSelected,
                    radius: 16,
                    type: CommonCardType.filled,
-@@ -294,10 +311,10 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -294,10 +309,10 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                            popup: CommonPopupMenu(
                              items: [
                                PopupMenuItemData(
@@ -845,18 +871,42 @@ index 5bdba6c5..65b0cd88 100644
                                  },
                                ),
                                if (script.compatible)
-@@ -345,14 +362,49 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -345,111 +360,30 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
    }
  
 -  Future<void> _handleEditorSave(
 -    BuildContext _,
 -    String title,
+-    String content, {
 +  Future<void> _handleExternalEdit({
-+    Script? script,
+     Script? script,
 +    String? initialContent,
-+    String? url,
-+  }) async {
+     String? url,
+   }) async {
+-    var finalLabel = title.trim();
+-    if (finalLabel.isEmpty) {
+-      finalLabel = ref
+-          .read(scriptStateProvider.notifier)
+-          .getAvailableLabel(appLocalizations.unnamed);
+-    }
+-    final draft =
+-        script?.copyWith(label: finalLabel, url: url) ??
+-        Script.create(label: finalLabel, url: url);
+-    if (draft.label != script?.label) {
+-      final isExits = ref
+-          .read(scriptStateProvider.notifier)
+-          .isExits(draft.label);
+-      if (isExits) {
+-        globalState.showMessage(
+-          message: TextSpan(
+-            text: appLocalizations.existsTip(appLocalizations.name),
+-          ),
+-          cancelable: false,
+-        );
+-        return;
+-      }
+-    }
 +    await _editorWatcher.open(
 +      ref: ref,
 +      script: script,
@@ -865,41 +915,14 @@ index 5bdba6c5..65b0cd88 100644
 +    );
 +  }
 +
-+  Future<void> _handleSimpleEdit({
-+    Script? script,
-+    String? initialContent,
-+    String? url,
-+  }) async {
-+    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
-+    if (!mounted) return;
-+    BaseNavigator.push(
-+      context,
-+      ViewerPage(
-+        title: script?.label ?? appLocalizations.unnamed,
-+        content: raw,
-+        highlightMode: editorJsMode,
-+        editable: true,
-+        onSave: (content) => _handleSimpleEditSave(
-+          content,
-+          script: script,
-+          url: url ?? script?.url,
-+        ),
-+      ),
-+      maintainState: false,
-+    );
-+  }
-+
-+  Future<void> _handleSimpleEditSave(
-     String content, {
-     Script? script,
-     String? url,
-   }) async {
--    var finalLabel = title.trim();
-+    var finalLabel = script?.label ?? '';
-     if (finalLabel.isEmpty) {
-       finalLabel = ref
-           .read(scriptStateProvider.notifier)
-@@ -381,75 +433,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
++  Future<void> _handleSaveImported(String content, {String? url}) async {
++    final label = ref
++        .read(scriptStateProvider.notifier)
++        .getAvailableLabel(appLocalizations.unnamed);
++    final draft = Script.create(label: label, url: url);
+     final newScript = await globalState.appController.safeRun(
+       silence: false,
+       () => draft.writeContent(content),
      );
      if (newScript == null || !mounted) return;
      ref.read(scriptStateProvider.notifier).setScript(newScript);
@@ -975,34 +998,34 @@ index 5bdba6c5..65b0cd88 100644
    }
  
    Future<void> _handleImport() async {
-@@ -462,7 +445,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -461,8 +395,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+     }
  
      switch (option) {
-       case ImportOption.code:
+-      case ImportOption.code:
 -        _handleToEditor(delayedFocus: true);
-+        _handleSimpleEdit(initialContent: scriptTemplate);
        case ImportOption.url:
          await _handleUrlImport();
        case ImportOption.file:
-@@ -495,7 +478,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -495,7 +427,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      try {
        final res = await request.getTextResponseForUrl(url);
        if (mounted) {
 -        _handleToEditor(initialContent: res.data, url: url);
-+        _handleSimpleEdit(initialContent: res.data, url: url);
++        await _handleSaveImported(res.data, url: url);
        }
      } catch (e) {
        globalState.showMessage(
-@@ -516,7 +499,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -516,7 +448,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      }
      final content = utf8.decode(bytes);
      if (mounted) {
 -      _handleToEditor(initialContent: content);
-+      _handleSimpleEdit(initialContent: content);
++      await _handleSaveImported(content);
      }
    }
  
-@@ -530,6 +513,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -530,6 +462,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
          child: Icon(Icons.add),
        ),
        actions: [
@@ -1014,7 +1037,7 @@ index 5bdba6c5..65b0cd88 100644
          IconButton(
            onPressed: _handleShowScriptSettings,
            tooltip: appLocalizations.settings,
-@@ -565,7 +553,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
+@@ -565,7 +502,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
                    return Container(
                      padding: const EdgeInsets.symmetric(vertical: 4),
                      child: CommonCard(
@@ -1022,46 +1045,17 @@ index 5bdba6c5..65b0cd88 100644
                        type: CommonCardType.filled,
                        child: ListTile(
                          contentPadding: const EdgeInsets.only(
-diff --git a/lib/widgets/editor_modes.dart b/lib/widgets/editor_modes.dart
-new file mode 100644
-index 00000000..dc58e85f
---- /dev/null
-+++ b/lib/widgets/editor_modes.dart
-@@ -0,0 +1,37 @@
-+import 'package:re_highlight/languages/javascript.dart';
-+import 'package:re_highlight/languages/yaml.dart';
-+import 'package:re_highlight/re_highlight.dart' show HASH_COMMENT_MODE, Mode;
-+
-+final Mode editorYamlMode = Mode(
-+  refs: {
-+    ...?langYaml.refs,
-+    '~contains~14': Mode(
-+      className: 'number',
-+      begin:
-+          r'(-?)(\b0[xX][a-fA-F0-9]+|(\b\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?)\b(?=[\s,\]}]|$)',
-+      relevance: 0,
-+    ),
-+  },
-+  name: langYaml.name,
-+  caseInsensitive: langYaml.caseInsensitive,
-+  contains: [
-+    for (final mode in langYaml.contains ?? const <Mode>[])
-+      identical(mode, HASH_COMMENT_MODE)
-+          ? Mode(scope: 'comment', begin: r'(?<![^\s])#', end: r'$')
-+          : mode,
-+  ],
-+);
-+
-+/// JavaScript 语法高亮模式，从内置的 [langJavascript] 派生，
-+/// 与 [editorYamlMode] 采用同样的改写方式，作为脚本预览的项目级定制入口。
-+final Mode editorJsMode = Mode(
-+  refs: {
-+    ...?langJavascript.refs,
-+  },
-+  name: langJavascript.name,
-+  caseInsensitive: langJavascript.caseInsensitive,
-+  keywords: langJavascript.keywords,
-+  contains: [
-+    for (final mode in langJavascript.contains ?? const <Mode>[]) mode,
-+  ],
-+);
+@@ -610,13 +546,6 @@ class _ScriptImportOptionsDialog extends StatelessWidget {
+       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+       child: Wrap(
+         children: [
+-          ListItem(
+-            onTap: () {
+-              Navigator.of(context).pop(ImportOption.code);
+-            },
+-            leading: const Icon(Icons.code),
+-            title: Text(appLocalizations.importFromCode),
+-          ),
+           ListItem(
+             onTap: () {
+               Navigator.of(context).pop(ImportOption.url);
