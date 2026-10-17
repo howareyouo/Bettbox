@@ -1485,6 +1485,7 @@ class AppController {
       ).popUntil((route) => route.isFirst);
     }
     _ref.read(currentPageLabelProvider.notifier).value = pageLabel;
+    pageNavigationController.visit(pageLabel);
   }
 
   void toProfiles() {

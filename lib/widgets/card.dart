@@ -77,7 +77,43 @@ class InfoHeader extends StatelessWidget {
   }
 }
 
+class SmoothRoundedRectangleBorder extends RoundedRectangleBorder {
+  const SmoothRoundedRectangleBorder({
+    super.side,
+    super.borderRadius = BorderRadius.zero,
+  });
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style == BorderStyle.none) return;
+    final borderRect = borderRadius.resolve(textDirection).toRRect(rect);
+    if (side.width <= 0.0) {
+      canvas.drawRRect(borderRect, side.toPaint());
+      return;
+    }
+    canvas.drawRRect(
+      borderRect.deflate(side.width / 2.0),
+      side.toPaint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = side.width,
+    );
+  }
+
+  @override
+  SmoothRoundedRectangleBorder copyWith({
+    BorderSide? side,
+    BorderRadiusGeometry? borderRadius,
+  }) {
+    return SmoothRoundedRectangleBorder(
+      side: side ?? this.side,
+      borderRadius: borderRadius ?? this.borderRadius,
+    );
+  }
+}
+
 class CommonCard extends StatelessWidget {
+  static const double defaultRadius = 20.0;
+
   const CommonCard({
     super.key,
     bool? isSelected,
@@ -89,12 +125,13 @@ class CommonCard extends StatelessWidget {
     required this.child,
     this.padding,
     this.enterAnimated = false,
+    this.isDragFeedback = false,
     this.info,
     this.clipBehavior = Clip.antiAlias,
-    this.elevated = true,
   }) : isSelected = isSelected ?? false;
 
   final bool enterAnimated;
+  final bool isDragFeedback;
   final bool isSelected;
   final void Function()? onPressed;
   final void Function()? onLongPress;
@@ -105,7 +142,6 @@ class CommonCard extends StatelessWidget {
   final CommonCardType type;
   final double? radius;
   final Clip clipBehavior;
-  final bool elevated;
 
   // final WidgetStateProperty<Color?>? backgroundColor;
   // final WidgetStateProperty<BorderSide?>? borderSide;
@@ -127,9 +163,7 @@ class CommonCard extends StatelessWidget {
     return BorderSide(
       color: isSelected
           ? colorScheme.primary
-          : colorScheme.outlineVariant.withValues(
-              alpha: elevated ? (isLight ? 0.65 : 0.35) : (isLight ? 0.8 : 0.4),
-            ),
+          : colorScheme.outlineVariant.withValues(alpha: isLight ? 0.45 : 0.25),
       strokeAlign: BorderSide.strokeAlignInside,
     );
   }
@@ -153,7 +187,7 @@ class CommonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actualRadius = radius ?? 20.0;
+    final actualRadius = radius ?? defaultRadius;
     var childWidget = child;
 
     if (info != null) {
@@ -177,11 +211,10 @@ class CommonCard extends StatelessWidget {
     }
 
     final isInteractive = onPressed != null || onLongPress != null;
-    final isLight = context.colorScheme.brightness == Brightness.light;
-    final shape = RoundedSuperellipseBorder(
+    final shape = SmoothRoundedRectangleBorder(
       borderRadius: BorderRadius.circular(actualRadius),
     );
-    Widget card = OutlinedButton(
+    final card = OutlinedButton(
       onLongPress: onLongPress,
       clipBehavior: clipBehavior,
       style: ButtonStyle(
@@ -202,25 +235,19 @@ class CommonCard extends StatelessWidget {
       child: childWidget,
     );
 
-    if (elevated) {
-      card = DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: shape,
-          shadows: [
-            BoxShadow(
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-              color: Colors.black.withValues(alpha: isLight ? 0.045 : 0.25),
-            ),
-          ],
-        ),
-        child: card,
-      );
-    }
+    final cardWithShadow = isDragFeedback
+        ? Material(
+            color: Colors.transparent,
+            elevation: 12,
+            shadowColor: context.colorScheme.shadow.withValues(alpha: 0.55),
+            shape: shape,
+            child: card,
+          )
+        : card;
 
     return switch (enterAnimated) {
-      true => FadeScaleEnterBox(child: card),
-      false => card,
+      true => FadeScaleEnterBox(child: cardWithShadow),
+      false => cardWithShadow,
     };
   }
 }

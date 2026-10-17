@@ -139,11 +139,9 @@ class AdaptiveSheetScaffold extends StatelessWidget {
     final content = bottomSheet
         ? Container(
             clipBehavior: Clip.antiAlias,
-            decoration: ShapeDecoration(
+            decoration: BoxDecoration(
               color: backgroundColor,
-              shape: const RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

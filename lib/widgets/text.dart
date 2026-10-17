@@ -65,50 +65,34 @@ class EmojiText extends StatelessWidget {
   });
 
   static List<TextSpan> buildSpans(String text, TextStyle style) {
-    if (text.isEmpty) {
-      return const [];
-    }
-
-    if (!_emojiRegex.hasMatch(text)) {
-      return [TextSpan(text: text, style: style)];
-    }
-
-    final emojiStyle = style.merge(
-      TextStyle(
-        fontFamily: FontFamily.twEmoji.value,
-        fontFamilyFallback: [FontFamily.twEmoji.value],
-      ),
-    );
-
     final List<TextSpan> spans = [];
-    int segmentStart = 0;
-    int currentIndex = 0;
-    bool? isEmojiSegment;
+    final matches = _emojiRegex.allMatches(text);
 
-    for (final char in text.characters) {
-      final isEmoji = _emojiRegex.hasMatch(char);
-      if (isEmojiSegment == null) {
-        isEmojiSegment = isEmoji;
-      } else if (isEmojiSegment != isEmoji) {
+    int lastMatchEnd = 0;
+    for (final match in matches) {
+      if (match.start > lastMatchEnd) {
         spans.add(
           TextSpan(
-            text: text.substring(segmentStart, currentIndex),
-            style: isEmojiSegment ? emojiStyle : style,
+            text: text.substring(lastMatchEnd, match.start),
+            style: style,
           ),
         );
-        segmentStart = currentIndex;
-        isEmojiSegment = isEmoji;
       }
-      currentIndex += char.length;
-    }
-
-    if (segmentStart < text.length && isEmojiSegment != null) {
       spans.add(
         TextSpan(
-          text: text.substring(segmentStart, text.length),
-          style: isEmojiSegment ? emojiStyle : style,
+          text: match.group(0),
+          style: style.merge(
+            TextStyle(
+              fontFamily: FontFamily.twEmoji.value,
+              fontFamilyFallback: [FontFamily.twEmoji.value],
+            ),
+          ),
         ),
       );
+      lastMatchEnd = match.end;
+    }
+    if (lastMatchEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastMatchEnd), style: style));
     }
 
     return spans;

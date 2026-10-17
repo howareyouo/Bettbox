@@ -6720,7 +6720,7 @@ class AppLocalizations {
     );
   }
 
-  /// `setcap is not installed, falling back to setuid`
+/// `setcap is not installed, falling back to setuid`
   String get setcapNotInstalledFallback {
     return Intl.message(
       'setcap is not installed, falling back to setuid',
@@ -6765,6 +6765,71 @@ class AppLocalizations {
     return Intl.message(
       'Core authorization did not take effect: the running core lacks CAP_NET_ADMIN, TUN may fail',
       name: 'coreCapabilityNotEffective',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Editor not found. Enter the full path to the editor executable.`
+  String get externalEditorNotFound {
+    return Intl.message(
+      'Editor not found. Enter the full path to the editor executable.',
+      name: 'externalEditorNotFound',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Failed to launch editor "{editor}". Make sure it is installed and the path is correct, or select Auto Detect.`
+  String externalEditorLaunchFailed(Object editor) {
+    return Intl.message(
+      'Failed to launch editor "$editor". Make sure it is installed and the path is correct, or select Auto Detect.',
+      name: 'externalEditorLaunchFailed',
+      desc: '',
+      args: [editor],
+    );
+  }
+
+  /// `Set Editor`
+  String get setEditor {
+    return Intl.message('Set Editor', name: 'setEditor', desc: '', args: []);
+  }
+
+  /// `Opened in an external editor. Changes are synced back to the app automatically when you save the file.`
+  String get externalEditorTip {
+    return Intl.message(
+      'Opened in an external editor. Changes are synced back to the app automatically when you save the file.',
+      name: 'externalEditorTip',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `External Editor`
+  String get externalEditor {
+    return Intl.message(
+      'External Editor',
+      name: 'externalEditor',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto Detect`
+  String get autoDetect {
+    return Intl.message(
+      'Auto Detect',
+      name: 'autoDetect',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Done`
+  String get done {
+    return Intl.message(
+      'Done',
+      name: 'done',
       desc: '',
       args: [],
     );

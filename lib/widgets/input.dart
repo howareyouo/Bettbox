@@ -32,7 +32,7 @@ class OptionsDialog<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonDialog(
       title: title,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -340,7 +340,6 @@ class ListInputPage extends StatelessWidget {
                     ReorderableDelayedDragStartListener(
                       index: index,
                       child: CommonCard(
-                        elevated: false,
                         child: ListItem(
                           leading: leadingBuilder != null
                               ? leadingBuilder!(e)
@@ -490,7 +489,6 @@ class MapInputPage extends StatelessWidget {
                     ReorderableDelayedDragStartListener(
                       index: index,
                       child: CommonCard(
-                        elevated: false,
                         child: ListItem(
                           leading: leadingBuilder != null
                               ? leadingBuilder!(e)

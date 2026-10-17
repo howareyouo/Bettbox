@@ -822,11 +822,17 @@
   "collapse": "Collapse",
   "analyzeLogPrompt": "Analyze Bettbox (Mihomo) log: {log}",
   "geoBuiltInResources": "GEO Built-in Resources",
-  "setcapNotInstalledFallback": "setcap is not installed, falling back to setuid",
+"setcapNotInstalledFallback": "setcap is not installed, falling back to setuid",
   "xattrUnsupportedFallback": "The filesystem does not support file capabilities, falling back to setuid",
   "setcapFailedFallback": "Could not grant file capabilities, falling back to setuid",
   "coreMountNosuid": "The core is on a filesystem mounted with nosuid, so file capabilities and setuid cannot take effect",
-  "coreCapabilityNotEffective": "Core authorization did not take effect: the running core lacks CAP_NET_ADMIN, TUN may fail"
+  "coreCapabilityNotEffective": "Core authorization did not take effect: the running core lacks CAP_NET_ADMIN, TUN may fail",
+  "externalEditorTip": "Opened in an external editor. Changes are synced back to the app automatically when you save the file.",
+  "externalEditor": "External Editor",
+  "externalEditorLaunchFailed": "Failed to launch editor \"{editor}\". Make sure it is installed and the path is correct, or select Auto Detect.",
+  "externalEditorNotFound": "Editor not found. Enter the full path to the editor executable.",
+  "autoDetect": "Auto Detect",
+  "done": "Done"
 }
 
 
