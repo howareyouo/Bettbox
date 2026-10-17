@@ -73,7 +73,7 @@ class SuperGridState extends State<SuperGrid> with TickerProviderStateMixin {
 
   /// Reorder / settle animations run faster than the global [commonDuration]
   /// so cards feel snappy while following the pointer.
-  static const Duration _reorderDuration = Duration(milliseconds: 130);
+  static const Duration _reorderDuration = Duration(milliseconds: 150);
 
   /// Fraction of the neighbor card's size the drag probe must penetrate past
   /// the shared edge before a swap fires, so hovering near the boundary
