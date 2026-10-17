@@ -92,9 +92,13 @@ class _ViewerPageState extends State<ViewerPage> {
         child: SingleChildScrollView(
           controller: _controller,
           padding: const EdgeInsets.all(16),
-          child: span != null
-              ? SelectableText.rich(span, style: style)
-              : SelectableText(widget.content, style: style),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            // 宽度不受限时长行不折行，超出部分横向滚动
+            child: span != null
+                ? SelectableText.rich(span, style: style)
+                : SelectableText(widget.content, style: style),
+          ),
         ),
       ),
     );
