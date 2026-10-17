@@ -778,18 +778,23 @@ index 00000000..0474adad
 +}
 \ No newline at end of file
 diff --git a/lib/views/profiles/scripts.dart b/lib/views/profiles/scripts.dart
-index 5bdba6c5..b636023c 100644
+index 5bdba6c5..ae072b14 100644
 --- a/lib/views/profiles/scripts.dart
 +++ b/lib/views/profiles/scripts.dart
-@@ -6,6 +6,7 @@ import 'package:bett_box/models/models.dart';
- import 'package:bett_box/pages/editor.dart';
+@@ -3,9 +3,11 @@ import 'dart:convert';
+ import 'package:bett_box/common/common.dart';
+ import 'package:bett_box/enum/enum.dart';
+ import 'package:bett_box/models/models.dart';
+-import 'package:bett_box/pages/editor.dart';
++import 'package:bett_box/pages/viewer.dart';
  import 'package:bett_box/providers/providers.dart';
  import 'package:bett_box/state.dart';
 +import 'package:bett_box/views/profiles/external_editor.dart';
++import 'package:bett_box/widgets/editor_modes.dart';
  import 'package:bett_box/widgets/card.dart';
  import 'package:bett_box/widgets/dialog.dart';
  import 'package:bett_box/widgets/fade_box.dart';
-@@ -102,6 +103,15 @@ class ScriptsView extends ConsumerStatefulWidget {
+@@ -102,6 +104,15 @@ class ScriptsView extends ConsumerStatefulWidget {
  }
  
  class _ScriptsViewState extends ConsumerState<ScriptsView> {
@@ -805,7 +810,7 @@ index 5bdba6c5..b636023c 100644
    Future<void> _handleDelScript(String label) async {
      final res = await globalState.showMessage(
        message: TextSpan(
-@@ -155,6 +165,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -155,6 +166,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
    }
  
@@ -819,7 +824,7 @@ index 5bdba6c5..b636023c 100644
    Widget _buildScriptTag({required IconData icon, required String label}) {
      return Container(
        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-@@ -211,7 +228,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -211,7 +229,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                  final hasTags = hasRemote || hasCustom;
                  return CommonCard(
                    key: ValueKey(script.id),
@@ -827,24 +832,29 @@ index 5bdba6c5..b636023c 100644
                    isSelected: isSelected,
                    radius: 16,
                    type: CommonCardType.filled,
-@@ -300,6 +316,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
-                                   _handleToEditor(script: script);
-                                 },
-                               ),
+@@ -297,7 +314,14 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+                                 icon: Icons.edit,
+                                 label: appLocalizations.edit,
+                                 onPressed: () {
+-                                  _handleToEditor(script: script);
++                                  _handleSimpleEdit(script: script);
++                                },
++                              ),
 +                              PopupMenuItemData(
 +                                icon: Icons.edit_note,
 +                                label: appLocalizations.externalEditor,
 +                                onPressed: () {
 +                                  _handleExternalEdit(script: script);
-+                                },
-+                              ),
+                                 },
+                               ),
                                if (script.compatible)
-                                 PopupMenuItemData(
-                                   icon: Icons.tune,
-@@ -452,6 +475,19 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -345,14 +369,49 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
    }
  
+-  Future<void> _handleEditorSave(
+-    BuildContext _,
+-    String title,
 +  Future<void> _handleExternalEdit({
 +    Script? script,
 +    String? initialContent,
@@ -858,10 +868,144 @@ index 5bdba6c5..b636023c 100644
 +    );
 +  }
 +
++  Future<void> _handleSimpleEdit({
++    Script? script,
++    String? initialContent,
++    String? url,
++  }) async {
++    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
++    if (!mounted) return;
++    BaseNavigator.push(
++      context,
++      ViewerPage(
++        title: script?.label ?? appLocalizations.unnamed,
++        content: raw,
++        highlightMode: editorJsMode,
++        editable: true,
++        onSave: (content) => _handleSimpleEditSave(
++          content,
++          script: script,
++          url: url ?? script?.url,
++        ),
++      ),
++      maintainState: false,
++    );
++  }
++
++  Future<void> _handleSimpleEditSave(
+     String content, {
+     Script? script,
+     String? url,
+   }) async {
+-    var finalLabel = title.trim();
++    var finalLabel = script?.label ?? '';
+     if (finalLabel.isEmpty) {
+       finalLabel = ref
+           .read(scriptStateProvider.notifier)
+@@ -381,75 +440,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+     );
+     if (newScript == null || !mounted) return;
+     ref.read(scriptStateProvider.notifier).setScript(newScript);
+-    Navigator.of(context).pop();
+-  }
+-
+-  Future<bool> _handleEditorPop(
+-    BuildContext _,
+-    String title,
+-    String content,
+-    String raw, {
+-    Script? script,
+-  }) async {
+-    if (content == raw) {
+-      return true;
+-    }
+-    final res = await globalState.showMessage(
+-      message: TextSpan(text: appLocalizations.saveChanges),
+-    );
+-    if (res == true && mounted) {
+-      _handleEditorSave(
+-        context,
+-        title,
+-        content,
+-        script: script,
+-        url: script?.url,
+-      );
+-    } else {
+-      return true;
+-    }
+-    return false;
+-  }
+-
+-  Future<void> _handleToEditor({
+-    Script? script,
+-    String? initialContent,
+-    String? url,
+-    bool delayedFocus = false,
+-  }) async {
+-    final title = script?.label ?? '';
+-    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
+-    if (!mounted) return;
+-    String? importedUrl = url ?? script?.url;
+-    BaseNavigator.push(
+-      context,
+-      EditorPage(
+-        titleEditable: true,
+-        title: title,
+-        supportRemoteDownload: true,
+-        delayedFocus: delayedFocus,
+-        onUrlImport: (downloadedUrl) {
+-          importedUrl = downloadedUrl;
+-        },
+-        onSave: (context, title, content) {
+-          final scriptToSave = script != null
+-              ? script.copyWith(url: importedUrl)
+-              : null;
+-          _handleEditorSave(
+-            context,
+-            title,
+-            content,
+-            script: scriptToSave,
+-            url: importedUrl,
+-          );
+-        },
+-        onPop: (context, title, content) {
+-          return _handleEditorPop(context, title, content, raw, script: script);
+-        },
+-        languages: const [Language.javaScript],
+-        content: raw,
+-      ),
+-    );
+   }
+ 
    Future<void> _handleImport() async {
-     final option = await globalState.showCommonDialog<ImportOption>(
-       child: const _ScriptImportOptionsDialog(),
-@@ -530,6 +566,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -462,7 +452,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+ 
+     switch (option) {
+       case ImportOption.code:
+-        _handleToEditor(delayedFocus: true);
++        _handleSimpleEdit(initialContent: scriptTemplate);
+       case ImportOption.url:
+         await _handleUrlImport();
+       case ImportOption.file:
+@@ -495,7 +485,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+     try {
+       final res = await request.getTextResponseForUrl(url);
+       if (mounted) {
+-        _handleToEditor(initialContent: res.data, url: url);
++        _handleSimpleEdit(initialContent: res.data, url: url);
+       }
+     } catch (e) {
+       globalState.showMessage(
+@@ -516,7 +506,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+     }
+     final content = utf8.decode(bytes);
+     if (mounted) {
+-      _handleToEditor(initialContent: content);
++      _handleSimpleEdit(initialContent: content);
+     }
+   }
+ 
+@@ -530,6 +520,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
          child: Icon(Icons.add),
        ),
        actions: [
@@ -873,7 +1017,7 @@ index 5bdba6c5..b636023c 100644
          IconButton(
            onPressed: _handleShowScriptSettings,
            tooltip: appLocalizations.settings,
-@@ -565,7 +606,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
+@@ -565,7 +560,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
                    return Container(
                      padding: const EdgeInsets.symmetric(vertical: 4),
                      child: CommonCard(
