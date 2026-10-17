@@ -311,15 +311,8 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                           popup: CommonPopupMenu(
                             items: [
                               PopupMenuItemData(
-                                icon: Icons.edit,
-                                label: appLocalizations.edit,
-                                onPressed: () {
-                                  _handleSimpleEdit(script: script);
-                                },
-                              ),
-                              PopupMenuItemData(
                                 icon: Icons.edit_note,
-                                label: appLocalizations.externalEditor,
+                                label: appLocalizations.edit,
                                 onPressed: () {
                                   _handleExternalEdit(script: script);
                                 },
