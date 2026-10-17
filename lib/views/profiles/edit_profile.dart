@@ -185,11 +185,7 @@ class EditProfileViewState extends State<EditProfileView> {
     }
     if (!mounted) return;
     final title = widget.profile.label ?? widget.profile.id;
-    final viewerPage = ViewerPage(
-      title: title,
-      content: rawText ?? '',
-      highlightMode: editorYamlMode,
-    );
+    final viewerPage = ViewerPage(title: title, content: rawText ?? '');
     await BaseNavigator.push<String>(context, viewerPage);
   }
 

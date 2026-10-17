@@ -10,7 +10,9 @@
 external_editor arb/intl_en.arb
 external_editor arb/intl_zh_CN.arb
 external_editor lib/common/common.dart
+external_editor lib/common/constant.dart
 external_editor lib/common/external_editor.dart
+external_editor lib/enum/enum.dart
 external_editor lib/l10n/intl/messages_en.dart
 external_editor lib/l10n/intl/messages_zh_CN.dart
 external_editor lib/l10n/l10n.dart
@@ -19,7 +21,6 @@ external_editor lib/models/generated/config.freezed.dart
 external_editor lib/models/generated/config.g.dart
 external_editor lib/views/profiles/external_editor.dart
 external_editor lib/views/profiles/scripts.dart
-external_editor lib/widgets/editor_modes.dart
 profile_hover lib/views/profiles/profiles.dart
 profile_drag lib/common/scroll.dart
 profile_drag lib/widgets/super_grid.dart
@@ -27,6 +28,12 @@ profile_viewer lib/pages/pages.dart
 profile_viewer lib/pages/viewer.dart
 profile_viewer lib/views/profiles/add_profile.dart
 profile_viewer lib/views/profiles/edit_profile.dart
+profile_viewer lib/views/proxies/providers.dart
+profile_viewer lib/widgets/widgets.dart
+profile_viewer plugins/code_forge/pubspec.lock
+profile_viewer plugins/code_forge/pubspec.yaml
+profile_viewer pubspec.yaml
+profile_viewer pubspec.lock
 side_button_nav lib/application.dart
 side_button_nav lib/common/page_navigation_history.dart
 side_button_nav lib/controller.dart

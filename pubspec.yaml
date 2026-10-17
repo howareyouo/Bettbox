@@ -43,7 +43,6 @@ dependencies:
   dio: ^5.10.0
   win32: ^6.0.0
   ffi: ^2.2.0
-  re_highlight: ^0.0.3
   archive: ^4.0.7
   lpinyin: ^2.0.3
   emoji_regex: ^0.0.5

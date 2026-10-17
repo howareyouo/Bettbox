@@ -286,7 +286,6 @@ class _ProfileItemState extends State<ProfileItem> {
           title:
               '${appLocalizations.runtimeConfig} - ${profile.label ?? profile.id}',
           content: content,
-          highlightMode: editorYamlMode,
         );
         BaseNavigator.push<String>(context, previewPage, maintainState: false);
       },

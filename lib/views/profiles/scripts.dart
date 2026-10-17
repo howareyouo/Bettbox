@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/external_editor.dart';
-import 'package:bett_box/widgets/editor_modes.dart';
 import 'package:bett_box/widgets/card.dart';
 import 'package:bett_box/widgets/dialog.dart';
 import 'package:bett_box/widgets/fade_box.dart';
@@ -375,58 +373,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     );
   }
 
-  Future<void> _handleSimpleEdit({
-    Script? script,
-    String? initialContent,
-    String? url,
-  }) async {
-    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
-    if (!mounted) return;
-    BaseNavigator.push(
-      context,
-      ViewerPage(
-        title: script?.label ?? appLocalizations.unnamed,
-        content: raw,
-        highlightMode: editorJsMode,
-        editable: true,
-        onSave: (content) => _handleSimpleEditSave(
-          content,
-          script: script,
-          url: url ?? script?.url,
-        ),
-      ),
-      maintainState: false,
-    );
-  }
-
-  Future<void> _handleSimpleEditSave(
-    String content, {
-    Script? script,
-    String? url,
-  }) async {
-    var finalLabel = script?.label ?? '';
-    if (finalLabel.isEmpty) {
-      finalLabel = ref
-          .read(scriptStateProvider.notifier)
-          .getAvailableLabel(appLocalizations.unnamed);
-    }
-    final draft =
-        script?.copyWith(label: finalLabel, url: url) ??
-        Script.create(label: finalLabel, url: url);
-    if (draft.label != script?.label) {
-      final isExits = ref
-          .read(scriptStateProvider.notifier)
-          .isExits(draft.label);
-      if (isExits) {
-        globalState.showMessage(
-          message: TextSpan(
-            text: appLocalizations.existsTip(appLocalizations.name),
-          ),
-          cancelable: false,
-        );
-        return;
-      }
-    }
+  Future<void> _handleSaveImported(String content, {String? url}) async {
+    final label = ref
+        .read(scriptStateProvider.notifier)
+        .getAvailableLabel(appLocalizations.unnamed);
+    final draft = Script.create(label: label, url: url);
     final newScript = await globalState.appController.safeRun(
       silence: false,
       () => draft.writeContent(content),
@@ -444,8 +395,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     }
 
     switch (option) {
-      case ImportOption.code:
-        _handleSimpleEdit(initialContent: scriptTemplate);
       case ImportOption.url:
         await _handleUrlImport();
       case ImportOption.file:
@@ -478,7 +427,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     try {
       final res = await request.getTextResponseForUrl(url);
       if (mounted) {
-        _handleSimpleEdit(initialContent: res.data, url: url);
+        await _handleSaveImported(res.data, url: url);
       }
     } catch (e) {
       globalState.showMessage(
@@ -499,7 +448,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     }
     final content = utf8.decode(bytes);
     if (mounted) {
-      _handleSimpleEdit(initialContent: content);
+      await _handleSaveImported(content);
     }
   }
 
@@ -597,13 +546,6 @@ class _ScriptImportOptionsDialog extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Wrap(
         children: [
-          ListItem(
-            onTap: () {
-              Navigator.of(context).pop(ImportOption.code);
-            },
-            leading: const Icon(Icons.code),
-            title: Text(appLocalizations.importFromCode),
-          ),
           ListItem(
             onTap: () {
               Navigator.of(context).pop(ImportOption.url);

@@ -282,7 +282,6 @@ class ProviderItem extends StatelessWidget {
           ViewerPage(
             title: '${appLocalizations.view} - ${provider.name}',
             content: content,
-            highlightMode: provider.type == 'Rule' ? editorYamlMode : null,
           ),
           maintainState: false,
         );
