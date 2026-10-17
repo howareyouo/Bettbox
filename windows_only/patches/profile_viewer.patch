@@ -295,7 +295,7 @@ index 95e13bb3..3637d4e3 100644
                    leading: const Icon(Icons.content_paste),
                    title: Text(appLocalizations.clipboard),
 diff --git a/lib/views/profiles/edit_profile.dart b/lib/views/profiles/edit_profile.dart
-index 396c4952..cad23157 100644
+index 396c4952..9a1e3c96 100644
 --- a/lib/views/profiles/edit_profile.dart
 +++ b/lib/views/profiles/edit_profile.dart
 @@ -1,12 +1,11 @@
@@ -349,12 +349,13 @@ index 396c4952..cad23157 100644
      if (rawText == null) {
        final profilePath = await appPath.getProfilePath(widget.profile.id);
        final file = File(profilePath);
-@@ -214,38 +185,8 @@ class EditProfileViewState extends State<EditProfileView> {
+@@ -214,38 +185,12 @@ class EditProfileViewState extends State<EditProfileView> {
      }
      if (!mounted) return;
      final title = widget.profile.label ?? widget.profile.id;
 -    final editorPage = EditorPage(
--      title: title,
++    final viewerPage = ViewerPage(
+       title: title,
 -      content: rawText!,
 -      onSave: (context, _, content) {
 -        _handleSaveEdit(context, content);
@@ -384,13 +385,14 @@ index 396c4952..cad23157 100644
 -    fileInfoNotifier.value = fileInfoNotifier.value?.copyWith(
 -      size: fileData?.length ?? 0,
 -      lastModified: DateTime.now(),
--    );
-+    final viewerPage = ViewerPage(title: title, content: rawText ?? '');
++      content: rawText ?? '',
++      highlightMode: editorYamlMode,
+     );
 +    await BaseNavigator.push<String>(context, viewerPage);
    }
  
    Future<void> _uploadProfileFile() async {
-@@ -420,9 +361,9 @@ class EditProfileViewState extends State<EditProfileView> {
+@@ -420,9 +365,9 @@ class EditProfileViewState extends State<EditProfileView> {
                                  spacing: 12,
                                  children: [
                                    CommonChip(

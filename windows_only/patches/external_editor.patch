@@ -778,7 +778,7 @@ index 00000000..0474adad
 +}
 \ No newline at end of file
 diff --git a/lib/views/profiles/scripts.dart b/lib/views/profiles/scripts.dart
-index 5bdba6c5..ae072b14 100644
+index 5bdba6c5..65b0cd88 100644
 --- a/lib/views/profiles/scripts.dart
 +++ b/lib/views/profiles/scripts.dart
 @@ -3,9 +3,11 @@ import 'dart:convert';
@@ -832,23 +832,20 @@ index 5bdba6c5..ae072b14 100644
                    isSelected: isSelected,
                    radius: 16,
                    type: CommonCardType.filled,
-@@ -297,7 +314,14 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
-                                 icon: Icons.edit,
+@@ -294,10 +311,10 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+                           popup: CommonPopupMenu(
+                             items: [
+                               PopupMenuItemData(
+-                                icon: Icons.edit,
++                                icon: Icons.edit_note,
                                  label: appLocalizations.edit,
                                  onPressed: () {
 -                                  _handleToEditor(script: script);
-+                                  _handleSimpleEdit(script: script);
-+                                },
-+                              ),
-+                              PopupMenuItemData(
-+                                icon: Icons.edit_note,
-+                                label: appLocalizations.externalEditor,
-+                                onPressed: () {
 +                                  _handleExternalEdit(script: script);
                                  },
                                ),
                                if (script.compatible)
-@@ -345,14 +369,49 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -345,14 +362,49 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
    }
  
@@ -902,7 +899,7 @@ index 5bdba6c5..ae072b14 100644
      if (finalLabel.isEmpty) {
        finalLabel = ref
            .read(scriptStateProvider.notifier)
-@@ -381,75 +440,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -381,75 +433,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      );
      if (newScript == null || !mounted) return;
      ref.read(scriptStateProvider.notifier).setScript(newScript);
@@ -978,7 +975,7 @@ index 5bdba6c5..ae072b14 100644
    }
  
    Future<void> _handleImport() async {
-@@ -462,7 +452,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -462,7 +445,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
  
      switch (option) {
        case ImportOption.code:
@@ -987,7 +984,7 @@ index 5bdba6c5..ae072b14 100644
        case ImportOption.url:
          await _handleUrlImport();
        case ImportOption.file:
-@@ -495,7 +485,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -495,7 +478,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      try {
        final res = await request.getTextResponseForUrl(url);
        if (mounted) {
@@ -996,7 +993,7 @@ index 5bdba6c5..ae072b14 100644
        }
      } catch (e) {
        globalState.showMessage(
-@@ -516,7 +506,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -516,7 +499,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
      }
      final content = utf8.decode(bytes);
      if (mounted) {
@@ -1005,7 +1002,7 @@ index 5bdba6c5..ae072b14 100644
      }
    }
  
-@@ -530,6 +520,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
+@@ -530,6 +513,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
          child: Icon(Icons.add),
        ),
        actions: [
@@ -1017,7 +1014,7 @@ index 5bdba6c5..ae072b14 100644
          IconButton(
            onPressed: _handleShowScriptSettings,
            tooltip: appLocalizations.settings,
-@@ -565,7 +560,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
+@@ -565,7 +553,6 @@ class _ScriptSettingsSheet extends ConsumerWidget {
                    return Container(
                      padding: const EdgeInsets.symmetric(vertical: 4),
                      child: CommonCard(
