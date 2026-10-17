@@ -10,10 +10,10 @@ index cc27ba65..43e71b29 100644
  export 'media_unlock.dart';
 diff --git a/lib/pages/viewer.dart b/lib/pages/viewer.dart
 new file mode 100644
-index 00000000..a8d1c68e
+index 00000000..82808854
 --- /dev/null
 +++ b/lib/pages/viewer.dart
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,106 @@
 +import 'package:bett_box/common/common.dart';
 +import 'package:bett_box/enum/enum.dart' hide Mode;
 +import 'package:bett_box/widgets/widgets.dart';
@@ -108,9 +108,13 @@ index 00000000..a8d1c68e
 +        child: SingleChildScrollView(
 +          controller: _controller,
 +          padding: const EdgeInsets.all(16),
-+          child: span != null
-+              ? SelectableText.rich(span, style: style)
-+              : SelectableText(widget.content, style: style),
++          child: SingleChildScrollView(
++            scrollDirection: Axis.horizontal,
++            // 宽度不受限时长行不折行，超出部分横向滚动
++            child: span != null
++                ? SelectableText.rich(span, style: style)
++                : SelectableText(widget.content, style: style),
++          ),
 +        ),
 +      ),
 +    );
