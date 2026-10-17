@@ -21,7 +21,7 @@ index a0f5bd97..782319d3 100644
    @override
    Widget buildScrollbar(
 diff --git a/lib/widgets/super_grid.dart b/lib/widgets/super_grid.dart
-index 6e08b220..36399f0b 100644
+index 6e08b220..95b3a9e4 100644
 --- a/lib/widgets/super_grid.dart
 +++ b/lib/widgets/super_grid.dart
 @@ -9,6 +9,7 @@ import 'package:bett_box/widgets/card.dart';
@@ -65,7 +65,7 @@ index 6e08b220..36399f0b 100644
 +
 +  /// Reorder / settle animations run faster than the global [commonDuration]
 +  /// so cards feel snappy while following the pointer.
-+  static const Duration _reorderDuration = Duration(milliseconds: 130);
++  static const Duration _reorderDuration = Duration(milliseconds: 150);
 +
 +  /// Fraction of the neighbor card's size the drag probe must penetrate past
 +  /// the shared edge before a swap fires, so hovering near the boundary
