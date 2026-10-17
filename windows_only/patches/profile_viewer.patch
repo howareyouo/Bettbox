@@ -10,21 +10,30 @@ index cc27ba65..43e71b29 100644
  export 'media_unlock.dart';
 diff --git a/lib/pages/viewer.dart b/lib/pages/viewer.dart
 new file mode 100644
-index 00000000..fa949c90
+index 00000000..a8d1c68e
 --- /dev/null
 +++ b/lib/pages/viewer.dart
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,102 @@
 +import 'package:bett_box/common/common.dart';
-+import 'package:bett_box/enum/enum.dart';
++import 'package:bett_box/enum/enum.dart' hide Mode;
 +import 'package:bett_box/widgets/widgets.dart';
 +import 'package:material_ui/material_ui.dart';
 +import 'package:flutter/services.dart';
++import 'package:re_highlight/re_highlight.dart';
++import 'package:re_highlight/styles/atom-one-dark.dart';
++import 'package:re_highlight/styles/atom-one-light.dart';
 +
 +class ViewerPage extends StatefulWidget {
 +  final String title;
 +  final String content;
++  final Mode? highlightMode;
 +
-+  const ViewerPage({super.key, required this.title, required this.content});
++  const ViewerPage({
++    super.key,
++    required this.title,
++    required this.content,
++    this.highlightMode,
++  });
 +
 +  @override
 +  State<ViewerPage> createState() => _ViewerPageState();
@@ -32,6 +41,10 @@ index 00000000..fa949c90
 +
 +class _ViewerPageState extends State<ViewerPage> {
 +  final ScrollController _controller = ScrollController();
++  final Highlight _highlight = Highlight();
++
++  TextSpan? _span;
++  Brightness? _spanBrightness;
 +
 +  @override
 +  void dispose() {
@@ -45,11 +58,39 @@ index 00000000..fa949c90
 +    context.showNotifier(appLocalizations.copySuccess);
 +  }
 +
++  TextSpan? _buildSpan(Brightness brightness, TextStyle base) {
++    final mode = widget.highlightMode;
++    if (mode == null) return null;
++    try {
++      // getLanguage looks up by lowercase name, so the id must be lowercase
++      final id = (mode.name ?? mode.hashCode.toString()).toLowerCase();
++      _highlight.registerLanguage(id, mode);
++      final theme = brightness == Brightness.dark
++          ? atomOneDarkTheme
++          : atomOneLightTheme;
++      final renderer = TextSpanRenderer(base, theme);
++      _highlight
++          .highlight(code: widget.content, language: id)
++          .render(renderer);
++      return renderer.span;
++    } catch (_) {
++      return null;
++    }
++  }
++
 +  @override
 +  Widget build(BuildContext context) {
 +    final style = context.textTheme.bodyMedium?.copyWith(
 +      fontFamily: FontFamily.jetBrainsMono.value,
 +    );
++    if (widget.highlightMode != null) {
++      final brightness = context.colorScheme.brightness;
++      if (_span == null || _spanBrightness != brightness) {
++        _spanBrightness = brightness;
++        _span = _buildSpan(brightness, style!);
++      }
++    }
++    final span = _span;
 +    return CommonScaffold(
 +      scrollEdgeFade: false,
 +      appBar: AppBar(
@@ -67,7 +108,9 @@ index 00000000..fa949c90
 +        child: SingleChildScrollView(
 +          controller: _controller,
 +          padding: const EdgeInsets.all(16),
-+          child: SelectableText(widget.content, style: style),
++          child: span != null
++              ? SelectableText.rich(span, style: style)
++              : SelectableText(widget.content, style: style),
 +        ),
 +      ),
 +    );
@@ -143,7 +186,7 @@ index 95e13bb3..3637d4e3 100644
                    leading: const Icon(Icons.content_paste),
                    title: Text(appLocalizations.clipboard),
 diff --git a/lib/views/profiles/edit_profile.dart b/lib/views/profiles/edit_profile.dart
-index 396c4952..cad23157 100644
+index 396c4952..9a1e3c96 100644
 --- a/lib/views/profiles/edit_profile.dart
 +++ b/lib/views/profiles/edit_profile.dart
 @@ -1,12 +1,11 @@
@@ -197,12 +240,13 @@ index 396c4952..cad23157 100644
      if (rawText == null) {
        final profilePath = await appPath.getProfilePath(widget.profile.id);
        final file = File(profilePath);
-@@ -214,38 +185,8 @@ class EditProfileViewState extends State<EditProfileView> {
+@@ -214,38 +185,12 @@ class EditProfileViewState extends State<EditProfileView> {
      }
      if (!mounted) return;
      final title = widget.profile.label ?? widget.profile.id;
 -    final editorPage = EditorPage(
--      title: title,
++    final viewerPage = ViewerPage(
+       title: title,
 -      content: rawText!,
 -      onSave: (context, _, content) {
 -        _handleSaveEdit(context, content);
@@ -232,13 +276,14 @@ index 396c4952..cad23157 100644
 -    fileInfoNotifier.value = fileInfoNotifier.value?.copyWith(
 -      size: fileData?.length ?? 0,
 -      lastModified: DateTime.now(),
--    );
-+    final viewerPage = ViewerPage(title: title, content: rawText ?? '');
++      content: rawText ?? '',
++      highlightMode: editorYamlMode,
+     );
 +    await BaseNavigator.push<String>(context, viewerPage);
    }
  
    Future<void> _uploadProfileFile() async {
-@@ -420,9 +361,9 @@ class EditProfileViewState extends State<EditProfileView> {
+@@ -420,9 +365,9 @@ class EditProfileViewState extends State<EditProfileView> {
                                  spacing: 12,
                                  children: [
                                    CommonChip(
@@ -252,7 +297,7 @@ index 396c4952..cad23157 100644
                                    CommonChip(
                                      avatar: const Icon(Icons.upload),
 diff --git a/lib/views/proxies/providers.dart b/lib/views/proxies/providers.dart
-index 445a9ed4..ff185f92 100644
+index 445a9ed4..7abfb37f 100644
 --- a/lib/views/proxies/providers.dart
 +++ b/lib/views/proxies/providers.dart
 @@ -6,7 +6,7 @@ import 'package:bett_box/common/common.dart';
@@ -264,7 +309,7 @@ index 445a9ed4..ff185f92 100644
  import 'package:bett_box/providers/app.dart';
  import 'package:bett_box/state.dart';
  import 'package:bett_box/widgets/widgets.dart';
-@@ -279,11 +279,9 @@ class ProviderItem extends StatelessWidget {
+@@ -279,11 +279,10 @@ class ProviderItem extends StatelessWidget {
          if (!context.mounted) return;
          BaseNavigator.push(
            context,
@@ -274,18 +319,20 @@ index 445a9ed4..ff185f92 100644
              content: content,
 -            readOnly: true,
 -            simple: provider.type == 'Rule',
++            highlightMode: provider.type == 'Rule' ? editorYamlMode : null,
            ),
            maintainState: false,
          );
 diff --git a/lib/widgets/widgets.dart b/lib/widgets/widgets.dart
-index 5ae4a1f5..26c963ed 100644
+index 5ae4a1f5..372b40ba 100644
 --- a/lib/widgets/widgets.dart
 +++ b/lib/widgets/widgets.dart
-@@ -38,4 +38,3 @@ export 'notification.dart';
+@@ -38,4 +38,4 @@ export 'notification.dart';
  export 'ip_detail_dialog.dart';
  export 'qr_code.dart';
  export 'delay_animation_dialog.dart';
 -export 'code_editor.dart';
++export 'editor_modes.dart';
 diff --git a/plugins/code_forge/pubspec.lock b/plugins/code_forge/pubspec.lock
 index 4f56aa43..27ef05fc 100644
 --- a/plugins/code_forge/pubspec.lock
@@ -318,7 +365,7 @@ index bac7ce2c..488b623c 100644
    material_ui: ^1.6.0
  
 diff --git a/pubspec.lock b/pubspec.lock
-index b8277a22..53daf237 100644
+index b8277a22..067c61b2 100644
 --- a/pubspec.lock
 +++ b/pubspec.lock
 @@ -6,7 +6,7 @@ packages:
@@ -1530,7 +1577,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.6.0"
    quiver:
-@@ -1104,39 +1104,31 @@ packages:
+@@ -1104,7 +1104,7 @@ packages:
      description:
        name: quiver
        sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
@@ -1538,16 +1585,17 @@ index b8277a22..53daf237 100644
 +      url: "https://pub.flutter-io.cn"
      source: hosted
      version: "3.2.2"
--  re_highlight:
--    dependency: "direct main"
--    description:
--      name: re_highlight
--      sha256: "6c4ac3f76f939fb7ca9df013df98526634e17d8f7460e028bd23a035870024f2"
+   re_highlight:
+@@ -1112,7 +1112,7 @@ packages:
+     description:
+       name: re_highlight
+       sha256: "6c4ac3f76f939fb7ca9df013df98526634e17d8f7460e028bd23a035870024f2"
 -      url: "https://pub.dev"
--    source: hosted
--    version: "0.0.3"
++      url: "https://pub.flutter-io.cn"
+     source: hosted
+     version: "0.0.3"
    record_use:
-     dependency: transitive
+@@ -1120,23 +1120,23 @@ packages:
      description:
        name: record_use
        sha256: "1cb8564af8d43b464294411db9217f5ec04891c6f22ee2c32d73ae05e88a6bd2"
@@ -1576,7 +1624,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.4.3"
    riverpod_analyzer_utils:
-@@ -1144,7 +1136,7 @@ packages:
+@@ -1144,7 +1144,7 @@ packages:
      description:
        name: riverpod_analyzer_utils
        sha256: bb13cb3985815840cc103eda1027158358c5fdc00f308fc6f76574d0594107af
@@ -1585,7 +1633,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.0.0-dev.12"
    riverpod_annotation:
-@@ -1152,7 +1144,7 @@ packages:
+@@ -1152,7 +1152,7 @@ packages:
      description:
        name: riverpod_annotation
        sha256: "322e56ad198928ef26ba240f85421bfff2493bd65665c887b1299e6386b6206d"
@@ -1594,7 +1642,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "4.0.7"
    riverpod_generator:
-@@ -1160,7 +1152,7 @@ packages:
+@@ -1160,7 +1160,7 @@ packages:
      description:
        name: riverpod_generator
        sha256: c94dcb8b60ff4805d2bb8cacca969c48237bcb563e2ab0b5afb50204470c7636
@@ -1603,7 +1651,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "4.0.9"
    screen_retriever:
-@@ -1168,7 +1160,7 @@ packages:
+@@ -1168,7 +1168,7 @@ packages:
      description:
        name: screen_retriever
        sha256: ace919117a7520c13a50a6259e60c4a0d4cbe98809468792a91b5c5adada2aa6
@@ -1612,7 +1660,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.2.2"
    screen_retriever_linux:
-@@ -1176,7 +1168,7 @@ packages:
+@@ -1176,7 +1176,7 @@ packages:
      description:
        name: screen_retriever_linux
        sha256: "7b52006a5ceae1f3d5af7f77188c3290d6e7d8ded16d99809bea84967c65c257"
@@ -1621,7 +1669,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.2.2"
    screen_retriever_macos:
-@@ -1184,7 +1176,7 @@ packages:
+@@ -1184,7 +1184,7 @@ packages:
      description:
        name: screen_retriever_macos
        sha256: a1489b99cce597c45a54b9aae1cd94c8d4705353b7e0bb2457a6e4de44e0ad8a
@@ -1630,7 +1678,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.2.2"
    screen_retriever_platform_interface:
-@@ -1192,7 +1184,7 @@ packages:
+@@ -1192,7 +1192,7 @@ packages:
      description:
        name: screen_retriever_platform_interface
        sha256: "94a5535277510a63184ca178ce12a1449bc0b38618879aa1c18bf57369c5064a"
@@ -1639,7 +1687,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.2.2"
    screen_retriever_windows:
-@@ -1200,7 +1192,7 @@ packages:
+@@ -1200,7 +1200,7 @@ packages:
      description:
        name: screen_retriever_windows
        sha256: dafc6922b0bfbf1d48cf3ccbf519b4fff47bdcb820da1728ea6db675fecc9324
@@ -1648,7 +1696,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.2.2"
    shared_preferences:
-@@ -1208,7 +1200,7 @@ packages:
+@@ -1208,7 +1208,7 @@ packages:
      description:
        name: shared_preferences
        sha256: "1e85e0dccf5b4a016077fea7dfbb4a7cb39c759ac1596fcf60c06deadb7da91f"
@@ -1657,7 +1705,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.5.6"
    shared_preferences_android:
-@@ -1216,7 +1208,7 @@ packages:
+@@ -1216,7 +1216,7 @@ packages:
      description:
        name: shared_preferences_android
        sha256: "1e12aafe408aa50da80edfd679a2a6bf63ba7ab37c7fa98286da459a757b3399"
@@ -1666,7 +1714,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.4.28"
    shared_preferences_foundation:
-@@ -1224,7 +1216,7 @@ packages:
+@@ -1224,7 +1224,7 @@ packages:
      description:
        name: shared_preferences_foundation
        sha256: "2ec3934efa51e46117f23031cc141b8fc878e8525b94ec1ea4f7f586cf1b47ea"
@@ -1675,7 +1723,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.5.7"
    shared_preferences_linux:
-@@ -1232,7 +1224,7 @@ packages:
+@@ -1232,7 +1232,7 @@ packages:
      description:
        name: shared_preferences_linux
        sha256: "580abfd40f415611503cae30adf626e6656dfb2f0cee8f465ece7b6defb40f2f"
@@ -1684,7 +1732,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.4.1"
    shared_preferences_platform_interface:
-@@ -1240,7 +1232,7 @@ packages:
+@@ -1240,7 +1240,7 @@ packages:
      description:
        name: shared_preferences_platform_interface
        sha256: "649dc798a33931919ea356c4305c2d1f81619ea6e92244070b520187b5140ef9"
@@ -1693,7 +1741,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.4.2"
    shared_preferences_web:
-@@ -1248,7 +1240,7 @@ packages:
+@@ -1248,7 +1248,7 @@ packages:
      description:
        name: shared_preferences_web
        sha256: c49bd060261c9a3f0ff445892695d6212ff603ef3115edbb448509d407600019
@@ -1702,7 +1750,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.4.3"
    shared_preferences_windows:
-@@ -1256,7 +1248,7 @@ packages:
+@@ -1256,7 +1256,7 @@ packages:
      description:
        name: shared_preferences_windows
        sha256: "94ef0f72b2d71bc3e700e025db3710911bd51a71cefb65cc609dd0d9a982e3c1"
@@ -1711,7 +1759,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.4.1"
    shelf:
-@@ -1264,7 +1256,7 @@ packages:
+@@ -1264,7 +1264,7 @@ packages:
      description:
        name: shelf
        sha256: e7dd780a7ffb623c57850b33f43309312fc863fb6aa3d276a754bb299839ef12
@@ -1720,7 +1768,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.4.2"
    shelf_web_socket:
-@@ -1272,7 +1264,7 @@ packages:
+@@ -1272,7 +1272,7 @@ packages:
      description:
        name: shelf_web_socket
        sha256: "3632775c8e90d6c9712f883e633716432a27758216dfb61bd86a8321c0580925"
@@ -1729,7 +1777,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.0.0"
    shortid:
-@@ -1280,7 +1272,7 @@ packages:
+@@ -1280,7 +1280,7 @@ packages:
      description:
        name: shortid
        sha256: d0b40e3dbb50497dad107e19c54ca7de0d1a274eb9b4404991e443dadb9ebedb
@@ -1738,7 +1786,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.1.2"
    sky_engine:
-@@ -1292,16 +1284,16 @@ packages:
+@@ -1292,16 +1292,16 @@ packages:
      dependency: transitive
      description:
        name: source_gen
@@ -1759,7 +1807,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.3.13"
    source_span:
-@@ -1309,7 +1301,7 @@ packages:
+@@ -1309,7 +1309,7 @@ packages:
      description:
        name: source_span
        sha256: "56a02f1f4cd1a2d96303c0144c93bd6d909eea6bee6bf5a0e0b685edbd4c47ab"
@@ -1768,7 +1816,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.10.2"
    stack_trace:
-@@ -1317,7 +1309,7 @@ packages:
+@@ -1317,7 +1317,7 @@ packages:
      description:
        name: stack_trace
        sha256: "277654b3034d17ac6f9f1cb5595db011b1d5d41e8806866db28e0abaa101c490"
@@ -1777,7 +1825,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.12.2"
    state_notifier:
-@@ -1325,7 +1317,7 @@ packages:
+@@ -1325,7 +1325,7 @@ packages:
      description:
        name: state_notifier
        sha256: b8677376aa54f2d7c58280d5a007f9e8774f1968d1fb1c096adcb4792fba29bb
@@ -1786,7 +1834,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.0.0"
    stream_channel:
-@@ -1333,7 +1325,7 @@ packages:
+@@ -1333,7 +1333,7 @@ packages:
      description:
        name: stream_channel
        sha256: "969e04c80b8bcdf826f8f16579c7b14d780458bd97f56d107d3950fdbeef059d"
@@ -1795,7 +1843,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.1.4"
    stream_transform:
-@@ -1341,7 +1333,7 @@ packages:
+@@ -1341,7 +1341,7 @@ packages:
      description:
        name: stream_transform
        sha256: a00e5f18bffc764f923e7dec1038527f7fe7a1791361a7117f0358193f13d53a
@@ -1804,7 +1852,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.1.2"
    string_scanner:
-@@ -1349,23 +1341,23 @@ packages:
+@@ -1349,23 +1349,23 @@ packages:
      description:
        name: string_scanner
        sha256: "921cd31725b72fe181906c6a94d987c78e3b98c2e205b397ea399d4054872b43"
@@ -1833,7 +1881,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.2.2"
    test_api:
-@@ -1373,7 +1365,7 @@ packages:
+@@ -1373,7 +1373,7 @@ packages:
      description:
        name: test_api
        sha256: "2a122cbe059f8b610d3a5415f42e255b6c17b1f21eee1d960f31080237fb4f11"
@@ -1842,7 +1890,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.7.12"
    tray_manager:
-@@ -1388,7 +1380,7 @@ packages:
+@@ -1388,7 +1388,7 @@ packages:
      description:
        name: typed_data
        sha256: f9049c039ebfeb4cf7a7104a675823cd72dba8297f264b6637062516699fa006
@@ -1851,7 +1899,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.4.0"
    uni_platform:
-@@ -1396,7 +1388,7 @@ packages:
+@@ -1396,7 +1396,7 @@ packages:
      description:
        name: uni_platform
        sha256: e02213a7ee5352212412ca026afd41d269eb00d982faa552f419ffc2debfad84
@@ -1860,7 +1908,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.1.3"
    url_launcher:
-@@ -1404,7 +1396,7 @@ packages:
+@@ -1404,7 +1404,7 @@ packages:
      description:
        name: url_launcher
        sha256: e8cc955c97e06df9879140a1fe301f3d493f01b7c62dec7f46834be31d7e9fda
@@ -1869,7 +1917,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "6.3.3"
    url_launcher_android:
-@@ -1412,7 +1404,7 @@ packages:
+@@ -1412,7 +1412,7 @@ packages:
      description:
        name: url_launcher_android
        sha256: "611e87fb320b70d1dd721dc46af89c98aceccea9b31fde49e084591414e0c610"
@@ -1878,7 +1926,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "6.3.33"
    url_launcher_ios:
-@@ -1420,7 +1412,7 @@ packages:
+@@ -1420,7 +1420,7 @@ packages:
      description:
        name: url_launcher_ios
        sha256: "8faa1aab294f1ab4040b43660c887b0418d5fa4f0cffef76a484e6aa1092eb4a"
@@ -1887,7 +1935,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "6.4.2"
    url_launcher_linux:
-@@ -1428,7 +1420,7 @@ packages:
+@@ -1428,7 +1428,7 @@ packages:
      description:
        name: url_launcher_linux
        sha256: "10f86fef4c2c43563fa6c211ff9cf757adf4d3ab762c56bd430664a947d70cd0"
@@ -1896,7 +1944,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.2.3"
    url_launcher_macos:
-@@ -1436,7 +1428,7 @@ packages:
+@@ -1436,7 +1436,7 @@ packages:
      description:
        name: url_launcher_macos
        sha256: "5e835a3b869c2d70325349c81c5a45c28e20791265b67b2669da6b08c5cd5201"
@@ -1905,7 +1953,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.2.6"
    url_launcher_platform_interface:
-@@ -1444,7 +1436,7 @@ packages:
+@@ -1444,7 +1444,7 @@ packages:
      description:
        name: url_launcher_platform_interface
        sha256: "552f8a1e663569be95a8190206a38187b531910283c3e982193e4f2733f01029"
@@ -1914,7 +1962,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.3.2"
    url_launcher_web:
-@@ -1452,7 +1444,7 @@ packages:
+@@ -1452,7 +1452,7 @@ packages:
      description:
        name: url_launcher_web
        sha256: "85c81589622fbc87c1c683aaea164d3604a7777495a79d91e39ffcdec39ddb34"
@@ -1923,7 +1971,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.4.3"
    url_launcher_windows:
-@@ -1460,7 +1452,7 @@ packages:
+@@ -1460,7 +1460,7 @@ packages:
      description:
        name: url_launcher_windows
        sha256: "6c5ad3f22cd4c38e089b81963b3cd7bb83b111b2df5dce008bb066162f42e429"
@@ -1932,7 +1980,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.1.6"
    uuid:
-@@ -1468,7 +1460,7 @@ packages:
+@@ -1468,7 +1468,7 @@ packages:
      description:
        name: uuid
        sha256: "9b129329f58692f6e6578329498a8fe9fbe98f090beb764ffbb8ee2eadd01dcd"
@@ -1941,7 +1989,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "4.6.0"
    vclibs:
-@@ -1476,7 +1468,7 @@ packages:
+@@ -1476,7 +1476,7 @@ packages:
      description:
        name: vclibs
        sha256: "5dc5de54fabe27ad276898b7c04a56a4a3dd9834e479b9db5e04a9f3eb36790e"
@@ -1950,7 +1998,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.1.3"
    vector_graphics:
-@@ -1484,7 +1476,7 @@ packages:
+@@ -1484,7 +1484,7 @@ packages:
      description:
        name: vector_graphics
        sha256: "9d0e3b9cb16542ad660daee871e726a10d13a93b7b5391677c3160e8f5e83935"
@@ -1959,7 +2007,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.2.3"
    vector_graphics_codec:
-@@ -1492,47 +1484,47 @@ packages:
+@@ -1492,47 +1492,47 @@ packages:
      description:
        name: vector_graphics_codec
        sha256: "99fd9fbd34d9f9a32efd7b6a6aae14125d8237b10403b422a6a6dfeac2806146"
@@ -2019,7 +2067,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.7.0"
    watcher:
-@@ -1540,7 +1532,7 @@ packages:
+@@ -1540,7 +1540,7 @@ packages:
      description:
        name: watcher
        sha256: "1398c9f081a753f9226febe8900fce8f7d0a67163334e1c94a2438339d79d635"
@@ -2028,7 +2076,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.2.1"
    web:
-@@ -1548,7 +1540,7 @@ packages:
+@@ -1548,7 +1548,7 @@ packages:
      description:
        name: web
        sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
@@ -2037,7 +2085,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.1.1"
    web_socket:
-@@ -1556,7 +1548,7 @@ packages:
+@@ -1556,7 +1556,7 @@ packages:
      description:
        name: web_socket
        sha256: "34d64019aa8e36bf9842ac014bb5d2f5586ca73df5e4d9bf5c936975cae6982c"
@@ -2046,7 +2094,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.0.1"
    web_socket_channel:
-@@ -1564,7 +1556,7 @@ packages:
+@@ -1564,7 +1564,7 @@ packages:
      description:
        name: web_socket_channel
        sha256: d645757fb0f4773d602444000a8131ff5d48c9e47adfe9772652dd1a4f2d45c8
@@ -2055,7 +2103,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.0.3"
    webdav_client:
-@@ -1572,7 +1564,7 @@ packages:
+@@ -1572,7 +1572,7 @@ packages:
      description:
        name: webdav_client
        sha256: "682fffc50b61dc0e8f46717171db03bf9caaa17347be41c0c91e297553bf86b2"
@@ -2064,7 +2112,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.2.2"
    win32:
-@@ -1580,7 +1572,7 @@ packages:
+@@ -1580,7 +1580,7 @@ packages:
      description:
        name: win32
        sha256: a0b93865d5644f11cf6a8c3f6db909f1ec168958b5805f6cc684adea957cd63d
@@ -2073,7 +2121,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "6.4.0"
    win32_registry:
-@@ -1588,7 +1580,7 @@ packages:
+@@ -1588,7 +1588,7 @@ packages:
      description:
        name: win32_registry
        sha256: "73b1d78920a9d6e03f8b4e43e612b87bf3152a0e5c5e5150267762b7c4116904"
@@ -2082,7 +2130,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.0.3"
    window_ext:
-@@ -1603,7 +1595,7 @@ packages:
+@@ -1603,7 +1603,7 @@ packages:
      description:
        name: window_manager
        sha256: "05c231fd7b23d2380f14c5cc10b7b93d60d4fa4a2fb4e0f032de27e44b5560e9"
@@ -2091,7 +2139,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.5.2"
    windows_file_picker:
-@@ -1611,7 +1603,7 @@ packages:
+@@ -1611,7 +1611,7 @@ packages:
      description:
        name: windows_file_picker
        sha256: "18452aa293de3b6961c6d05b0e71b4be7bb90c67635abdd3aa5c4e75dd875072"
@@ -2100,7 +2148,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.0.1"
    xdg_directories:
-@@ -1619,7 +1611,7 @@ packages:
+@@ -1619,7 +1619,7 @@ packages:
      description:
        name: xdg_directories
        sha256: "7a3f37b05d989967cdddcbb571f1ea834867ae2faa29725fd085180e0883aa15"
@@ -2109,7 +2157,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "1.1.0"
    xml:
-@@ -1627,7 +1619,7 @@ packages:
+@@ -1627,7 +1627,7 @@ packages:
      description:
        name: xml
        sha256: "971043b3a0d3da28727e40ed3e0b5d18b742fa5a68665cca88e74b7876d5e025"
@@ -2118,7 +2166,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "6.6.1"
    yaml:
-@@ -1635,7 +1627,7 @@ packages:
+@@ -1635,7 +1635,7 @@ packages:
      description:
        name: yaml
        sha256: f67cdd8e07d3c6329146aaef1ba043542b3134c12489f553ca9a7435d1068aea
@@ -2127,7 +2175,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "3.1.4"
    yaml_edit:
-@@ -1643,7 +1635,7 @@ packages:
+@@ -1643,7 +1643,7 @@ packages:
      description:
        name: yaml_edit
        sha256: "07c9e63ba42519745182b88ca12264a7ba2484d8239958778dfe4d44fe760488"
@@ -2136,7 +2184,7 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "2.2.4"
    zxing2:
-@@ -1651,7 +1643,7 @@ packages:
+@@ -1651,7 +1651,7 @@ packages:
      description:
        name: zxing2
        sha256: "2677c49a3b9ca9457cb1d294fd4bd5041cac6aab8cdb07b216ba4e98945c684f"
@@ -2145,15 +2193,3 @@ index b8277a22..53daf237 100644
      source: hosted
      version: "0.2.4"
  sdks:
-diff --git a/pubspec.yaml b/pubspec.yaml
-index 9d7ea00a..ece7e21c 100644
---- a/pubspec.yaml
-+++ b/pubspec.yaml
-@@ -43,7 +43,6 @@ dependencies:
-   dio: ^5.10.0
-   win32: ^6.0.0
-   ffi: ^2.2.0
--  re_highlight: ^0.0.3
-   archive: ^4.0.7
-   lpinyin: ^2.0.3
-   emoji_regex: ^0.0.5
