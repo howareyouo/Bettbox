@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/external_editor.dart';
+import 'package:bett_box/widgets/editor_modes.dart';
 import 'package:bett_box/widgets/card.dart';
 import 'package:bett_box/widgets/dialog.dart';
 import 'package:bett_box/widgets/fade_box.dart';
@@ -313,7 +314,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                                 icon: Icons.edit,
                                 label: appLocalizations.edit,
                                 onPressed: () {
-                                  _handleToEditor(script: script);
+                                  _handleSimpleEdit(script: script);
                                 },
                               ),
                               PopupMenuItemData(
@@ -368,14 +369,49 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     );
   }
 
-  Future<void> _handleEditorSave(
-    BuildContext _,
-    String title,
+  Future<void> _handleExternalEdit({
+    Script? script,
+    String? initialContent,
+    String? url,
+  }) async {
+    await _editorWatcher.open(
+      ref: ref,
+      script: script,
+      initialContent: initialContent,
+      url: url,
+    );
+  }
+
+  Future<void> _handleSimpleEdit({
+    Script? script,
+    String? initialContent,
+    String? url,
+  }) async {
+    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
+    if (!mounted) return;
+    BaseNavigator.push(
+      context,
+      ViewerPage(
+        title: script?.label ?? appLocalizations.unnamed,
+        content: raw,
+        highlightMode: editorJsMode,
+        editable: true,
+        onSave: (content) => _handleSimpleEditSave(
+          content,
+          script: script,
+          url: url ?? script?.url,
+        ),
+      ),
+      maintainState: false,
+    );
+  }
+
+  Future<void> _handleSimpleEditSave(
     String content, {
     Script? script,
     String? url,
   }) async {
-    var finalLabel = title.trim();
+    var finalLabel = script?.label ?? '';
     if (finalLabel.isEmpty) {
       finalLabel = ref
           .read(scriptStateProvider.notifier)
@@ -404,88 +440,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     );
     if (newScript == null || !mounted) return;
     ref.read(scriptStateProvider.notifier).setScript(newScript);
-    Navigator.of(context).pop();
-  }
-
-  Future<bool> _handleEditorPop(
-    BuildContext _,
-    String title,
-    String content,
-    String raw, {
-    Script? script,
-  }) async {
-    if (content == raw) {
-      return true;
-    }
-    final res = await globalState.showMessage(
-      message: TextSpan(text: appLocalizations.saveChanges),
-    );
-    if (res == true && mounted) {
-      _handleEditorSave(
-        context,
-        title,
-        content,
-        script: script,
-        url: script?.url,
-      );
-    } else {
-      return true;
-    }
-    return false;
-  }
-
-  Future<void> _handleToEditor({
-    Script? script,
-    String? initialContent,
-    String? url,
-    bool delayedFocus = false,
-  }) async {
-    final title = script?.label ?? '';
-    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
-    if (!mounted) return;
-    String? importedUrl = url ?? script?.url;
-    BaseNavigator.push(
-      context,
-      EditorPage(
-        titleEditable: true,
-        title: title,
-        supportRemoteDownload: true,
-        delayedFocus: delayedFocus,
-        onUrlImport: (downloadedUrl) {
-          importedUrl = downloadedUrl;
-        },
-        onSave: (context, title, content) {
-          final scriptToSave = script != null
-              ? script.copyWith(url: importedUrl)
-              : null;
-          _handleEditorSave(
-            context,
-            title,
-            content,
-            script: scriptToSave,
-            url: importedUrl,
-          );
-        },
-        onPop: (context, title, content) {
-          return _handleEditorPop(context, title, content, raw, script: script);
-        },
-        languages: const [Language.javaScript],
-        content: raw,
-      ),
-    );
-  }
-
-  Future<void> _handleExternalEdit({
-    Script? script,
-    String? initialContent,
-    String? url,
-  }) async {
-    await _editorWatcher.open(
-      ref: ref,
-      script: script,
-      initialContent: initialContent,
-      url: url,
-    );
   }
 
   Future<void> _handleImport() async {
@@ -498,7 +452,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
 
     switch (option) {
       case ImportOption.code:
-        _handleToEditor(delayedFocus: true);
+        _handleSimpleEdit(initialContent: scriptTemplate);
       case ImportOption.url:
         await _handleUrlImport();
       case ImportOption.file:
@@ -531,7 +485,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     try {
       final res = await request.getTextResponseForUrl(url);
       if (mounted) {
-        _handleToEditor(initialContent: res.data, url: url);
+        _handleSimpleEdit(initialContent: res.data, url: url);
       }
     } catch (e) {
       globalState.showMessage(
@@ -552,7 +506,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     }
     final content = utf8.decode(bytes);
     if (mounted) {
-      _handleToEditor(initialContent: content);
+      _handleSimpleEdit(initialContent: content);
     }
   }
 

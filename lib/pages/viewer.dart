@@ -12,11 +12,21 @@ class ViewerPage extends StatefulWidget {
   final String content;
   final Mode? highlightMode;
 
+  /// Whether the content can be edited in-app with a plain text field.
+  /// Highlighting only applies to preview mode; editing is unhighlighted.
+  final bool editable;
+
+  /// Called with the edited content when the save action is used. The page
+  /// is not popped automatically; pop after persisting if desired.
+  final ValueChanged<String>? onSave;
+
   const ViewerPage({
     super.key,
     required this.title,
     required this.content,
     this.highlightMode,
+    this.editable = false,
+    this.onSave,
   });
 
   @override
@@ -26,12 +36,68 @@ class ViewerPage extends StatefulWidget {
 class _ViewerPageState extends State<ViewerPage> {
   final ScrollController _controller = ScrollController();
   final Highlight _highlight = Highlight();
+  final TextEditingController _editController = TextEditingController();
+  final FocusNode _editFocus = FocusNode();
+
+  bool _editing = false;
+
+  late String _content = widget.content;
 
   TextSpan? _span;
   Brightness? _spanBrightness;
 
+  @override
+  void initState() {
+    super.initState();
+    _editController.text = widget.content;
+  }
+
+  @override
+  void didUpdateWidget(covariant ViewerPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content != widget.content ||
+        oldWidget.highlightMode != widget.highlightMode) {
+      _span = null;
+      _spanBrightness = null;
+      if (!_editing) {
+        _editController.text = widget.content;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _editController.dispose();
+    _editFocus.dispose();
+    super.dispose();
+  }
+
+  void _handleToggleEdit() {
+    setState(() {
+      if (!_editing) {
+        _editController.text = widget.content;
+      }
+      _editing = !_editing;
+    });
+    if (_editing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _editFocus.requestFocus();
+        }
+      });
+    }
+  }
+
+  Future<void> _handleSave() async {
+    _content = _editController.text;
+    widget.onSave?.call(_content);
+    if (!mounted) return;
+    setState(() => _editing = false);
+  }
+
   Future<void> _handleCopyAll() async {
-    await Clipboard.setData(ClipboardData(text: widget.content));
+    await Clipboard.setData(ClipboardData(text: _content));
     if (!mounted) return;
     context.showNotifier(appLocalizations.copySuccess);
   }
@@ -48,7 +114,7 @@ class _ViewerPageState extends State<ViewerPage> {
           : atomOneLightTheme;
       final renderer = TextSpanRenderer(base, theme);
       _highlight
-          .highlight(code: widget.content, language: id)
+          .highlight(code: _content, language: id)
           .render(renderer);
       return renderer.span;
     } catch (_) {
@@ -71,23 +137,7 @@ class _ViewerPageState extends State<ViewerPage> {
     if (span != null) {
       return SelectableText.rich(span, style: base);
     }
-    return SelectableText(widget.content, style: base);
-  }
-
-  @override
-  void didUpdateWidget(covariant ViewerPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.content != widget.content ||
-        oldWidget.highlightMode != widget.highlightMode) {
-      _span = null;
-      _spanBrightness = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+    return SelectableText(_content, style: base);
   }
 
   @override
@@ -97,20 +147,64 @@ class _ViewerPageState extends State<ViewerPage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(
-            onPressed: _handleCopyAll,
-            tooltip: appLocalizations.copy,
-            icon: const Icon(Icons.copy_all_rounded),
-          ),
+          if (_editing) ...[
+            IconButton(
+              onPressed: _handleSave,
+              tooltip: appLocalizations.save,
+              icon: const Icon(Icons.save_outlined),
+            ),
+            IconButton(
+              onPressed: _handleToggleEdit,
+              tooltip: appLocalizations.cancel,
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ] else ...[
+            IconButton(
+              onPressed: _handleCopyAll,
+              tooltip: appLocalizations.copy,
+              icon: const Icon(Icons.copy_all_rounded),
+            ),
+            if (widget.editable && widget.onSave != null)
+              IconButton(
+                onPressed: _handleToggleEdit,
+                tooltip: appLocalizations.edit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+          ],
         ],
       ),
-      body: CommonScrollBar(
-        controller: _controller,
-        child: SingleChildScrollView(
-          controller: _controller,
-          padding: const EdgeInsets.all(16),
-          child: _buildContent(context),
+      body: _editing ? _buildEditor(context) : _buildViewer(context),
+    );
+  }
+
+  Widget _buildEditor(BuildContext context) {
+    final base = context.textTheme.bodyMedium?.copyWith(
+      fontFamily: FontFamily.jetBrainsMono.value,
+    );
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        controller: _editController,
+        focusNode: _editFocus,
+        style: base,
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
         ),
+      ),
+    );
+  }
+
+  Widget _buildViewer(BuildContext context) {
+    return CommonScrollBar(
+      controller: _controller,
+      child: SingleChildScrollView(
+        controller: _controller,
+        padding: const EdgeInsets.all(16),
+        child: _buildContent(context),
       ),
     );
   }
