@@ -1,0 +1,153 @@
+diff --git a/lib/common/external_control.dart b/lib/common/external_control.dart
+index d68d101f..ea44fd6a 100644
+--- a/lib/common/external_control.dart
++++ b/lib/common/external_control.dart
+@@ -3,6 +3,7 @@ import 'dart:convert';
+ import 'dart:io';
+ 
+ import 'package:bett_box/common/common.dart';
++import 'package:bett_box/common/url_import.dart';
+ import 'package:bett_box/state.dart';
+ import 'package:bett_box/utils/platform_check.dart';
+ 
+@@ -163,6 +164,7 @@ class ExternalControl {
+   }
+ 
+   static void _handleCommand(String command) {
++    if (UrlImport.tryHandle(command)) return;
+     switch (command.trim()) {
+       case 'exit':
+         globalState.appController.handleExit();
+diff --git a/lib/common/url_import.dart b/lib/common/url_import.dart
+new file mode 100644
+index 00000000..793e406b
+--- /dev/null
++++ b/lib/common/url_import.dart
+@@ -0,0 +1,104 @@
++import 'dart:async';
++
++import 'package:bett_box/common/common.dart';
++import 'package:bett_box/common/external_control.dart';
++import 'package:bett_box/state.dart';
++import 'package:material_ui/material_ui.dart';
++
++/// 把浏览器 / 注册表拉起的 scheme URL 转交给已运行实例。
++///
++/// Windows 上点击 `clash://` 一定是新起一个进程并带上 URL 参数，
++/// 新进程在启动时通过 [ExternalControl] 把 URL 发给已运行实例，然后立即退出。
++class UrlImport {
++  static const _schemes = ['clash', 'clashmeta', 'flclash', 'bettbox'];
++
++  static const _commandPrefix = 'url-import ';
++
++  /// 启动时调用。发现 scheme URL 即转交给已运行实例，
++  /// 返回 true 表示已转交，调用方应直接结束进程。
++  static Future<bool> interceptStartup(List<String> args) async {
++    if (!system.isDesktop) return false;
++    final uri = _findLink(args);
++    if (uri == null) return false;
++    for (var i = 0; i < 5; i++) {
++      try {
++        await ExternalControl.sendCommand('$_commandPrefix$uri');
++        commonPrint.log('UrlImport: forwarded $uri to running instance');
++        return true;
++      } catch (e) {
++        if (i == 4) {
++          commonPrint.warn(
++            'UrlImport: forward failed, start a new instance: $e',
++          );
++          return false;
++        }
++        await Future.delayed(const Duration(milliseconds: 200));
++      }
++    }
++    return false;
++  }
++
++  /// [ExternalControl] 收到命令时先交给这里处理。
++  /// 返回 true 表示命令由本功能消费，不再交给下游。
++  static bool tryHandle(String command) {
++    if (!command.startsWith(_commandPrefix)) return false;
++    final raw = command.substring(_commandPrefix.length).trim();
++    final url = _urlOfLink(raw);
++    if (url == null) {
++      commonPrint.warn('UrlImport: unsupported link: $raw');
++      return true;
++    }
++    unawaited(_import(url));
++    return true;
++  }
++
++  static Uri? _findLink(List<String> args) {
++    for (final arg in args) {
++      final uri = Uri.tryParse(arg.trim());
++      if (uri == null || !_schemes.contains(uri.scheme)) continue;
++      if (uri.host.isNotEmpty) return uri;
++    }
++    return null;
++  }
++
++  static String? _urlOfLink(String raw) {
++    final uri = Uri.tryParse(raw);
++    if (uri == null || !_schemes.contains(uri.scheme)) return null;
++    if (uri.host != 'install-config') return null;
++    final url = uri.queryParameters['url'];
++    if (url == null || url.isEmpty) return null;
++    return url;
++  }
++
++  static Future<void> _import(String url) async {
++    try {
++      final appController = globalState.appController;
++      final colorScheme = Theme.of(appController.context).colorScheme;
++      final currentWindow = window;
++      if (currentWindow != null) {
++        await currentWindow.show();
++      }
++      final res = await globalState.showMessage(
++        title: appLocalizations.add,
++        message: TextSpan(
++          children: [
++            TextSpan(text: appLocalizations.doYouWantToPass),
++            TextSpan(
++              text: ' $url ',
++              style: TextStyle(
++                color: colorScheme.primary,
++                decoration: TextDecoration.underline,
++                decorationColor: colorScheme.primary,
++              ),
++            ),
++            TextSpan(text: appLocalizations.create),
++          ],
++        ),
++      );
++      if (res != true) return;
++      await appController.addProfileFormURL(url);
++    } catch (e) {
++      commonPrint.error('UrlImport: import failed: $e');
++    }
++  }
++}
+diff --git a/lib/main.dart b/lib/main.dart
+index 3a3d8a7e..891c60b5 100644
+--- a/lib/main.dart
++++ b/lib/main.dart
+@@ -20,6 +20,7 @@ import 'clash/lib.dart';
+ import 'common/common.dart';
+ import 'common/external_control.dart';
+ import 'common/network_matcher.dart';
++import 'common/url_import.dart';
+ import 'models/models.dart';
+ 
+ ReceivePort? _serviceReceiverPort;
+@@ -29,6 +30,10 @@ Future<void> main(List<String> args) async {
+   globalState.isService = false;
+   WidgetsFlutterBinding.ensureInitialized();
+ 
++  if (await UrlImport.interceptStartup(args)) {
++    return;
++  }
++
+   if (system.isDesktop &&
+       (args.contains('--exit') || args.contains('--restart'))) {
+     final command = args.contains('--exit') ? 'exit' : 'restart';
