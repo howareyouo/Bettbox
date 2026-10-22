@@ -127,9 +127,15 @@ windows_only/
 - **`external_editor.patch`**：Set Editor 功能（外部编辑器选择/启动/文件监听自动同步）。
   涉及 l10n（en/zh_CN）、config 模型、scripts 页面等 12 个文件（清单 `external_editor`）。
 - **`profile_hover.patch`**：profile 项悬停效果（清单 `profile_hover`）。
-- **scan 引用摘除（已并入 main 代码）**：scan.dart 的引用（`pages.dart` export、
-  `add_profile.dart` 的 import + QR 分支）已由 profile viewer 迁移时在 main 自身删净，
-  无需再保留裁剪补丁（曾用 strip_scan_page.patch 手工摘除，现已删除）。
+- **`profile_drag.patch`**：profiles 页就地拖动排序（清单 `profile_drag`，组件
+  `lib/widgets/drag_reorder_grid.dart`；profiles.dart 的接入改动并入 `profile_hover` 补丁）。
+- **`strip_iperf_scan.patch`（手工补丁）**：上游 iperf 工具页（`lib/pages/toolbox/iperf.dart`）
+  引用了移动端专属的 `ScanPage`，而 windows-only 分支按 §3.3 删除了 `lib/pages/scan.dart`，
+  该补丁在 windows-only 上摘除 iperf 的 scan 引用（import、`_scan()`、`_canScan`、
+  `onScan` 接线，均改后 `onScan: null`，按钮在 Windows 上本就不显示）。
+  main 自身不修改 iperf.dart（保留 ScanPage 引用，移动端功能完整）。
+  （早期 scan.dart 引用摘除曾用 strip_scan_page.patch 手工摘除，后并入 main 代码而删除；
+  上游新增 iperf 页后重新引入本补丁。）
 
 ---
 
@@ -248,7 +254,7 @@ git rebase upstream/main        # 解决冲突（生成文件冲突直接 checko
 | 补丁基线 | auto_export 按 `upstream/main..HEAD` 导出，已验证可应用于 `8ce0b28` |
 | windows-only 分支 | 已存在（CI 生成，force-push 维护，`git push --force origin windows-only-rebuild:windows-only`） |
 | 自有功能 | 外部编辑器（external_editor.patch）、悬停预览（profile_hover.patch）——均为清单自动导出 |
-| 手工补丁 | 无（scan 引用已由 main 自身代码移除；strip_scan_page.patch 已删） |
+| 手工补丁 | `strip_iperf_scan.patch`（摘除 windows-only 上 iperf.dart 对已删 scan.dart 的引用，见 §3.5） |
 | 自动导出 | `windows_only.yml`（push/cron/手动触发，`sync` job）按 `own_files.txt` 清单导出补丁并提交回 main |
 
 本地 main 提交链（自上而下）：
