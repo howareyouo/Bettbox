@@ -61,7 +61,7 @@ index 72962749..01803721 100644
        type: CommonCardType.filled,
        onPressed: onToggle,
 diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
-index 4c2a1a3e..0e7dd511 100644
+index 4c2a1a3e..a06fa7cb 100644
 --- a/lib/widgets/card.dart
 +++ b/lib/widgets/card.dart
 @@ -77,7 +77,43 @@ class InfoHeader extends StatelessWidget {
@@ -108,11 +108,12 @@ index 4c2a1a3e..0e7dd511 100644
    const CommonCard({
      super.key,
      bool? isSelected,
-@@ -89,12 +125,13 @@ class CommonCard extends StatelessWidget {
+@@ -89,12 +125,17 @@ class CommonCard extends StatelessWidget {
      required this.child,
      this.padding,
      this.enterAnimated = false,
 +    this.isDragFeedback = false,
++    this.elevated = true,
      this.info,
      this.clipBehavior = Clip.antiAlias,
 -    this.elevated = true,
@@ -120,10 +121,13 @@ index 4c2a1a3e..0e7dd511 100644
  
    final bool enterAnimated;
 +  final bool isDragFeedback;
++
++  /// 兼容上游签名；classic_style 扁平化样式下不产生立体效果。
++  final bool elevated;
    final bool isSelected;
    final void Function()? onPressed;
    final void Function()? onLongPress;
-@@ -105,7 +142,6 @@ class CommonCard extends StatelessWidget {
+@@ -105,7 +146,6 @@ class CommonCard extends StatelessWidget {
    final CommonCardType type;
    final double? radius;
    final Clip clipBehavior;
@@ -131,7 +135,7 @@ index 4c2a1a3e..0e7dd511 100644
  
    // final WidgetStateProperty<Color?>? backgroundColor;
    // final WidgetStateProperty<BorderSide?>? borderSide;
-@@ -127,9 +163,7 @@ class CommonCard extends StatelessWidget {
+@@ -127,9 +167,7 @@ class CommonCard extends StatelessWidget {
      return BorderSide(
        color: isSelected
            ? colorScheme.primary
@@ -142,7 +146,7 @@ index 4c2a1a3e..0e7dd511 100644
        strokeAlign: BorderSide.strokeAlignInside,
      );
    }
-@@ -153,7 +187,7 @@ class CommonCard extends StatelessWidget {
+@@ -153,7 +191,7 @@ class CommonCard extends StatelessWidget {
  
    @override
    Widget build(BuildContext context) {
@@ -151,7 +155,7 @@ index 4c2a1a3e..0e7dd511 100644
      var childWidget = child;
  
      if (info != null) {
-@@ -177,11 +211,10 @@ class CommonCard extends StatelessWidget {
+@@ -177,11 +215,10 @@ class CommonCard extends StatelessWidget {
      }
  
      final isInteractive = onPressed != null || onLongPress != null;
@@ -165,7 +169,7 @@ index 4c2a1a3e..0e7dd511 100644
        onLongPress: onLongPress,
        clipBehavior: clipBehavior,
        style: ButtonStyle(
-@@ -202,25 +235,19 @@ class CommonCard extends StatelessWidget {
+@@ -202,25 +239,19 @@ class CommonCard extends StatelessWidget {
        child: childWidget,
      );
  
@@ -228,10 +232,10 @@ index c9898496..ab34ba32 100644
          child: child,
        ),
 diff --git a/lib/widgets/input.dart b/lib/widgets/input.dart
-index 7c5a6053..fcb79ecf 100644
+index 7c5a6053..eab44642 100644
 --- a/lib/widgets/input.dart
 +++ b/lib/widgets/input.dart
-@@ -32,102 +32,58 @@ class OptionsDialog<T> extends StatelessWidget {
+@@ -32,7 +32,7 @@ class OptionsDialog<T> extends StatelessWidget {
    Widget build(BuildContext context) {
      return CommonDialog(
        title: title,
@@ -240,195 +244,6 @@ index 7c5a6053..fcb79ecf 100644
        child: Column(
          mainAxisSize: MainAxisSize.min,
          children: [
-           for (final option in options)
--            OptionItem(
--              text: textBuilder(option),
--              selected: value == option,
--              onTap: () {
--                Navigator.of(context).pop(option);
--              },
--            ),
--        ],
--      ),
--    );
--  }
--}
--
--class OptionItem extends StatelessWidget {
--  final String text;
--  final String? subtitle;
--  final bool selected;
--  final VoidCallback onTap;
--
--  const OptionItem({
--    super.key,
--    required this.text,
--    this.subtitle,
--    required this.selected,
--    required this.onTap,
--  });
--
--  @override
--  Widget build(BuildContext context) {
--    final colorScheme = context.colorScheme;
--    return Padding(
--      padding: const EdgeInsets.symmetric(vertical: 2),
--      child: Material(
--        color: selected ? colorScheme.secondaryContainer : Colors.transparent,
--        shape: const RoundedSuperellipseBorder(
--          borderRadius: BorderRadius.all(Radius.circular(14)),
--        ),
--        clipBehavior: Clip.antiAlias,
--        child: InkWell(
--          focusColor: colorScheme.primary.withValues(alpha: 0.18),
--          onTap: onTap,
--          child: Padding(
--            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
--            child: Row(
--              children: [
--                Icon(
--                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
--                  size: 21,
--                  color: selected
--                      ? colorScheme.primary
--                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
--                ),
--                const SizedBox(width: 12),
--                Expanded(
--                  child: Column(
--                    crossAxisAlignment: CrossAxisAlignment.start,
-+            Material(
-+              color: Colors.transparent,
-+              child: InkWell(
-+                onTap: () {
-+                  Navigator.of(context).pop(option);
-+                },
-+                child: Container(
-+                  padding: const EdgeInsets.symmetric(
-+                    horizontal: 16,
-+                    vertical: 12,
-+                  ),
-+                  child: Row(
-                     children: [
--                      if (selected)
--                        SingleChildScrollView(
--                          scrollDirection: Axis.horizontal,
--                          child: EmojiText(
--                            text,
--                            style: context.textTheme.bodyMedium?.copyWith(
--                              color: colorScheme.onSecondaryContainer,
--                              fontWeight: FontWeight.w600,
--                            ),
--                          ),
--                        )
--                      else
--                        EmojiText(
--                          text,
--                          style: context.textTheme.bodyMedium,
--                          overflow: TextOverflow.ellipsis,
--                          maxLines: 1,
--                        ),
--                      if (subtitle case final subtitle?)
--                        Text(
--                          subtitle,
--                          maxLines: 1,
--                          overflow: TextOverflow.ellipsis,
--                          style: context.textTheme.bodySmall?.copyWith(
--                            color: colorScheme.onSurfaceVariant,
--                          ),
--                        ),
-+                      Icon(
-+                        value == option
-+                            ? Icons.check_circle_rounded
-+                            : Icons.circle_outlined,
-+                        size: 21,
-+                        color: value == option
-+                            ? context.colorScheme.primary
-+                            : context.colorScheme.onSurfaceVariant.withValues(
-+                                alpha: 0.6,
-+                              ),
-+                      ),
-+                      const SizedBox(width: 12),
-+                      Expanded(
-+                        child: value == option
-+                            ? SingleChildScrollView(
-+                                scrollDirection: Axis.horizontal,
-+                                child: EmojiText(
-+                                  textBuilder(option),
-+                                  style: context.textTheme.bodyMedium,
-+                                ),
-+                              )
-+                            : EmojiText(
-+                                textBuilder(option),
-+                                style: context.textTheme.bodyMedium,
-+                                overflow: TextOverflow.ellipsis,
-+                                maxLines: 1,
-+                              ),
-+                      ),
-                     ],
-                   ),
-                 ),
--              ],
-+              ),
-             ),
--          ),
--        ),
-+        ],
-       ),
-     );
-   }
-@@ -197,7 +153,6 @@ class _InputDialogState extends State<InputDialog> {
-   final _formKey = GlobalKey<FormState>();
- 
-   late TextEditingController textController;
--  late bool _obscure = widget.obscureText ?? false;
-   FocusNode? _focusNode;
- 
-   String get value => widget.value;
-@@ -265,7 +220,7 @@ class _InputDialogState extends State<InputDialog> {
-           children: [
-             TextFormField(
-               focusNode: _focusNode,
--              obscureText: _obscure,
-+              obscureText: widget.obscureText ?? false,
-               keyboardType:
-                   widget.keyboardType ??
-                   (widget.obscureText == true
-@@ -283,18 +238,6 @@ class _InputDialogState extends State<InputDialog> {
-                 suffixText: suffixText,
-                 hintText: widget.hintText,
-                 labelText: widget.labelText,
--                suffixIcon: widget.obscureText == true
--                    ? IconButton(
--                        icon: Icon(
--                          _obscure ? Icons.visibility : Icons.visibility_off,
--                        ),
--                        onPressed: () {
--                          setState(() {
--                            _obscure = !_obscure;
--                          });
--                        },
--                      )
--                    : null,
-               ),
-               validator: widget.validator,
-             ),
-@@ -397,7 +340,6 @@ class ListInputPage extends StatelessWidget {
-                     ReorderableDelayedDragStartListener(
-                       index: index,
-                       child: CommonCard(
--                        elevated: false,
-                         child: ListItem(
-                           leading: leadingBuilder != null
-                               ? leadingBuilder!(e)
-@@ -547,7 +489,6 @@ class MapInputPage extends StatelessWidget {
-                     ReorderableDelayedDragStartListener(
-                       index: index,
-                       child: CommonCard(
--                        elevated: false,
-                         child: ListItem(
-                           leading: leadingBuilder != null
-                               ? leadingBuilder!(e)
 diff --git a/lib/widgets/pop_scope.dart b/lib/widgets/pop_scope.dart
 index 1053d8dd..d4bcfdf0 100644
 --- a/lib/widgets/pop_scope.dart
