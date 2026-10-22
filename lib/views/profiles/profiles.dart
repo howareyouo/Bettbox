@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
@@ -9,6 +7,7 @@ import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/edit_profile.dart';
 import 'package:bett_box/views/profiles/override_profile.dart';
 import 'package:bett_box/views/profiles/scripts.dart';
+import 'package:bett_box/widgets/drag_reorder_grid.dart';
 import 'package:bett_box/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -99,20 +98,6 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
           },
         ),
       ),
-      IconButton(
-        onPressed: () {
-          final profiles = globalState.config.profiles;
-          showSheet(
-            context: context,
-            builder: (_, type) {
-              return ReorderableProfilesSheet(type: type, profiles: profiles);
-            },
-          );
-        },
-        tooltip: appLocalizations.sort,
-        icon: const Icon(Icons.sort),
-        iconSize: 26,
-      ),
     ];
   }
 
@@ -155,47 +140,47 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
                     profilesSelectorState.columns
               ? profilesSelectorState.profiles.length
               : profilesSelectorState.columns;
-          return ScrollEdgeRise(
-            builder: (context, rise) => Align(
-              alignment: Alignment.topCenter,
-              child: SingleChildScrollView(
-                key: profilesStoreKey,
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 16 + rise,
-                  bottom:
-                      (profilesSelectorState.profiles.isNotEmpty &&
-                              profilesSelectorState.profiles.length % columns ==
-                                  0
-                          ? 88
-                          : 16) +
-                      (isMobileView
-                          ? getFloatingBottomBarReserveHeight(context)
-                          : 0),
-                ),
-                child: Grid(
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  crossAxisCount: columns,
-                  children: [
-                    for (
-                      int i = 0;
-                      i < profilesSelectorState.profiles.length;
-                      i++
-                    )
-                      GridItem(
-                        child: ProfileItem(
-                          key: Key(profilesSelectorState.profiles[i].id),
-                          profile: profilesSelectorState.profiles[i],
+          return ScrollConfiguration(
+            behavior: NoMouseDragScrollBehavior(),
+            child: ScrollEdgeRise(
+              builder: (context, rise) => Align(
+                alignment: Alignment.topCenter,
+                child: SingleChildScrollView(
+                  key: profilesStoreKey,
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16 + rise,
+                    bottom:
+                        (profilesSelectorState.profiles.isNotEmpty &&
+                                profilesSelectorState.profiles.length % columns ==
+                                    0
+                            ? 88
+                            : 16) +
+                        (isMobileView
+                            ? getFloatingBottomBarReserveHeight(context)
+                            : 0),
+                  ),
+                  child: DragReorderGrid<Profile>(
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    items: profilesSelectorState.profiles,
+                    keyOf: (profile) => profile.id,
+                    itemBuilder: (_, profile) =>
+                        ProfileItem(
+                          key: Key(profile.id),
+                          profile: profile,
                           groupValue: profilesSelectorState.currentProfileId,
                           onChanged: (profileId) {
                             ref.read(currentProfileIdProvider.notifier).value =
                                 profileId;
                           },
                         ),
-                      ),
-                  ],
+                    onReorder: (profiles) {
+                      globalState.appController.setProfiles(profiles);
+                    },
+                  ),
                 ),
               ),
             ),
@@ -666,106 +651,3 @@ class _ProfileItemState extends State<ProfileItem> {
   }
 }
 
-class ReorderableProfilesSheet extends StatefulWidget {
-  final List<Profile> profiles;
-  final SheetType type;
-
-  const ReorderableProfilesSheet({
-    super.key,
-    required this.profiles,
-    required this.type,
-  });
-
-  @override
-  State<ReorderableProfilesSheet> createState() =>
-      _ReorderableProfilesSheetState();
-}
-
-class _ReorderableProfilesSheetState extends State<ReorderableProfilesSheet> {
-  late List<Profile> profiles;
-
-  @override
-  void initState() {
-    super.initState();
-    profiles = List.from(widget.profiles);
-  }
-
-  Widget proxyDecorator(Widget child, int index, Animation<double> animation) {
-    final profile = profiles[index];
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (_, Widget? child) {
-        final double animValue = Curves.easeInOut.transform(animation.value);
-        final double scale = lerpDouble(1, 1.02, animValue)!;
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Container(
-        key: Key(profile.id),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: CommonCard(
-          type: CommonCardType.filled,
-          child: ListTile(
-            contentPadding: const EdgeInsets.only(right: 44, left: 16),
-            title: EmojiText(profile.label ?? profile.id),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AdaptiveSheetScaffold(
-      type: widget.type,
-      actions: [
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            globalState.appController.setProfiles(profiles);
-          },
-          icon: Icon(Icons.save),
-        ),
-      ],
-      body: ReorderableListView.builder(
-        buildDefaultDragHandles: false,
-        padding: EdgeInsets.fromLTRB(
-          12,
-          16,
-          12,
-          32 + MediaQuery.paddingOf(context).bottom,
-        ),
-        proxyDecorator: proxyDecorator,
-        // ignore: deprecated_member_use
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            if (oldIndex < newIndex) {
-              newIndex -= 1;
-            }
-            final profile = profiles.removeAt(oldIndex);
-            profiles.insert(newIndex, profile);
-          });
-        },
-        itemBuilder: (_, index) {
-          final profile = profiles[index];
-          return Container(
-            key: Key(profile.id),
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: CommonCard(
-              type: CommonCardType.filled,
-              child: ListTile(
-                contentPadding: const EdgeInsets.only(right: 16, left: 16),
-                title: EmojiText(profile.label ?? profile.id),
-                trailing: ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(Icons.drag_handle),
-                ),
-              ),
-            ),
-          );
-        },
-        itemCount: profiles.length,
-      ),
-      title: appLocalizations.profilesSort,
-    );
-  }
-}

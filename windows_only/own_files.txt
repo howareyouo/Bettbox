@@ -51,6 +51,7 @@ classic_style lib/widgets/pop_scope.dart
 classic_style lib/widgets/popup.dart
 classic_style lib/widgets/sheet.dart
 classic_style lib/widgets/text.dart
+profile_drag lib/widgets/drag_reorder_grid.dart
 url_import lib/common/external_control.dart
 url_import lib/common/url_import.dart
 url_import lib/main.dart
