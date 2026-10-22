@@ -838,6 +838,7 @@
   "coreCapabilityNotEffective": "Core authorization did not take effect: the running core lacks CAP_NET_ADMIN, TUN may fail",
   "externalEditorTip": "Opened in an external editor. Changes are synced back to the app automatically when you save the file.",
   "externalEditor": "External Editor",
+  "setEditor": "Set Editor",
   "externalEditorLaunchFailed": "Failed to launch editor \"{editor}\". Make sure it is installed and the path is correct, or select Auto Detect.",
   "externalEditorNotFound": "Editor not found. Enter the full path to the editor executable.",
   "autoDetect": "Auto Detect",

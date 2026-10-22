@@ -843,6 +843,7 @@
   "coreCapabilityNotEffective": "内核授权未生效：运行中的内核缺少 CAP_NET_ADMIN，TUN 可能无法工作",
   "externalEditorTip": "已在外部编辑器中打开，保存文件后将自动同步到应用",
   "externalEditor": "外部编辑器",
+  "setEditor": "设置编辑器",
   "externalEditorLaunchFailed": "无法启动编辑器“{editor}”，请检查编辑器是否已安装、路径是否正确，或选择自动检测",
   "externalEditorNotFound": "未找到编辑器，请输入编辑器可执行文件的完整路径",
   "autoDetect": "自动检测",

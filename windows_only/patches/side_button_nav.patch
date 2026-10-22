@@ -253,10 +253,10 @@ index 00000000..54558a75
 +final pageNavigationController = PageNavigationController.instance;
 \ No newline at end of file
 diff --git a/lib/controller.dart b/lib/controller.dart
-index 918c614a..0e37f738 100644
+index 566230fb..e16b0351 100644
 --- a/lib/controller.dart
 +++ b/lib/controller.dart
-@@ -1485,6 +1485,7 @@ class AppController {
+@@ -1511,6 +1511,7 @@ class AppController {
        ).popUntil((route) => route.isFirst);
      }
      _ref.read(currentPageLabelProvider.notifier).value = pageLabel;
@@ -265,7 +265,7 @@ index 918c614a..0e37f738 100644
  
    void toProfiles() {
 diff --git a/lib/pages/home.dart b/lib/pages/home.dart
-index 42825dc9..afb09efc 100644
+index 735603d8..2344543e 100644
 --- a/lib/pages/home.dart
 +++ b/lib/pages/home.dart
 @@ -19,8 +19,15 @@ class HomePage extends StatefulWidget {

@@ -84,6 +84,7 @@ _AppSettingProps _$AppSettingPropsFromJson(
       ? defaultSidebarFlyoutEntries
       : sidebarFlyoutEntriesSafeFromJson(json['sidebarFlyoutEntries'] as List?),
   dashboardTitle: json['dashboardTitle'] as String?,
+  externalEditor: json['externalEditor'] as String? ?? '',
   toolboxTiles:
       (json['toolboxTiles'] as List<dynamic>?)
           ?.map((e) => e as String)
@@ -173,6 +174,7 @@ Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
           .map((e) => _$SidebarFlyoutEntryEnumMap[e]!)
           .toList(),
       'dashboardTitle': instance.dashboardTitle,
+      'externalEditor': instance.externalEditor,
       'toolboxTiles': instance.toolboxTiles,
       'mrsCopyRawLink': instance.mrsCopyRawLink,
       'mrsRawSource': _$MrsRawSourceEnumMap[instance.mrsRawSource]!,

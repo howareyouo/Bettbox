@@ -1,8 +1,8 @@
 diff --git a/lib/manager/app_manager.dart b/lib/manager/app_manager.dart
-index 60c762a8..e8ace5eb 100644
+index cd8893a6..c17a5e19 100644
 --- a/lib/manager/app_manager.dart
 +++ b/lib/manager/app_manager.dart
-@@ -1178,7 +1178,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
+@@ -1194,7 +1194,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
                  shadowColor: Colors.black.withValues(
                    alpha: isLight ? 0.35 : 0.6,
                  ),
@@ -12,10 +12,10 @@ index 60c762a8..e8ace5eb 100644
                    side: BorderSide(
                      color: colorScheme.outlineVariant.withValues(
 diff --git a/lib/views/profiles/override_profile.dart b/lib/views/profiles/override_profile.dart
-index 1a8f4fe5..bd86a095 100644
+index c1c79049..ef5908db 100644
 --- a/lib/views/profiles/override_profile.dart
 +++ b/lib/views/profiles/override_profile.dart
-@@ -528,7 +528,6 @@ class _RuleRowState extends State<RuleRow> {
+@@ -536,7 +536,6 @@ class _RuleRowState extends State<RuleRow> {
          child: Container(
            margin: const EdgeInsets.symmetric(vertical: 4),
            child: CommonCard(
@@ -37,10 +37,10 @@ index 5c430edb..f5a1e9aa 100644
        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
        child: ConstrainedBox(
 diff --git a/lib/views/proxies/card.dart b/lib/views/proxies/card.dart
-index 2ae9b5b7..ff295692 100644
+index f4f6e7aa..2c979e29 100644
 --- a/lib/views/proxies/card.dart
 +++ b/lib/views/proxies/card.dart
-@@ -248,7 +248,6 @@ class ProxyCard extends StatelessWidget {
+@@ -314,7 +314,6 @@ class ProxyCard extends StatelessWidget {
          return Stack(
            children: [
              CommonCard(
@@ -49,11 +49,11 @@ index 2ae9b5b7..ff295692 100644
                onPressed: () {
                  _changeProxy(ref);
 diff --git a/lib/views/proxies/list.dart b/lib/views/proxies/list.dart
-index ca3cfc85..d4b63488 100644
+index 72962749..01803721 100644
 --- a/lib/views/proxies/list.dart
 +++ b/lib/views/proxies/list.dart
-@@ -393,7 +393,6 @@ class _GroupHeader extends ConsumerWidget {
-     final selectedProxyIcon = ref.watch(proxyIconProvider(selectedProxyName));
+@@ -423,7 +423,6 @@ class _GroupHeader extends ConsumerWidget {
+     final labelLightStyle = textTheme.labelMedium?.toLight;
  
      return CommonCard(
 -      elevated: false,
@@ -228,19 +228,192 @@ index c9898496..ab34ba32 100644
          child: child,
        ),
 diff --git a/lib/widgets/input.dart b/lib/widgets/input.dart
-index 809f61f2..fcb79ecf 100644
+index 7c5a6053..fcb79ecf 100644
 --- a/lib/widgets/input.dart
 +++ b/lib/widgets/input.dart
-@@ -32,7 +32,7 @@ class OptionsDialog<T> extends StatelessWidget {
+@@ -32,102 +32,58 @@ class OptionsDialog<T> extends StatelessWidget {
    Widget build(BuildContext context) {
      return CommonDialog(
        title: title,
--      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
 +      padding: const EdgeInsets.symmetric(vertical: 16),
        child: Column(
          mainAxisSize: MainAxisSize.min,
          children: [
-@@ -340,7 +340,6 @@ class ListInputPage extends StatelessWidget {
+           for (final option in options)
+-            OptionItem(
+-              text: textBuilder(option),
+-              selected: value == option,
+-              onTap: () {
+-                Navigator.of(context).pop(option);
+-              },
+-            ),
+-        ],
+-      ),
+-    );
+-  }
+-}
+-
+-class OptionItem extends StatelessWidget {
+-  final String text;
+-  final String? subtitle;
+-  final bool selected;
+-  final VoidCallback onTap;
+-
+-  const OptionItem({
+-    super.key,
+-    required this.text,
+-    this.subtitle,
+-    required this.selected,
+-    required this.onTap,
+-  });
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final colorScheme = context.colorScheme;
+-    return Padding(
+-      padding: const EdgeInsets.symmetric(vertical: 2),
+-      child: Material(
+-        color: selected ? colorScheme.secondaryContainer : Colors.transparent,
+-        shape: const RoundedSuperellipseBorder(
+-          borderRadius: BorderRadius.all(Radius.circular(14)),
+-        ),
+-        clipBehavior: Clip.antiAlias,
+-        child: InkWell(
+-          focusColor: colorScheme.primary.withValues(alpha: 0.18),
+-          onTap: onTap,
+-          child: Padding(
+-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+-            child: Row(
+-              children: [
+-                Icon(
+-                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+-                  size: 21,
+-                  color: selected
+-                      ? colorScheme.primary
+-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+-                ),
+-                const SizedBox(width: 12),
+-                Expanded(
+-                  child: Column(
+-                    crossAxisAlignment: CrossAxisAlignment.start,
++            Material(
++              color: Colors.transparent,
++              child: InkWell(
++                onTap: () {
++                  Navigator.of(context).pop(option);
++                },
++                child: Container(
++                  padding: const EdgeInsets.symmetric(
++                    horizontal: 16,
++                    vertical: 12,
++                  ),
++                  child: Row(
+                     children: [
+-                      if (selected)
+-                        SingleChildScrollView(
+-                          scrollDirection: Axis.horizontal,
+-                          child: EmojiText(
+-                            text,
+-                            style: context.textTheme.bodyMedium?.copyWith(
+-                              color: colorScheme.onSecondaryContainer,
+-                              fontWeight: FontWeight.w600,
+-                            ),
+-                          ),
+-                        )
+-                      else
+-                        EmojiText(
+-                          text,
+-                          style: context.textTheme.bodyMedium,
+-                          overflow: TextOverflow.ellipsis,
+-                          maxLines: 1,
+-                        ),
+-                      if (subtitle case final subtitle?)
+-                        Text(
+-                          subtitle,
+-                          maxLines: 1,
+-                          overflow: TextOverflow.ellipsis,
+-                          style: context.textTheme.bodySmall?.copyWith(
+-                            color: colorScheme.onSurfaceVariant,
+-                          ),
+-                        ),
++                      Icon(
++                        value == option
++                            ? Icons.check_circle_rounded
++                            : Icons.circle_outlined,
++                        size: 21,
++                        color: value == option
++                            ? context.colorScheme.primary
++                            : context.colorScheme.onSurfaceVariant.withValues(
++                                alpha: 0.6,
++                              ),
++                      ),
++                      const SizedBox(width: 12),
++                      Expanded(
++                        child: value == option
++                            ? SingleChildScrollView(
++                                scrollDirection: Axis.horizontal,
++                                child: EmojiText(
++                                  textBuilder(option),
++                                  style: context.textTheme.bodyMedium,
++                                ),
++                              )
++                            : EmojiText(
++                                textBuilder(option),
++                                style: context.textTheme.bodyMedium,
++                                overflow: TextOverflow.ellipsis,
++                                maxLines: 1,
++                              ),
++                      ),
+                     ],
+                   ),
+                 ),
+-              ],
++              ),
+             ),
+-          ),
+-        ),
++        ],
+       ),
+     );
+   }
+@@ -197,7 +153,6 @@ class _InputDialogState extends State<InputDialog> {
+   final _formKey = GlobalKey<FormState>();
+ 
+   late TextEditingController textController;
+-  late bool _obscure = widget.obscureText ?? false;
+   FocusNode? _focusNode;
+ 
+   String get value => widget.value;
+@@ -265,7 +220,7 @@ class _InputDialogState extends State<InputDialog> {
+           children: [
+             TextFormField(
+               focusNode: _focusNode,
+-              obscureText: _obscure,
++              obscureText: widget.obscureText ?? false,
+               keyboardType:
+                   widget.keyboardType ??
+                   (widget.obscureText == true
+@@ -283,18 +238,6 @@ class _InputDialogState extends State<InputDialog> {
+                 suffixText: suffixText,
+                 hintText: widget.hintText,
+                 labelText: widget.labelText,
+-                suffixIcon: widget.obscureText == true
+-                    ? IconButton(
+-                        icon: Icon(
+-                          _obscure ? Icons.visibility : Icons.visibility_off,
+-                        ),
+-                        onPressed: () {
+-                          setState(() {
+-                            _obscure = !_obscure;
+-                          });
+-                        },
+-                      )
+-                    : null,
+               ),
+               validator: widget.validator,
+             ),
+@@ -397,7 +340,6 @@ class ListInputPage extends StatelessWidget {
                      ReorderableDelayedDragStartListener(
                        index: index,
                        child: CommonCard(
@@ -248,7 +421,7 @@ index 809f61f2..fcb79ecf 100644
                          child: ListItem(
                            leading: leadingBuilder != null
                                ? leadingBuilder!(e)
-@@ -490,7 +489,6 @@ class MapInputPage extends StatelessWidget {
+@@ -547,7 +489,6 @@ class MapInputPage extends StatelessWidget {
                      ReorderableDelayedDragStartListener(
                        index: index,
                        child: CommonCard(
@@ -428,24 +601,6 @@ index 52a9e054..ff331b7d 100644
            ),
          ),
        ),
-diff --git a/lib/widgets/sheet.dart b/lib/widgets/sheet.dart
-index 12d3a18a..f0d6719c 100644
---- a/lib/widgets/sheet.dart
-+++ b/lib/widgets/sheet.dart
-@@ -139,11 +139,9 @@ class AdaptiveSheetScaffold extends StatelessWidget {
-     final content = bottomSheet
-         ? Container(
-             clipBehavior: Clip.antiAlias,
--            decoration: ShapeDecoration(
-+            decoration: BoxDecoration(
-               color: backgroundColor,
--              shape: const RoundedSuperellipseBorder(
--                borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
--              ),
-+              borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
-             ),
-             child: Column(
-               mainAxisSize: MainAxisSize.min,
 diff --git a/lib/widgets/text.dart b/lib/widgets/text.dart
 index be7e8305..386e3d2c 100644
 --- a/lib/widgets/text.dart

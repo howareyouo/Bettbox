@@ -126,12 +126,16 @@ class CommonCard extends StatelessWidget {
     this.padding,
     this.enterAnimated = false,
     this.isDragFeedback = false,
+    this.elevated = true,
     this.info,
     this.clipBehavior = Clip.antiAlias,
   }) : isSelected = isSelected ?? false;
 
   final bool enterAnimated;
   final bool isDragFeedback;
+
+  /// 兼容上游签名；classic_style 扁平化样式下不产生立体效果。
+  final bool elevated;
   final bool isSelected;
   final void Function()? onPressed;
   final void Function()? onLongPress;

@@ -6860,7 +6860,7 @@ class AppLocalizations {
     );
   }
 
-/// `setcap is not installed, falling back to setuid`
+  /// `setcap is not installed, falling back to setuid`
   String get setcapNotInstalledFallback {
     return Intl.message(
       'setcap is not installed, falling back to setuid',
@@ -6910,11 +6910,61 @@ class AppLocalizations {
     );
   }
 
+  /// `Opened in an external editor. Changes are synced back to the app automatically when you save the file.`
+  String get externalEditorTip {
+    return Intl.message(
+      'Opened in an external editor. Changes are synced back to the app automatically when you save the file.',
+      name: 'externalEditorTip',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `External Editor`
+  String get externalEditor {
+    return Intl.message(
+      'External Editor',
+      name: 'externalEditor',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Set Editor`
+  String get setEditor {
+    return Intl.message('Set Editor', name: 'setEditor', desc: '', args: []);
+  }
+
+  /// `Failed to launch editor "{editor}". Make sure it is installed and the path is correct, or select Auto Detect.`
+  String externalEditorLaunchFailed(Object editor) {
+    return Intl.message(
+      'Failed to launch editor "$editor". Make sure it is installed and the path is correct, or select Auto Detect.',
+      name: 'externalEditorLaunchFailed',
+      desc: '',
+      args: [editor],
+    );
+  }
+
   /// `Editor not found. Enter the full path to the editor executable.`
   String get externalEditorNotFound {
     return Intl.message(
       'Editor not found. Enter the full path to the editor executable.',
       name: 'externalEditorNotFound',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto Detect`
+  String get autoDetect {
+    return Intl.message('Auto Detect', name: 'autoDetect', desc: '', args: []);
+  }
+
+  /// `Done`
+  String get done {
+    return Intl.message('Done', name: 'done', desc: '', args: []);
+  }
+
   /// `Speed Test`
   String get speedTest {
     return Intl.message('Speed Test', name: 'speedTest', desc: '', args: []);
@@ -9515,26 +9565,6 @@ class AppLocalizations {
     );
   }
 
-  /// `Failed to launch editor "{editor}". Make sure it is installed and the path is correct, or select Auto Detect.`
-  String externalEditorLaunchFailed(Object editor) {
-    return Intl.message(
-      'Failed to launch editor "$editor". Make sure it is installed and the path is correct, or select Auto Detect.',
-      name: 'externalEditorLaunchFailed',
-      desc: '',
-      args: [editor],
-    );
-  }
-
-  /// `Set Editor`
-  String get setEditor {
-    return Intl.message('Set Editor', name: 'setEditor', desc: '', args: []);
-  }
-
-  /// `Opened in an external editor. Changes are synced back to the app automatically when you save the file.`
-  String get externalEditorTip {
-    return Intl.message(
-      'Opened in an external editor. Changes are synced back to the app automatically when you save the file.',
-      name: 'externalEditorTip',
   /// `Connection timed out. Check the address and network`
   String get iperfErrorTimeout {
     return Intl.message(
@@ -9565,11 +9595,6 @@ class AppLocalizations {
     );
   }
 
-  /// `External Editor`
-  String get externalEditor {
-    return Intl.message(
-      'External Editor',
-      name: 'externalEditor',
   /// `Unexpected response. The other side may not be an iPerf3 server`
   String get iperfErrorProtocol {
     return Intl.message(
@@ -9580,11 +9605,6 @@ class AppLocalizations {
     );
   }
 
-  /// `Auto Detect`
-  String get autoDetect {
-    return Intl.message(
-      'Auto Detect',
-      name: 'autoDetect',
   /// `The test was interrupted`
   String get iperfErrorInterrupted {
     return Intl.message(
@@ -9595,11 +9615,6 @@ class AppLocalizations {
     );
   }
 
-  /// `Done`
-  String get done {
-    return Intl.message(
-      'Done',
-      name: 'done',
   /// `The server rejected the test (error {code})`
   String iperfErrorServer(Object code) {
     return Intl.message(

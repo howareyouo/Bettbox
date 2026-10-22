@@ -65,10 +65,12 @@ windows_only/
   auto_export.sh                        自动导出脚本：按 own_files.txt 导出/删除补丁并验证
   patches/
     external_editor.patch               自有功能①：Set Editor 外部编辑器（12 文件）
-    profile_drag.patch                  自有功能②：profile 卡片拖拽排序（清单 profile_drag）
-    profile_hover.patch                 自有功能③：profile 悬停预览（清单 profile_hover）
-    profile_viewer.patch                自有功能④：profile 只读查看器（清单 profile_viewer）
+    profile_hover.patch                 自有功能②：profile 悬停预览（清单 profile_hover）
+    profile_viewer.patch                自有功能③：profile 只读查看器（清单 profile_viewer）
 ```
+> 注：原 profile_drag（profile 卡片拖拽排序，基于 SuperGrid）已随上游 951cdbc
+> 「Redesign dashboard layout」删除 SuperGrid 而移除，清单与补丁一并清理；
+> profile 排序恢复上游的 ReorderableProfilesSheet 入口。
 
 ### 3.1 `.github/workflows/windows_only.yml`
 
