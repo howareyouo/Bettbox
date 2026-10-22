@@ -1,13 +1,23 @@
 diff --git a/lib/pages/pages.dart b/lib/pages/pages.dart
-index cc27ba65..43e71b29 100644
+index 17236458..43e71b29 100644
 --- a/lib/pages/pages.dart
 +++ b/lib/pages/pages.dart
-@@ -1,4 +1,3 @@
+@@ -1,14 +1,3 @@
  export 'home.dart';
 -export 'scan.dart';
 -export 'editor.dart';
 +export 'viewer.dart';
  export 'media_unlock.dart';
+-export 'toolbox/common.dart';
+-export 'toolbox/nat_test.dart';
+-export 'toolbox/route_trace.dart';
+-export 'toolbox/mrs_lookup.dart';
+-export 'toolbox/ip_lookup.dart';
+-export 'toolbox/dns_query.dart';
+-export 'toolbox/age_tool.dart';
+-export 'toolbox/iperf.dart';
+-export 'toolbox/local_ping.dart';
+-export 'speed_test.dart';
 diff --git a/lib/pages/viewer.dart b/lib/pages/viewer.dart
 new file mode 100644
 index 00000000..82808854
@@ -371,14 +381,31 @@ index 00000000..dc58e85f
 +  ],
 +);
 diff --git a/lib/widgets/widgets.dart b/lib/widgets/widgets.dart
-index 5ae4a1f5..372b40ba 100644
+index b1bc9b90..372b40ba 100644
 --- a/lib/widgets/widgets.dart
 +++ b/lib/widgets/widgets.dart
-@@ -38,4 +38,4 @@ export 'notification.dart';
+@@ -8,7 +8,6 @@ export 'color_scheme_box.dart';
+ export 'disabled_mask.dart';
+ export 'fade_box.dart';
+ export 'float_layout.dart';
+-export 'editable_grid.dart';
+ export 'grid.dart';
+ export 'icon.dart';
+ export 'input.dart';
+@@ -24,6 +23,7 @@ export 'sheet.dart';
+ export 'side_sheet.dart';
+ export 'subscription_info_view.dart';
+ export 'text.dart';
++export 'super_grid.dart';
+ export 'donut_chart.dart';
+ export 'activate_box.dart';
+ export 'wave.dart';
+@@ -38,5 +38,4 @@ export 'notification.dart';
  export 'ip_detail_dialog.dart';
  export 'qr_code.dart';
  export 'delay_animation_dialog.dart';
 -export 'code_editor.dart';
+-export 'ring_chart.dart';
 +export 'editor_modes.dart';
 diff --git a/plugins/code_forge/pubspec.lock b/plugins/code_forge/pubspec.lock
 index 4f56aa43..27ef05fc 100644
@@ -412,7 +439,7 @@ index bac7ce2c..488b623c 100644
    material_ui: ^1.6.0
  
 diff --git a/pubspec.lock b/pubspec.lock
-index b8277a22..067c61b2 100644
+index 69b7a7f7..067c61b2 100644
 --- a/pubspec.lock
 +++ b/pubspec.lock
 @@ -6,7 +6,7 @@ packages:
@@ -1770,7 +1797,7 @@ index b8277a22..067c61b2 100644
      source: hosted
      version: "2.5.7"
    shared_preferences_linux:
-@@ -1232,7 +1232,7 @@ packages:
+@@ -1232,15 +1232,15 @@ packages:
      description:
        name: shared_preferences_linux
        sha256: "580abfd40f415611503cae30adf626e6656dfb2f0cee8f465ece7b6defb40f2f"
@@ -1779,7 +1806,8 @@ index b8277a22..067c61b2 100644
      source: hosted
      version: "2.4.1"
    shared_preferences_platform_interface:
-@@ -1240,7 +1240,7 @@ packages:
+-    dependency: "direct main"
++    dependency: transitive
      description:
        name: shared_preferences_platform_interface
        sha256: "649dc798a33931919ea356c4305c2d1f81619ea6e92244070b520187b5140ef9"
@@ -2240,3 +2268,33 @@ index b8277a22..067c61b2 100644
      source: hosted
      version: "0.2.4"
  sdks:
+diff --git a/pubspec.yaml b/pubspec.yaml
+index c1939662..9d7ea00a 100644
+--- a/pubspec.yaml
++++ b/pubspec.yaml
+@@ -1,7 +1,7 @@
+ name: bett_box
+ description: A multi-platform proxy client based on Mihomo, simple and easy to use, open-source and ad-free.
+ publish_to: 'none'
+-version: 1.19.7+2026102201
++version: 1.19.7+2026101601
+ environment:
+   sdk: '>=3.9.0 <4.0.0'
+ 
+@@ -14,7 +14,6 @@ dependencies:
+   path_provider: ^2.1.6
+   path: ^1.9.0
+   shared_preferences: ^2.5.5
+-  shared_preferences_platform_interface: ^2.4.2
+   window_manager: ^0.5.2
+   dynamic_color: ^2.1.0
+   material_color_utilities: ^0.13.0
+@@ -45,7 +44,7 @@ dependencies:
+   win32: ^6.0.0
+   ffi: ^2.2.0
+   re_highlight: ^0.0.3
+-  archive: ^4.5.1
++  archive: ^4.0.7
+   lpinyin: ^2.0.3
+   emoji_regex: ^0.0.5
+   hotkey_manager: ^0.2.3

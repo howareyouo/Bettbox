@@ -1,5 +1,5 @@
 diff --git a/lib/views/profiles/profiles.dart b/lib/views/profiles/profiles.dart
-index 77bf236a..b011bfd6 100644
+index 449225da..b011bfd6 100644
 --- a/lib/views/profiles/profiles.dart
 +++ b/lib/views/profiles/profiles.dart
 @@ -1,9 +1,7 @@
@@ -307,7 +307,7 @@ index 77bf236a..b011bfd6 100644
      );
    }
  
-@@ -616,113 +651,37 @@ class ProfileItem extends StatelessWidget {
+@@ -616,115 +651,37 @@ class ProfileItem extends StatelessWidget {
    @override
    Widget build(BuildContext context) {
      final isTV = globalState.isAndroidTV;
@@ -364,16 +364,7 @@ index 77bf236a..b011bfd6 100644
 -            contentPadding: const EdgeInsets.only(right: 44, left: 16),
 -            title: EmojiText(profile.label ?? profile.id),
 -          ),
-+    if (isTV) return card;
-+    return MouseRegion(
-+      onEnter: (_) => setState(() => _hovered = true),
-+      onExit: (_) => setState(() => _hovered = false),
-+      cursor: SystemMouseCursors.click,
-+      child: CommonPopupBox(
-+        popup: CommonPopupMenu(
-+          items: _buildMenuItems(context),
-+          minItemVerticalPadding: 10,
-         ),
+-        ),
 -      ),
 -    );
 -  }
@@ -389,38 +380,49 @@ index 77bf236a..b011bfd6 100644
 -            globalState.appController.setProfiles(profiles);
 -          },
 -          icon: Icon(Icons.save),
--        ),
++    if (isTV) return card;
++    return MouseRegion(
++      onEnter: (_) => setState(() => _hovered = true),
++      onExit: (_) => setState(() => _hovered = false),
++      cursor: SystemMouseCursors.click,
++      child: CommonPopupBox(
++        popup: CommonPopupMenu(
++          items: _buildMenuItems(context),
++          minItemVerticalPadding: 10,
+         ),
 -      ],
--      body: Padding(
--        padding: EdgeInsets.only(bottom: 32, top: 16),
--        child: ReorderableListView.builder(
--          buildDefaultDragHandles: false,
--          padding: const EdgeInsets.symmetric(horizontal: 12),
--          proxyDecorator: proxyDecorator,
--          // ignore: deprecated_member_use
--          onReorder: (oldIndex, newIndex) {
--            setState(() {
--              if (oldIndex < newIndex) {
--                newIndex -= 1;
--              }
--              final profile = profiles.removeAt(oldIndex);
--              profiles.insert(newIndex, profile);
--            });
--          },
--          itemBuilder: (_, index) {
--            final profile = profiles[index];
--            return Container(
--              key: Key(profile.id),
--              padding: const EdgeInsets.symmetric(vertical: 4),
--              child: CommonCard(
--                type: CommonCardType.filled,
--                child: ListTile(
--                  contentPadding: const EdgeInsets.only(right: 16, left: 16),
--                  title: EmojiText(profile.label ?? profile.id),
--                  trailing: ReorderableDragStartListener(
--                    index: index,
--                    child: const Icon(Icons.drag_handle),
--                  ),
+-      body: ReorderableListView.builder(
+-        buildDefaultDragHandles: false,
+-        padding: EdgeInsets.fromLTRB(
+-          12,
+-          16,
+-          12,
+-          32 + MediaQuery.paddingOf(context).bottom,
+-        ),
+-        proxyDecorator: proxyDecorator,
+-        // ignore: deprecated_member_use
+-        onReorder: (oldIndex, newIndex) {
+-          setState(() {
+-            if (oldIndex < newIndex) {
+-              newIndex -= 1;
+-            }
+-            final profile = profiles.removeAt(oldIndex);
+-            profiles.insert(newIndex, profile);
+-          });
+-        },
+-        itemBuilder: (_, index) {
+-          final profile = profiles[index];
+-          return Container(
+-            key: Key(profile.id),
+-            padding: const EdgeInsets.symmetric(vertical: 4),
+-            child: CommonCard(
+-              type: CommonCardType.filled,
+-              child: ListTile(
+-                contentPadding: const EdgeInsets.only(right: 16, left: 16),
+-                title: EmojiText(profile.label ?? profile.id),
+-                trailing: ReorderableDragStartListener(
+-                  index: index,
+-                  child: const Icon(Icons.drag_handle),
 +        targetBuilder: (open) {
 +          _menuOpen = open;
 +          return Stack(
@@ -433,13 +435,11 @@ index 77bf236a..b011bfd6 100644
 +                  child: _buildTrailing(context),
                  ),
 -              ),
--            );
--          },
--          itemCount: profiles.length,
--        ),
+-            ),
 +            ],
-+          );
-+        },
+           );
+         },
+-        itemCount: profiles.length,
        ),
 -      title: appLocalizations.profilesSort,
      );

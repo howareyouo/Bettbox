@@ -1,8 +1,172 @@
 diff --git a/lib/manager/app_manager.dart b/lib/manager/app_manager.dart
-index 60c762a8..e8ace5eb 100644
+index cd8893a6..e8ace5eb 100644
 --- a/lib/manager/app_manager.dart
 +++ b/lib/manager/app_manager.dart
-@@ -1178,7 +1178,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
+@@ -74,10 +74,6 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
+         globalState.appController.savePreferencesDebounce();
+       }
+     });
+-    ref.listenManual(profilesProvider, (prev, next) {
+-      if (prev == null || !next.hasAddedOrChanged(prev)) return;
+-      globalState.appController.autoBackupDebounce();
+-    });
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       _updateDashboardRefreshState();
+       detectionState.tryStartCheck();
+@@ -194,7 +190,6 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
+       await globalState.resumeForegroundUpdates();
+       await globalState.appController.syncWakelockIfNeeded();
+       _scheduleMissedUpdateCheck();
+-      unawaited(globalState.appController.flushAutoBackup());
+       try {
+         final isInit = await clashCore.isInit;
+         if (isInit) {
+@@ -473,7 +468,7 @@ class AppSidebarContainer extends ConsumerWidget {
+     List<NavigationItem> items,
+   ) {
+     if (items.isEmpty) return _sidebarExpandedWidth;
+-    final labels = items.map((item) => _sidebarLabelOf(item.label)).join('\n');
++    final labels = items.map((item) => item.label.localizedName).join('\n');
+     final scaler =
+         MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
+     final fontFamily = context.textTheme.labelLarge?.fontFamily;
+@@ -505,7 +500,7 @@ class AppSidebarContainer extends ConsumerWidget {
+     double maxTextWidth = 0.0;
+     for (final item in items) {
+       final painter = TextPainter(
+-        text: TextSpan(text: _sidebarLabelOf(item.label), style: textStyle),
++        text: TextSpan(text: item.label.localizedName, style: textStyle),
+         textDirection: direction,
+         textScaler: textScaler,
+         maxLines: 1,
+@@ -695,43 +690,6 @@ class AppSidebarContainer extends ConsumerWidget {
+         .updateState(
+           (state) => state.copyWith(sidebarCollapsed: !state.sidebarCollapsed),
+         );
+-    final hasBottomItem =
+-        navigationItems.isNotEmpty &&
+-        navigationItems.last.label == PageLabel.tools;
+-    Widget buildItem(int index) {
+-      final item = navigationItems[index];
+-      final isTools = item.label == PageLabel.tools;
+-      final isSelected = currentIndex == index;
+-      final hasFlyout =
+-          sidebarFlyout &&
+-          isTools &&
+-          !(sidebarFlyoutOutsideTools && isSelected);
+-      final sidebarItem = _SidebarItem(
+-        icon: isTools ? const Icon(Icons.settings) : item.icon,
+-        label: _sidebarLabelOf(item.label),
+-        isSelected: isSelected,
+-        isCollapsed: isCollapsed,
+-        hasTooltip: !hasFlyout && !isSelected,
+-        expandedWidth: expandedWidth,
+-        onTap: () {
+-          if (currentIndex == index) {
+-            final pageContext = GlobalObjectKey(item.label).currentContext;
+-            if (pageContext != null) {
+-              Navigator.of(pageContext).popUntil((route) => route.isFirst);
+-            }
+-          }
+-          globalState.appController.toPage(item.label);
+-        },
+-      );
+-      if (!hasFlyout) {
+-        return sidebarItem;
+-      }
+-      return _SidebarFlyout(
+-        title: _sidebarLabelOf(item.label),
+-        child: sidebarItem,
+-      );
+-    }
+-
+     final isLight = context.colorScheme.brightness == Brightness.light;
+     final pureBlack = ref.watch(
+       themeSettingProvider.select((s) => s.pureBlack),
+@@ -817,28 +775,57 @@ class AppSidebarContainer extends ConsumerWidget {
+                                             horizontal: 9,
+                                             vertical: 4,
+                                           ),
+-                                          itemCount: hasBottomItem
+-                                              ? navigationItems.length - 1
+-                                              : navigationItems.length,
++                                          itemCount: navigationItems.length,
+                                           separatorBuilder: (_, _) =>
+                                               const SizedBox(height: 3.5),
+-                                          itemBuilder: (_, index) =>
+-                                              buildItem(index),
++                                          itemBuilder: (context, index) {
++                                            final item = navigationItems[index];
++                                            final isSelected =
++                                                currentIndex == index;
++                                            final hasFlyout =
++                                                sidebarFlyout &&
++                                                item.label == PageLabel.tools &&
++                                                !(sidebarFlyoutOutsideTools &&
++                                                    isSelected);
++                                            final sidebarItem = _SidebarItem(
++                                              icon: item.icon,
++                                              label: item.label.localizedName,
++                                              isSelected: isSelected,
++                                              isCollapsed: isCollapsed,
++                                              hasTooltip:
++                                                  !hasFlyout && !isSelected,
++                                              expandedWidth: expandedWidth,
++                                              onTap: () {
++                                                if (currentIndex == index) {
++                                                  final pageContext =
++                                                      GlobalObjectKey(
++                                                        item.label,
++                                                      ).currentContext;
++                                                  if (pageContext != null) {
++                                                    Navigator.of(
++                                                      pageContext,
++                                                    ).popUntil(
++                                                      (route) => route.isFirst,
++                                                    );
++                                                  }
++                                                }
++                                                globalState.appController
++                                                    .toPage(item.label);
++                                              },
++                                            );
++                                            if (!hasFlyout) {
++                                              return sidebarItem;
++                                            }
++                                            return _SidebarFlyout(
++                                              title: item.label.localizedName,
++                                              child: sidebarItem,
++                                            );
++                                          },
+                                         ),
+                                       ),
+                                     ),
+                                   ),
+                                 ),
+-                                if (hasBottomItem)
+-                                  Padding(
+-                                    padding: const EdgeInsets.symmetric(
+-                                      horizontal: 9,
+-                                      vertical: 4,
+-                                    ),
+-                                    child: buildItem(
+-                                      navigationItems.length - 1,
+-                                    ),
+-                                  ),
+                                 const SizedBox(height: 8),
+                               ],
+                             ),
+@@ -895,9 +882,6 @@ class AppSidebarContainer extends ConsumerWidget {
+   }
+ }
+ 
+-String _sidebarLabelOf(PageLabel label) =>
+-    label == PageLabel.tools ? appLocalizations.settings : label.localizedName;
+-
+ class _SidebarItem extends StatefulWidget {
+   final Widget icon;
+   final String label;
+@@ -1194,7 +1178,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
                  shadowColor: Colors.black.withValues(
                    alpha: isLight ? 0.35 : 0.6,
                  ),
@@ -12,10 +176,151 @@ index 60c762a8..e8ace5eb 100644
                    side: BorderSide(
                      color: colorScheme.outlineVariant.withValues(
 diff --git a/lib/views/profiles/override_profile.dart b/lib/views/profiles/override_profile.dart
-index 1a8f4fe5..bd86a095 100644
+index c1c79049..bd86a095 100644
 --- a/lib/views/profiles/override_profile.dart
 +++ b/lib/views/profiles/override_profile.dart
-@@ -528,7 +528,6 @@ class _RuleRowState extends State<RuleRow> {
+@@ -74,15 +74,11 @@ class _OverrideProfileViewState extends State<OverrideProfileView> {
+       profileOverrideStateProvider.select((state) => state.selectedRules),
+     );
+     ref.read(profileOverrideStateProvider.notifier).updateState((state) {
+-      final overrideData = state.overrideData;
+-      if (overrideData == null) return state;
+-      final overrideRule = overrideData.rule.updateRules(
++      final overrideRule = state.overrideData!.rule.updateRules(
+         (rules) =>
+             List.from(rules.where((item) => !selectedRules.contains(item.id))),
+       );
+-      return state.copyWith(
+-        overrideData: overrideData.copyWith(rule: overrideRule),
+-      );
++      return state.copyWith.overrideData!(rule: overrideRule);
+     });
+     ref
+         .read(profileOverrideStateProvider.notifier)
+@@ -102,7 +98,16 @@ class _OverrideProfileViewState extends State<OverrideProfileView> {
+             child: SyncedLoading(size: 40, child: CircularProgressIndicator()),
+           );
+         }
+-        return FadeBox(child: child ?? const SizedBox());
++        return FadeBox(
++          child: !isInit
++              ? const Center(
++                  child: SyncedLoading(
++                    size: 40,
++                    child: CircularProgressIndicator(),
++                  ),
++                )
++              : child!,
++        );
+       },
+       child: LayoutBuilder(
+         builder: (_, constraints) {
+@@ -153,7 +158,7 @@ class _OverrideProfileViewState extends State<OverrideProfileView> {
+       child: Consumer(
+         builder: (_, ref, child) {
+           _initState(ref);
+-          return child ?? const SizedBox();
++          return child!;
+         },
+         child: Consumer(
+           builder: (_, ref, _) {
+@@ -257,13 +262,11 @@ class OverrideSwitch extends ConsumerWidget {
+         delegate: SwitchDelegate(
+           value: enable ?? false,
+           onChanged: (value) {
+-            ref.read(profileOverrideStateProvider.notifier).updateState((
+-              state,
+-            ) {
+-              final data = state.overrideData;
+-              if (data == null) return state;
+-              return state.copyWith(overrideData: data.copyWith(enable: value));
+-            });
++            ref
++                .read(profileOverrideStateProvider.notifier)
++                .updateState(
++                  (state) => state.copyWith.overrideData!(enable: value),
++                );
+           },
+         ),
+       ),
+@@ -277,35 +280,34 @@ class RuleTitle extends ConsumerWidget {
+   const RuleTitle({super.key, required this.profileId});
+ 
+   void _handleChangeType(WidgetRef ref, isOverrideRule) {
+-    ref.read(profileOverrideStateProvider.notifier).updateState((state) {
+-      final data = state.overrideData;
+-      if (data == null) return state;
+-      return state.copyWith(
+-        overrideData: data.copyWith(
+-          rule: data.rule.copyWith(
++    ref
++        .read(profileOverrideStateProvider.notifier)
++        .updateState(
++          (state) => state.copyWith.overrideData!.rule(
+             type: isOverrideRule
+                 ? OverrideRuleType.added
+                 : OverrideRuleType.override,
+           ),
+-        ),
+-      );
+-    });
++        );
+   }
+ 
+   @override
+   Widget build(BuildContext context, ref) {
+-    final (isSelectMode, isSelectAll, isOverrideRule) = ref.watch(
++    final vm3 = ref.watch(
+       profileOverrideStateProvider.select((state) {
+         final overrideRule = state.overrideData?.rule;
+-        final rules = overrideRule?.rules ?? [];
+-        return (
+-          state.selectedRules.isNotEmpty,
+-          rules.isNotEmpty &&
+-              rules.every((item) => state.selectedRules.contains(item.id)),
+-          overrideRule?.type == OverrideRuleType.override,
++        return VM3(
++          a: state.selectedRules.isNotEmpty,
++          b: state.selectedRules.containsAll(
++            overrideRule?.rules.map((item) => item.id).toSet() ?? {},
++          ),
++          c: overrideRule?.type == OverrideRuleType.override,
+         );
+       }),
+     );
++    final isSelectMode = vm3.a;
++    final isSelectAll = vm3.b;
++    final isOverrideRule = vm3.c;
+     return FilledButtonTheme(
+       data: FilledButtonThemeData(
+         style: ButtonStyle(
+@@ -394,16 +396,6 @@ class _RuleParts {
+     required this.flags,
+   });
+ 
+-  static final _partsCache = Expando<_RuleParts>();
+-
+-  static _RuleParts of(Rule rule) {
+-    final cached = _partsCache[rule];
+-    if (cached != null) return cached;
+-    final parts = _RuleParts.parse(rule.value);
+-    _partsCache[rule] = parts;
+-    return parts;
+-  }
+-
+   factory _RuleParts.parse(String value) {
+     final raw = value.trim();
+     final index = raw.indexOf(',');
+@@ -517,7 +509,7 @@ class _RuleRowState extends State<RuleRow> {
+   @override
+   Widget build(BuildContext context) {
+     final showControls = widget.isSelectMode || _hovered;
+-    final parts = _RuleParts.of(widget.rule);
++    final parts = _RuleParts.parse(widget.rule.value);
+ 
+     return MouseRegion(
+       cursor: SystemMouseCursors.click,
+@@ -536,7 +528,6 @@ class _RuleRowState extends State<RuleRow> {
          child: Container(
            margin: const EdgeInsets.symmetric(vertical: 4),
            child: CommonCard(
@@ -23,6 +328,100 @@ index 1a8f4fe5..bd86a095 100644
              padding: EdgeInsets.zero,
              radius: 18,
              type: CommonCardType.filled,
+@@ -691,16 +682,19 @@ class RuleContent extends ConsumerWidget {
+ 
+   @override
+   Widget build(BuildContext context, WidgetRef ref) {
+-    final (rules, type, selectedRules) = ref.watch(
++    final vm3 = ref.watch(
+       profileOverrideStateProvider.select((state) {
+         final overrideRule = state.overrideData?.rule;
+-        return (
+-          overrideRule?.rules ?? [],
+-          overrideRule?.type ?? OverrideRuleType.added,
+-          state.selectedRules,
++        return VM3(
++          a: overrideRule?.rules ?? [],
++          b: overrideRule?.type ?? OverrideRuleType.added,
++          c: state.selectedRules,
+         );
+       }),
+     );
++    final rules = vm3.a;
++    final type = vm3.b;
++    final selectedRules = vm3.c;
+     final isSelectMode = selectedRules.isNotEmpty;
+     if (rules.isEmpty) {
+       return SliverToBoxAdapter(
+@@ -719,12 +713,8 @@ class RuleContent extends ConsumerWidget {
+                       ref
+                           .read(profileOverrideStateProvider.notifier)
+                           .updateState((state) {
+-                            final data = state.overrideData;
+-                            if (data == null) return state;
+-                            return state.copyWith(
+-                              overrideData: data.copyWith(
+-                                rule: data.rule.copyWith(overrideRules: rules),
+-                              ),
++                            return state.copyWith.overrideData!.rule(
++                              overrideRules: rules,
+                             );
+                           });
+                     },
+@@ -761,21 +751,19 @@ class RuleContent extends ConsumerWidget {
+         final newRules = List<Rule>.from(rules);
+         final item = newRules.removeAt(oldIndex);
+         newRules.insert(newIndex, item);
+-        ref.read(profileOverrideStateProvider.notifier).updateState((state) {
+-          final data = state.overrideData;
+-          if (data == null) return state;
+-          return state.copyWith(
+-            overrideData: data.copyWith(
+-              rule: data.rule.updateRules((_) => newRules),
+-            ),
+-          );
+-        });
++        ref
++            .read(profileOverrideStateProvider.notifier)
++            .updateState(
++              (state) => state.copyWith.overrideData!(
++                rule: state.overrideData!.rule.updateRules((_) => newRules),
++              ),
++            );
+       },
+       keyBuilder: (int index) {
+         return rules[index].value;
+       },
+       itemExtentBuilder: (index) {
+-        final content = _RuleParts.of(rules[index]).content;
++        final content = _RuleParts.parse(rules[index].value).content;
+         if (content.isEmpty) return 60;
+         return 66 +
+             globalState.measure
+@@ -832,9 +820,8 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
+       ...widget.snippet.ruleProvider.map((item) => item.name),
+     ];
+     _subRuleItems = [...widget.snippet.subRules.map((item) => item.name)];
+-    final currentRule = widget.rule;
+-    if (currentRule != null) {
+-      final parsedRule = ParsedRule.parseString(currentRule.value);
++    if (widget.rule != null) {
++      final parsedRule = ParsedRule.parseString(widget.rule!.value);
+       _ruleAction = parsedRule.ruleAction;
+       _contentController.text = parsedRule.content ?? '';
+       _ruleTargetController.text = parsedRule.ruleTarget ?? '';
+@@ -878,9 +865,8 @@ class _AddRuleDialogState extends State<AddRuleDialog> {
+       noResolve: _noResolve,
+       src: _src,
+     );
+-    final targetRule = widget.rule;
+-    final rule = targetRule != null
+-        ? targetRule.copyWith(value: parsedRule.value)
++    final rule = widget.rule != null
++        ? widget.rule!.copyWith(value: parsedRule.value)
+         : Rule.value(parsedRule.value);
+     Navigator.of(context).pop(rule);
+   }
 diff --git a/lib/views/profiles/tv_qr_import_dialog.dart b/lib/views/profiles/tv_qr_import_dialog.dart
 index 5c430edb..f5a1e9aa 100644
 --- a/lib/views/profiles/tv_qr_import_dialog.dart
@@ -37,10 +436,314 @@ index 5c430edb..f5a1e9aa 100644
        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
        child: ConstrainedBox(
 diff --git a/lib/views/proxies/card.dart b/lib/views/proxies/card.dart
-index 2ae9b5b7..ff295692 100644
+index f4f6e7aa..ff295692 100644
 --- a/lib/views/proxies/card.dart
 +++ b/lib/views/proxies/card.dart
-@@ -248,7 +248,6 @@ class ProxyCard extends StatelessWidget {
+@@ -6,8 +6,8 @@ import 'package:bett_box/state.dart';
+ import 'package:bett_box/views/proxies/common.dart';
+ import 'package:bett_box/widgets/widgets.dart';
+ import 'package:emoji_regex/emoji_regex.dart';
+-import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:material_ui/material_ui.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ final _proxyIconMatchersProvider = Provider.autoDispose<List<(RegExp, String)>>(
+   (ref) {
+@@ -45,23 +45,37 @@ final proxyIconProvider = Provider.autoDispose.family<String, String>((
+   );
+ });
+ 
+-class ProxyDelayText extends StatelessWidget {
++class ProxyCard extends StatelessWidget {
++  static final _emojiRegex = emojiRegex();
++  static final Map<String, bool> _emojiMatchCache = {};
++
++  static bool _hasEmoji(String name) {
++    return _emojiMatchCache.putIfAbsent(name, () => _emojiRegex.hasMatch(name));
++  }
++
++  final String groupName;
+   final Proxy proxy;
++  final GroupType groupType;
++  final ProxyCardType type;
+   final String? testUrl;
+-  final bool enableTest;
+ 
+-  const ProxyDelayText({
++  const ProxyCard({
+     super.key,
++    required this.groupName,
++    required this.testUrl,
+     required this.proxy,
+-    this.testUrl,
+-    this.enableTest = true,
++    required this.groupType,
++    required this.type,
+   });
+ 
++  Measure get measure => globalState.measure;
++
+   bool get _isNonTestableProxy {
+-    return switch (proxy.name.toUpperCase()) {
+-      'REJECT' || 'REJECT-DROP' || 'PASS' => true,
+-      _ => proxy.type.toUpperCase() == 'REMATCH',
+-    };
++    final name = proxy.name.toUpperCase();
++    return name == 'REJECT' ||
++        name == 'REJECT-DROP' ||
++        name == 'PASS' ||
++        proxy.type.toUpperCase() == 'REMATCH';
+   }
+ 
+   void _handleTestCurrentDelay() {
+@@ -69,102 +83,72 @@ class ProxyDelayText extends StatelessWidget {
+     proxyDelayTest(proxy, testUrl);
+   }
+ 
+-  @override
+-  Widget build(BuildContext context) {
+-    if (_isNonTestableProxy) {
+-      return const SizedBox.shrink();
+-    }
+-    final labelSmallHeight = globalState.measure.labelSmallHeight;
++  Widget _buildDelayText(BuildContext context) {
+     return SizedBox(
+-      height: labelSmallHeight,
++      height: measure.labelSmallHeight,
+       child: Consumer(
+-        builder: (context, ref, _) {
++        builder: (_, ref, _) {
+           final delay = ref.watch(
+             getDelayProvider(proxyName: proxy.name, testUrl: testUrl),
+           );
++          final delayAnimation = ref.watch(
++            proxiesStyleSettingProvider.select((s) => s.delayAnimation),
++          );
++
++          if (_isNonTestableProxy) {
++            return const SizedBox(height: 0, width: 0);
++          }
+ 
+           if (delay == 0) {
+-            final delayAnimation = ref.watch(
+-              proxiesStyleSettingProvider.select((s) => s.delayAnimation),
+-            );
+-            return RepaintBoundary(
+-              child: SizedBox.square(
+-                dimension: labelSmallHeight,
+-                child: DelayAnimation(
+-                  type: delayAnimation,
+-                  size: labelSmallHeight,
+-                  color: context.colorScheme.primary,
+-                ),
++            return SizedBox(
++              height: measure.labelSmallHeight,
++              width: measure.labelSmallHeight,
++              child: DelayAnimation(
++                type: delayAnimation,
++                size: measure.labelSmallHeight,
++                color: context.colorScheme.primary,
+               ),
+             );
+           }
+ 
+           if (delay == null) {
+-            if (!enableTest) return const SizedBox.shrink();
+-            return SizedBox.square(
+-              dimension: labelSmallHeight,
++            return SizedBox(
++              height: measure.labelSmallHeight,
++              width: measure.labelSmallHeight,
+               child: GestureDetector(
+                 behavior: HitTestBehavior.opaque,
+                 onTap: _handleTestCurrentDelay,
+                 child: Icon(
+                   Icons.bolt,
+-                  size: labelSmallHeight,
++                  size: measure.labelSmallHeight,
+                   color: context.colorScheme.onSurfaceVariant,
+                 ),
+               ),
+             );
+           }
+ 
+-          final text = Text(
+-            delay > 0 ? '$delay ms' : 'Timeout',
+-            style: context.textTheme.labelSmall?.copyWith(
+-              overflow: TextOverflow.ellipsis,
+-              color: utils.getDelayColor(delay),
++          return GestureDetector(
++            onTap: _handleTestCurrentDelay,
++            child: Text(
++              delay > 0 ? '$delay ms' : 'Timeout',
++              style: context.textTheme.labelSmall?.copyWith(
++                overflow: TextOverflow.ellipsis,
++                color: utils.getDelayColor(delay),
++              ),
+             ),
+           );
+-
+-          if (!enableTest) return text;
+-
+-          return GestureDetector(onTap: _handleTestCurrentDelay, child: text);
+         },
+       ),
+     );
+   }
+-}
+-
+-class ProxyCard extends StatelessWidget {
+-  static final _emojiRegex = emojiRegex();
+-  static final Map<String, bool> _emojiMatchCache = {};
+-
+-  static bool _hasEmoji(String name) {
+-    if (_emojiMatchCache.length >= 2048) {
+-      _emojiMatchCache.clear();
+-    }
+-    return _emojiMatchCache.putIfAbsent(name, () => _emojiRegex.hasMatch(name));
+-  }
+-
+-  final String groupName;
+-  final Proxy proxy;
+-  final GroupType groupType;
+-  final ProxyCardType type;
+-  final String? testUrl;
+-
+-  const ProxyCard({
+-    super.key,
+-    required this.groupName,
+-    required this.testUrl,
+-    required this.proxy,
+-    required this.groupType,
+-    required this.type,
+-  });
+-
+-  Measure get measure => globalState.measure;
+ 
+   Widget _buildProxyNameWithIcon(
++    BuildContext context,
+     WidgetRef ref, {
+-    required Widget nameWidget,
+     required bool showComputedMark,
+   }) {
++    final nameWidget = _buildProxyNameText(context);
++
+     Widget wrapPadding(Widget child) {
+       if (showComputedMark) {
+         return Padding(padding: const EdgeInsets.only(right: 28), child: child);
+@@ -208,75 +192,27 @@ class ProxyCard extends StatelessWidget {
+   }
+ 
+   Widget _buildProxyNameText(BuildContext context) {
+-    final maxLines = type == ProxyCardType.min ? 1 : 2;
+-    return SizedBox(
+-      height: measure.bodyMediumHeight * maxLines,
+-      child: EmojiText(
+-        proxy.name,
+-        maxLines: maxLines,
+-        overflow: TextOverflow.ellipsis,
+-        style: context.textTheme.bodyMedium,
+-      ),
+-    );
+-  }
+-
+-  Widget _buildFooter(BuildContext context, Widget delayText) {
+-    if (type == ProxyCardType.expand) {
+-      final labelSmallHeight = measure.labelSmallHeight;
++    if (type == ProxyCardType.min) {
+       return SizedBox(
+-        height: labelSmallHeight * 2 + 4,
+-        child: Column(
+-          mainAxisSize: MainAxisSize.min,
+-          crossAxisAlignment: CrossAxisAlignment.start,
+-          spacing: 4,
+-          children: [
+-            SizedBox(
+-              height: labelSmallHeight,
+-              child: _ProxyDesc(proxy: proxy),
+-            ),
+-            SizedBox(
+-              height: labelSmallHeight,
+-              child: Row(
+-                crossAxisAlignment: CrossAxisAlignment.end,
+-                spacing: 4,
+-                children: [
+-                  Expanded(
+-                    child: Align(
+-                      alignment: Alignment.centerLeft,
+-                      child: _ProxyMetaTag(proxy.type),
+-                    ),
+-                  ),
+-                  delayText,
+-                ],
+-              ),
+-            ),
+-          ],
++        height: measure.bodyMediumHeight * 1,
++        child: EmojiText(
++          proxy.name,
++          maxLines: 1,
++          overflow: TextOverflow.ellipsis,
++          style: context.textTheme.bodyMedium,
++        ),
++      );
++    } else {
++      return SizedBox(
++        height: measure.bodyMediumHeight * 2,
++        child: EmojiText(
++          proxy.name,
++          maxLines: 2,
++          overflow: TextOverflow.ellipsis,
++          style: context.textTheme.bodyMedium,
+         ),
+       );
+     }
+-    final bodySmallStyle = context.textTheme.bodySmall;
+-    return SizedBox(
+-      height: measure.bodySmallHeight,
+-      child: Row(
+-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+-        crossAxisAlignment: CrossAxisAlignment.center,
+-        children: [
+-          Flexible(
+-            flex: 1,
+-            child: TooltipText(
+-              text: Text(
+-                proxy.type,
+-                style: bodySmallStyle?.copyWith(
+-                  overflow: TextOverflow.ellipsis,
+-                  color: bodySmallStyle.color?.opacity80,
+-                ),
+-              ),
+-            ),
+-          ),
+-          delayText,
+-        ],
+-      ),
+-    );
+   }
+ 
+   Future<void> _changeProxy(WidgetRef ref) async {
+@@ -298,23 +234,20 @@ class ProxyCard extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    final delayText = ProxyDelayText(proxy: proxy, testUrl: testUrl);
+-    final nameTextWidget = _buildProxyNameText(context);
+-    final footerWidget = _buildFooter(context, delayText);
++    final delayText = _buildDelayText(context);
+     return Consumer(
+-      builder: (_, ref, _) {
++      builder: (_, ref, child) {
+         final isSelected = _isSelectedProxy(ref);
+         final isComputedMatch =
+             groupType.isComputedSelected && _isComputedMatch(ref);
+         final proxyNameWidget = _buildProxyNameWithIcon(
++          context,
+           ref,
+-          nameWidget: nameTextWidget,
+           showComputedMark: isComputedMatch,
+         );
          return Stack(
            children: [
              CommonCard(
@@ -48,18 +751,493 @@ index 2ae9b5b7..ff295692 100644
                clipBehavior: Clip.none,
                onPressed: () {
                  _changeProxy(ref);
+@@ -327,7 +260,67 @@ class ProxyCard extends StatelessWidget {
+                   mainAxisSize: MainAxisSize.min,
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   spacing: 8,
+-                  children: [proxyNameWidget, footerWidget],
++                  children: [
++                    proxyNameWidget,
++                    if (type == ProxyCardType.expand) ...[
++                      SizedBox(
++                        height: measure.labelSmallHeight * 2 + 4,
++                        child: Column(
++                          mainAxisSize: MainAxisSize.min,
++                          crossAxisAlignment: CrossAxisAlignment.start,
++                          spacing: 4,
++                          children: [
++                            SizedBox(
++                              height: measure.labelSmallHeight,
++                              child: _ProxyDesc(proxy: proxy),
++                            ),
++                            SizedBox(
++                              height: measure.labelSmallHeight,
++                              child: Row(
++                                crossAxisAlignment: CrossAxisAlignment.end,
++                                spacing: 4,
++                                children: [
++                                  Expanded(
++                                    child: Align(
++                                      alignment: Alignment.centerLeft,
++                                      child: _ProxyMetaTag(proxy.type),
++                                    ),
++                                  ),
++                                  delayText,
++                                ],
++                              ),
++                            ),
++                          ],
++                        ),
++                      ),
++                    ] else
++                      SizedBox(
++                        height: measure.bodySmallHeight,
++                        child: Row(
++                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
++                          crossAxisAlignment: CrossAxisAlignment.center,
++                          children: [
++                            Flexible(
++                              flex: 1,
++                              child: TooltipText(
++                                text: Text(
++                                  proxy.type,
++                                  style: context.textTheme.bodySmall?.copyWith(
++                                    overflow: TextOverflow.ellipsis,
++                                    color: context
++                                        .textTheme
++                                        .bodySmall
++                                        ?.color
++                                        ?.opacity80,
++                                  ),
++                                ),
++                              ),
++                            ),
++                            delayText,
++                          ],
++                        ),
++                      ),
++                  ],
+                 ),
+               ),
+             ),
+@@ -351,13 +344,13 @@ class _ProxyDesc extends ConsumerWidget {
+ 
+   @override
+   Widget build(BuildContext context, WidgetRef ref) {
+-    final isGroup = ref.watch(
+-      groupsProvider.select((groups) => groups.getGroup(proxy.name) != null),
+-    );
+-    if (!isGroup) return const SizedBox.shrink();
+-    final selectedName = ref.watch(
+-      getProxyCardStateProvider(proxy.name).select((s) => s.proxyName),
++    final group = ref.watch(
++      groupsProvider.select((groups) => groups.getGroup(proxy.name)),
+     );
++    if (group == null) return const SizedBox.shrink();
++    final selectedName = ref
++        .watch(getProxyCardStateProvider(proxy.name))
++        .proxyName;
+     if (selectedName.isEmpty) return const SizedBox.shrink();
+     return _ProxyMetaTag(selectedName);
+   }
+@@ -389,7 +382,6 @@ class _ProxyComputedMarkIcon extends StatelessWidget {
+ 
+   @override
+   Widget build(BuildContext context) {
+-    final colorScheme = Theme.of(context).colorScheme;
+     return Container(
+       alignment: Alignment.topRight,
+       margin: const EdgeInsets.all(8),
+@@ -397,12 +389,12 @@ class _ProxyComputedMarkIcon extends StatelessWidget {
+         padding: const EdgeInsets.all(4),
+         decoration: BoxDecoration(
+           shape: BoxShape.circle,
+-          color: colorScheme.secondaryContainer,
++          color: Theme.of(context).colorScheme.secondaryContainer,
+         ),
+         child: Icon(
+           Icons.lock_outline,
+           size: 18,
+-          color: colorScheme.onSecondaryContainer,
++          color: Theme.of(context).colorScheme.onSecondaryContainer,
+         ),
+       ),
+     );
 diff --git a/lib/views/proxies/list.dart b/lib/views/proxies/list.dart
-index ca3cfc85..d4b63488 100644
+index 72962749..d4b63488 100644
 --- a/lib/views/proxies/list.dart
 +++ b/lib/views/proxies/list.dart
-@@ -393,7 +393,6 @@ class _GroupHeader extends ConsumerWidget {
+@@ -6,9 +6,9 @@ import 'package:bett_box/models/models.dart';
+ import 'package:bett_box/providers/providers.dart';
+ import 'package:bett_box/state.dart';
+ import 'package:bett_box/widgets/widgets.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+-import 'package:material_ui/material_ui.dart';
+ 
+ import 'card.dart';
+ import 'common.dart';
+@@ -62,15 +62,6 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList>
+     begin: const Offset(0, -0.16),
+     end: Offset.zero,
+   );
+-  static final List<CurveTween> _rowFadeTweens = List<CurveTween>.generate(7, (
+-    index,
+-  ) {
+-    final begin = index * 0.07;
+-    return CurveTween(
+-      curve: Interval(begin, begin + 0.58, curve: Curves.easeOutCubic),
+-    );
+-  }, growable: false);
+-
+   final ScrollController _scrollController = ScrollController();
+   final _sliverCache = <String, (Group, Object, Widget)>{};
+   late final AnimationController _expandController;
+@@ -131,10 +122,10 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList>
+ 
+   double _getHeaderHeight() {
+     final measure = globalState.measure;
+-    final contentRowHeight = math.max(
++    final contentRowHeight = [
+       40.0,
+       measure.titleMediumHeight + 4 + measure.labelMediumHeight,
+-    );
++    ].reduce((a, b) => a > b ? a : b);
+     return 28.0 + contentRowHeight;
+   }
+ 
+@@ -195,19 +186,17 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList>
+     int rowIndex,
+     double itemHeight,
+   ) {
+-    final columns = widget.columns;
+-    final start = rowIndex * columns;
+-    final totalLength = sortedProxies.length;
+-
+-    final rowChildren = <Widget>[];
+-    for (var i = 0; i < columns; i++) {
+-      if (i > 0) {
+-        rowChildren.add(const SizedBox(width: 8));
+-      }
+-      final proxyIndex = start + i;
+-      if (proxyIndex < totalLength) {
+-        final proxy = sortedProxies[proxyIndex];
+-        rowChildren.add(
++    final start = rowIndex * widget.columns;
++    final end = start + widget.columns < sortedProxies.length
++        ? start + widget.columns
++        : sortedProxies.length;
++    final rowProxies = sortedProxies.sublist(start, end);
++
++    final cardWidgets = <Widget>[];
++    for (var i = 0; i < widget.columns; i++) {
++      if (i < rowProxies.length) {
++        final proxy = rowProxies[i];
++        cardWidgets.add(
+           Expanded(
+             child: ProxyCard(
+               key: ValueKey('${group.name}.${proxy.name}'),
+@@ -220,31 +209,39 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList>
+           ),
+         );
+       } else {
+-        rowChildren.add(const Expanded(child: SizedBox()));
++        cardWidgets.add(const Expanded(child: SizedBox()));
+       }
+     }
+ 
+-    final rowWidget = Row(children: rowChildren);
+-    final Widget content = switch (group.name == _expandingGroup) {
+-      true => () {
+-        final animation = _expandController.drive(
+-          _rowFadeTweens[math.min(rowIndex, 6)],
+-        );
+-        return FadeTransition(
+-          opacity: animation,
+-          child: SlideTransition(
+-            position: animation.drive(_expandSlide),
+-            child: rowWidget,
+-          ),
+-        );
+-      }(),
+-      false => rowWidget,
+-    };
++    final rowChildren = <Widget>[];
++    for (var i = 0; i < cardWidgets.length; i++) {
++      rowChildren.add(cardWidgets[i]);
++      if (i < cardWidgets.length - 1) {
++        rowChildren.add(const SizedBox(width: 8));
++      }
++    }
+ 
++    final begin = math.min(rowIndex, 6) * 0.07;
++    final Animation<double> animation = group.name == _expandingGroup
++        ? _expandController.drive(
++            CurveTween(
++              curve: Interval(begin, begin + 0.58, curve: Curves.easeOutCubic),
++            ),
++          )
++        : kAlwaysCompleteAnimation;
+     return Padding(
+       key: ValueKey('row_${group.name}_$rowIndex'),
+       padding: const EdgeInsets.only(bottom: 8),
+-      child: SizedBox(height: itemHeight, child: content),
++      child: SizedBox(
++        height: itemHeight,
++        child: FadeTransition(
++          opacity: animation,
++          child: SlideTransition(
++            position: animation.drive(_expandSlide),
++            child: Row(children: rowChildren),
++          ),
++        ),
++      ),
+     );
+   }
+ 
+@@ -395,35 +392,7 @@ class _GroupHeader extends ConsumerWidget {
+ 
      final selectedProxyIcon = ref.watch(proxyIconProvider(selectedProxyName));
  
+-    final showFilled = iconStyle == ProxiesIconStyle.none;
+-    final expandIcon = CommonExpandIcon(
+-      expand: isExpand,
+-      duration: const Duration(milliseconds: 320),
+-    );
+-    final primaryColor = context.colorScheme.primary;
+-    final expandButtonStyle = ButtonStyle(
+-      backgroundColor: WidgetStateProperty.resolveWith((states) {
+-        if (states.contains(WidgetState.focused)) {
+-          return primaryColor.withValues(alpha: 0.2);
+-        }
+-        return null;
+-      }),
+-    );
+-    void handleToggle() {
+-      if (system.isAndroid &&
+-          ref.read(
+-            appSettingProvider.select((s) => s.enableNavBarHapticFeedback),
+-          )) {
+-        HapticFeedback.selectionClick();
+-      }
+-      onToggle();
+-    }
+-
+-    final textTheme = context.textTheme;
+-    final labelLightStyle = textTheme.labelMedium?.toLight;
+-
      return CommonCard(
 -      elevated: false,
        radius: 16,
        type: CommonCardType.filled,
        onPressed: onToggle,
+@@ -439,16 +408,22 @@ class _GroupHeader extends ConsumerWidget {
+                 children: [
+                   EmojiText(
+                     group.name,
+-                    style: textTheme.titleMedium,
++                    style: context.textTheme.titleMedium,
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+                   ),
+                   const SizedBox(height: 4),
+                   Row(
+                     children: [
+-                      Text(group.type.name, style: labelLightStyle),
++                      Text(
++                        group.type.name,
++                        style: context.textTheme.labelMedium?.toLight,
++                      ),
+                       if (selectedProxyName.isNotEmpty) ...[
+-                        Text('  •  ', style: labelLightStyle),
++                        Text(
++                          '  •  ',
++                          style: context.textTheme.labelMedium?.toLight,
++                        ),
+                         if (selectedProxyIcon.isNotEmpty) ...[
+                           CommonTargetIcon(
+                             src: selectedProxyIcon,
+@@ -459,7 +434,7 @@ class _GroupHeader extends ConsumerWidget {
+                         Flexible(
+                           child: EmojiText(
+                             selectedProxyName,
+-                            style: labelLightStyle,
++                            style: context.textTheme.labelMedium?.toLight,
+                             overflow: TextOverflow.ellipsis,
+                           ),
+                         ),
+@@ -500,12 +475,10 @@ class _GroupHeader extends ConsumerWidget {
+                             padding: EdgeInsets.zero,
+                             visualDensity: VisualDensity.compact,
+                             icon: isTestingThisGroup
+-                                ? const RepaintBoundary(
+-                                    child: SizedBox.square(
+-                                      dimension: 18,
+-                                      child: CircularProgressIndicator(
+-                                        strokeWidth: 2,
+-                                      ),
++                                ? const SizedBox.square(
++                                    dimension: 18,
++                                    child: CircularProgressIndicator(
++                                      strokeWidth: 2,
+                                     ),
+                                   )
+                                 : const Icon(Icons.network_ping),
+@@ -524,21 +497,33 @@ class _GroupHeader extends ConsumerWidget {
+             _PressScaleWrapper(
+               child: SizedBox.square(
+                 dimension: 36,
+-                child: showFilled
+-                    ? IconButton.filledTonal(
+-                        padding: EdgeInsets.zero,
+-                        visualDensity: VisualDensity.compact,
+-                        icon: expandIcon,
+-                        onPressed: handleToggle,
+-                        style: expandButtonStyle,
+-                      )
+-                    : IconButton(
+-                        padding: EdgeInsets.zero,
+-                        visualDensity: VisualDensity.compact,
+-                        icon: expandIcon,
+-                        onPressed: handleToggle,
+-                        style: expandButtonStyle,
+-                      ),
++                child: IconButton.filledTonal(
++                  padding: EdgeInsets.zero,
++                  visualDensity: VisualDensity.compact,
++                  icon: CommonExpandIcon(
++                    expand: isExpand,
++                    duration: const Duration(milliseconds: 320),
++                  ),
++                  onPressed: () {
++                    if (system.isAndroid &&
++                        ref
++                            .read(appSettingProvider)
++                            .enableNavBarHapticFeedback) {
++                      HapticFeedback.selectionClick();
++                    }
++                    onToggle();
++                  },
++                  style: ButtonStyle(
++                    backgroundColor: WidgetStateProperty.resolveWith((states) {
++                      if (states.contains(WidgetState.focused)) {
++                        return context.colorScheme.primary.withValues(
++                          alpha: 0.2,
++                        );
++                      }
++                      return null;
++                    }),
++                  ),
++                ),
+               ),
+             ),
+           ],
+diff --git a/lib/views/tools.dart b/lib/views/tools.dart
+index c02fd2b6..9cccc00a 100644
+--- a/lib/views/tools.dart
++++ b/lib/views/tools.dart
+@@ -19,10 +19,9 @@ import 'package:bett_box/views/config/ntp.dart';
+ import 'package:bett_box/views/config/sniffer.dart';
+ import 'package:bett_box/views/config/tunnel.dart';
+ import 'package:bett_box/views/connection/connections.dart';
++import 'package:bett_box/views/connection/requests.dart';
+ import 'package:bett_box/views/hotkey.dart';
+ import 'package:bett_box/views/other_setting.dart';
+-import 'package:bett_box/views/profiles/scripts.dart';
+-import 'package:bett_box/views/resources.dart';
+ import 'package:bett_box/widgets/widgets.dart';
+ import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+@@ -110,22 +109,11 @@ List<ToolsShortcut> getToolsShortcuts(
+     for (final entry in SidebarFlyoutEntry.supportedValues)
+       if (entries.contains(entry))
+         ?switch (entry) {
+-          SidebarFlyoutEntry.resources => ToolsShortcut(
+-            icon: const Icon(Icons.storage),
+-            title: appLocalizations.resources,
+-            subtitle: appLocalizations.resourcesDesc,
+-            builder: (_) => const ResourcesView(),
+-            wrap: false,
++          SidebarFlyoutEntry.resources => buildNavigationShortcut(
++            PageLabel.resources,
+           ),
+-          SidebarFlyoutEntry.script => ToolsShortcut(
+-            icon: const Icon(Icons.terminal_outlined),
+-            title: appLocalizations.script,
+-            subtitle: appLocalizations.scriptDesc,
+-            builder: (_) => const ScriptsView(),
+-            wrap: false,
+-          ),
+-          SidebarFlyoutEntry.toolbox => buildNavigationShortcut(
+-            PageLabel.toolbox,
++          SidebarFlyoutEntry.script => buildNavigationShortcut(
++            PageLabel.script,
+           ),
+           SidebarFlyoutEntry.theme => ToolsShortcut(
+             icon: const Icon(Icons.style),
+@@ -205,6 +193,9 @@ class _ToolViewState extends ConsumerState<ToolsView> {
+     if (navigationItem.label == PageLabel.connections) {
+       return const ConnectionsView(respectCurrentPage: false);
+     }
++    if (navigationItem.label == PageLabel.requests) {
++      return const RequestsView();
++    }
+     return navigationItem.builder(context);
+   }
+ 
+@@ -1507,9 +1498,6 @@ class _ToolViewState extends ConsumerState<ToolsView> {
+     final moreItems = ref.watch(
+       moreToolsSelectorStateProvider.select((state) => state.navigationItems),
+     );
+-    final logsItem = isMobileView && !globalState.isAndroidTV
+-        ? moreItems.where((item) => item.label == PageLabel.logs).firstOrNull
+-        : null;
+     final searchItems = _getSearchItems(moreItems);
+     final searchResults = _query.isEmpty
+         ? const <Widget>[]
+@@ -1519,17 +1507,14 @@ class _ToolViewState extends ConsumerState<ToolsView> {
+       Consumer(
+         builder: (_, ref, _) {
+           final state = ref.watch(moreToolsSelectorStateProvider);
+-          final navigationItems = state.navigationItems
+-              .where((item) => logsItem == null || item.label != logsItem.label)
+-              .toList();
+-          if (navigationItems.isEmpty) {
++          if (state.navigationItems.isEmpty) {
+             return Container();
+           }
+           return _buildModernSection(
+             context,
+             title: appLocalizations.more,
+             isFirst: true,
+-            items: navigationItems
++            items: state.navigationItems
+                 .map((item) => _buildNavigationMenuItem(item))
+                 .toList(),
+           );
+@@ -1558,20 +1543,8 @@ class _ToolViewState extends ConsumerState<ToolsView> {
+     ];
+ 
+     return CommonScaffold(
+-      title: isMobileView ? appLocalizations.tools : appLocalizations.settings,
++      title: appLocalizations.tools,
+       searchState: AppBarSearchState(onSearch: _onSearchChanged),
+-      actions: [
+-        if (logsItem != null)
+-          IconButton(
+-            onPressed: () => showExtend(
+-              context,
+-              props: const ExtendProps(forceFull: true),
+-              builder: (_, _) => _buildNavigationPage(logsItem),
+-            ),
+-            icon: logsItem.icon,
+-            tooltip: Intl.message(logsItem.label.name),
+-          ),
+-      ],
+       body: ScrollEdgeRise(
+         builder: (context, rise) => ListView.builder(
+           key: _query.isEmpty ? toolsStoreKey : null,
 diff --git a/lib/widgets/card.dart b/lib/widgets/card.dart
 index 4c2a1a3e..0e7dd511 100644
 --- a/lib/widgets/card.dart
@@ -228,19 +1406,192 @@ index c9898496..ab34ba32 100644
          child: child,
        ),
 diff --git a/lib/widgets/input.dart b/lib/widgets/input.dart
-index 809f61f2..fcb79ecf 100644
+index 7c5a6053..fcb79ecf 100644
 --- a/lib/widgets/input.dart
 +++ b/lib/widgets/input.dart
-@@ -32,7 +32,7 @@ class OptionsDialog<T> extends StatelessWidget {
+@@ -32,102 +32,58 @@ class OptionsDialog<T> extends StatelessWidget {
    Widget build(BuildContext context) {
      return CommonDialog(
        title: title,
--      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
 +      padding: const EdgeInsets.symmetric(vertical: 16),
        child: Column(
          mainAxisSize: MainAxisSize.min,
          children: [
-@@ -340,7 +340,6 @@ class ListInputPage extends StatelessWidget {
+           for (final option in options)
+-            OptionItem(
+-              text: textBuilder(option),
+-              selected: value == option,
+-              onTap: () {
+-                Navigator.of(context).pop(option);
+-              },
+-            ),
+-        ],
+-      ),
+-    );
+-  }
+-}
+-
+-class OptionItem extends StatelessWidget {
+-  final String text;
+-  final String? subtitle;
+-  final bool selected;
+-  final VoidCallback onTap;
+-
+-  const OptionItem({
+-    super.key,
+-    required this.text,
+-    this.subtitle,
+-    required this.selected,
+-    required this.onTap,
+-  });
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final colorScheme = context.colorScheme;
+-    return Padding(
+-      padding: const EdgeInsets.symmetric(vertical: 2),
+-      child: Material(
+-        color: selected ? colorScheme.secondaryContainer : Colors.transparent,
+-        shape: const RoundedSuperellipseBorder(
+-          borderRadius: BorderRadius.all(Radius.circular(14)),
+-        ),
+-        clipBehavior: Clip.antiAlias,
+-        child: InkWell(
+-          focusColor: colorScheme.primary.withValues(alpha: 0.18),
+-          onTap: onTap,
+-          child: Padding(
+-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+-            child: Row(
+-              children: [
+-                Icon(
+-                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+-                  size: 21,
+-                  color: selected
+-                      ? colorScheme.primary
+-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+-                ),
+-                const SizedBox(width: 12),
+-                Expanded(
+-                  child: Column(
+-                    crossAxisAlignment: CrossAxisAlignment.start,
++            Material(
++              color: Colors.transparent,
++              child: InkWell(
++                onTap: () {
++                  Navigator.of(context).pop(option);
++                },
++                child: Container(
++                  padding: const EdgeInsets.symmetric(
++                    horizontal: 16,
++                    vertical: 12,
++                  ),
++                  child: Row(
+                     children: [
+-                      if (selected)
+-                        SingleChildScrollView(
+-                          scrollDirection: Axis.horizontal,
+-                          child: EmojiText(
+-                            text,
+-                            style: context.textTheme.bodyMedium?.copyWith(
+-                              color: colorScheme.onSecondaryContainer,
+-                              fontWeight: FontWeight.w600,
+-                            ),
+-                          ),
+-                        )
+-                      else
+-                        EmojiText(
+-                          text,
+-                          style: context.textTheme.bodyMedium,
+-                          overflow: TextOverflow.ellipsis,
+-                          maxLines: 1,
+-                        ),
+-                      if (subtitle case final subtitle?)
+-                        Text(
+-                          subtitle,
+-                          maxLines: 1,
+-                          overflow: TextOverflow.ellipsis,
+-                          style: context.textTheme.bodySmall?.copyWith(
+-                            color: colorScheme.onSurfaceVariant,
+-                          ),
+-                        ),
++                      Icon(
++                        value == option
++                            ? Icons.check_circle_rounded
++                            : Icons.circle_outlined,
++                        size: 21,
++                        color: value == option
++                            ? context.colorScheme.primary
++                            : context.colorScheme.onSurfaceVariant.withValues(
++                                alpha: 0.6,
++                              ),
++                      ),
++                      const SizedBox(width: 12),
++                      Expanded(
++                        child: value == option
++                            ? SingleChildScrollView(
++                                scrollDirection: Axis.horizontal,
++                                child: EmojiText(
++                                  textBuilder(option),
++                                  style: context.textTheme.bodyMedium,
++                                ),
++                              )
++                            : EmojiText(
++                                textBuilder(option),
++                                style: context.textTheme.bodyMedium,
++                                overflow: TextOverflow.ellipsis,
++                                maxLines: 1,
++                              ),
++                      ),
+                     ],
+                   ),
+                 ),
+-              ],
++              ),
+             ),
+-          ),
+-        ),
++        ],
+       ),
+     );
+   }
+@@ -197,7 +153,6 @@ class _InputDialogState extends State<InputDialog> {
+   final _formKey = GlobalKey<FormState>();
+ 
+   late TextEditingController textController;
+-  late bool _obscure = widget.obscureText ?? false;
+   FocusNode? _focusNode;
+ 
+   String get value => widget.value;
+@@ -265,7 +220,7 @@ class _InputDialogState extends State<InputDialog> {
+           children: [
+             TextFormField(
+               focusNode: _focusNode,
+-              obscureText: _obscure,
++              obscureText: widget.obscureText ?? false,
+               keyboardType:
+                   widget.keyboardType ??
+                   (widget.obscureText == true
+@@ -283,18 +238,6 @@ class _InputDialogState extends State<InputDialog> {
+                 suffixText: suffixText,
+                 hintText: widget.hintText,
+                 labelText: widget.labelText,
+-                suffixIcon: widget.obscureText == true
+-                    ? IconButton(
+-                        icon: Icon(
+-                          _obscure ? Icons.visibility : Icons.visibility_off,
+-                        ),
+-                        onPressed: () {
+-                          setState(() {
+-                            _obscure = !_obscure;
+-                          });
+-                        },
+-                      )
+-                    : null,
+               ),
+               validator: widget.validator,
+             ),
+@@ -397,7 +340,6 @@ class ListInputPage extends StatelessWidget {
                      ReorderableDelayedDragStartListener(
                        index: index,
                        child: CommonCard(
@@ -248,7 +1599,7 @@ index 809f61f2..fcb79ecf 100644
                          child: ListItem(
                            leading: leadingBuilder != null
                                ? leadingBuilder!(e)
-@@ -490,7 +489,6 @@ class MapInputPage extends StatelessWidget {
+@@ -547,7 +489,6 @@ class MapInputPage extends StatelessWidget {
                      ReorderableDelayedDragStartListener(
                        index: index,
                        child: CommonCard(
@@ -256,6 +1607,70 @@ index 809f61f2..fcb79ecf 100644
                          child: ListItem(
                            leading: leadingBuilder != null
                                ? leadingBuilder!(e)
+diff --git a/lib/widgets/list.dart b/lib/widgets/list.dart
+index b06e8600..62a28711 100644
+--- a/lib/widgets/list.dart
++++ b/lib/widgets/list.dart
+@@ -606,27 +606,6 @@ class SectionContainer extends StatelessWidget {
+     final cleanItems = items.where((widget) => widget is! Divider).toList();
+     if (cleanItems.isEmpty) return const SizedBox.shrink();
+ 
+-    final content = Column(
+-      mainAxisSize: MainAxisSize.min,
+-      children: [
+-        for (var i = 0; i < cleanItems.length; i++) ...[
+-          cleanItems[i],
+-          if (i != cleanItems.length - 1)
+-            Divider(
+-              height: 1,
+-              thickness: 1,
+-              color: context.colorScheme.outlineVariant.withValues(
+-                alpha: context.colorScheme.brightness == Brightness.light
+-                    ? 0.45
+-                    : 0.25,
+-              ),
+-              indent: 16,
+-              endIndent: 16,
+-            ),
+-        ],
+-      ],
+-    );
+-
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       mainAxisSize: MainAxisSize.min,
+@@ -635,7 +614,30 @@ class SectionContainer extends StatelessWidget {
+           ListHeader(title: title!, actions: actions, padding: headerPadding),
+         Padding(
+           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+-          child: CommonCard(type: CommonCardType.filled, child: content),
++          child: CommonCard(
++            type: CommonCardType.filled,
++            child: Column(
++              mainAxisSize: MainAxisSize.min,
++              children: [
++                for (var i = 0; i < cleanItems.length; i++) ...[
++                  cleanItems[i],
++                  if (i != cleanItems.length - 1)
++                    Divider(
++                      height: 1,
++                      thickness: 1,
++                      color: context.colorScheme.outlineVariant.withValues(
++                        alpha:
++                            context.colorScheme.brightness == Brightness.light
++                            ? 0.45
++                            : 0.25,
++                      ),
++                      indent: 16,
++                      endIndent: 16,
++                    ),
++                ],
++              ],
++            ),
++          ),
+         ),
+       ],
+     );
 diff --git a/lib/widgets/pop_scope.dart b/lib/widgets/pop_scope.dart
 index 1053d8dd..d4bcfdf0 100644
 --- a/lib/widgets/pop_scope.dart
@@ -429,23 +1844,398 @@ index 52a9e054..ff331b7d 100644
          ),
        ),
 diff --git a/lib/widgets/sheet.dart b/lib/widgets/sheet.dart
-index 12d3a18a..f0d6719c 100644
+index cf551e38..f0d6719c 100644
 --- a/lib/widgets/sheet.dart
 +++ b/lib/widgets/sheet.dart
-@@ -139,11 +139,9 @@ class AdaptiveSheetScaffold extends StatelessWidget {
-     final content = bottomSheet
-         ? Container(
-             clipBehavior: Clip.antiAlias,
--            decoration: ShapeDecoration(
+@@ -2,13 +2,12 @@ import 'package:bett_box/common/common.dart';
+ import 'package:bett_box/enum/enum.dart';
+ import 'package:bett_box/models/models.dart';
+ import 'package:bett_box/state.dart';
+-import 'package:flutter/services.dart';
+ import 'package:material_ui/material_ui.dart';
+ 
+-import 'pop_scope.dart';
+ import 'scaffold.dart';
+ import 'side_sheet.dart';
+ import 'text.dart';
++import 'pop_scope.dart';
+ 
+ @immutable
+ class SheetProps {
+@@ -18,9 +17,6 @@ class SheetProps {
+   final bool useSafeArea;
+   final bool blur;
+   final Color? barrierColor;
+-  final bool expandable;
+-  final double initialFraction;
+-  final double maxFraction;
+ 
+   const SheetProps({
+     this.maxWidth,
+@@ -29,25 +25,9 @@ class SheetProps {
+     this.isScrollControlled = false,
+     this.blur = false,
+     this.barrierColor,
+-    this.expandable = true,
+-    this.initialFraction = 0.58,
+-    this.maxFraction = 0.92,
+   });
+ }
+ 
+-class _SheetScope extends InheritedWidget {
+-  final SheetProps props;
+-
+-  const _SheetScope({required this.props, required super.child});
+-
+-  static SheetProps? maybeOf(BuildContext context) {
+-    return context.dependOnInheritedWidgetOfExactType<_SheetScope>()?.props;
+-  }
+-
+-  @override
+-  bool updateShouldNotify(_SheetScope oldWidget) => props != oldWidget.props;
+-}
+-
+ @immutable
+ class ExtendProps {
+   final double? maxWidth;
+@@ -76,16 +56,9 @@ Future<T?> showSheet<T>({
+   return switch (isMobile) {
+     true => showModalBottomSheet<T>(
+       context: context,
+-      isScrollControlled: props.expandable || props.isScrollControlled,
+-      backgroundColor: Colors.transparent,
+-      builder: (sheetContext) {
+-        return _SheetScope(
+-          props: props,
+-          child: SafeArea(
+-            bottom: false,
+-            child: builder(sheetContext, SheetType.bottomSheet),
+-          ),
+-        );
++      isScrollControlled: props.isScrollControlled,
++      builder: (_) {
++        return SafeArea(child: builder(context, SheetType.bottomSheet));
+       },
+       showDragHandle: false,
+       useSafeArea: props.useSafeArea,
+@@ -129,9 +102,6 @@ class AdaptiveSheetScaffold extends StatelessWidget {
+   final Widget body;
+   final String title;
+   final List<Widget> actions;
+-  final bool? expandable;
+-  final double? initialFraction;
+-  final double? maxFraction;
+ 
+   const AdaptiveSheetScaffold({
+     super.key,
+@@ -139,30 +109,23 @@ class AdaptiveSheetScaffold extends StatelessWidget {
+     required this.body,
+     required this.title,
+     this.actions = const [],
+-    this.expandable,
+-    this.initialFraction,
+-    this.maxFraction,
+   });
+ 
+   @override
+   Widget build(BuildContext context) {
+-    if (type == SheetType.bottomSheet) {
+-      return _ExpandableBottomSheet(
+-        title: title,
+-        body: body,
+-        actions: actions,
+-        expandable: expandable,
+-        initialFraction: initialFraction,
+-        maxFraction: maxFraction,
+-      );
+-    }
+-
++    final bottomSheet = type == SheetType.bottomSheet;
+     final sideSheet = type == SheetType.sideSheet;
+-    final backgroundColor = sideSheet
++    final backgroundColor = (bottomSheet || sideSheet)
+         ? context.colorScheme.surfaceContainerLow
+         : null;
+     final appBar = AppBar(
+-      automaticallyImplyLeading: actions.isEmpty && sideSheet ? false : true,
++      forceMaterialTransparency: bottomSheet,
++      automaticallyImplyLeading: bottomSheet
++          ? false
++          : actions.isEmpty && sideSheet
++          ? false
++          : true,
++      centerTitle: bottomSheet,
+       backgroundColor: Colors.transparent,
+       elevation: 0,
+       scrolledUnderElevation: 0,
+@@ -173,6 +136,38 @@ class AdaptiveSheetScaffold extends StatelessWidget {
+         ...actions,
+       ]),
+     );
++    final content = bottomSheet
++        ? Container(
++            clipBehavior: Clip.antiAlias,
 +            decoration: BoxDecoration(
-               color: backgroundColor,
--              shape: const RoundedSuperellipseBorder(
--                borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
--              ),
++              color: backgroundColor,
 +              borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
-             ),
-             child: Column(
-               mainAxisSize: MainAxisSize.min,
++            ),
++            child: Column(
++              mainAxisSize: MainAxisSize.min,
++              children: [
++                Padding(
++                  padding: EdgeInsets.only(top: 16),
++                  child: Container(
++                    alignment: Alignment.center,
++                    height: 4,
++                    width: 32,
++                    decoration: BoxDecoration(
++                      borderRadius: BorderRadius.circular(2),
++                      color: context.colorScheme.onSurfaceVariant,
++                    ),
++                  ),
++                ),
++                appBar,
++                Flexible(flex: 1, child: body),
++              ],
++            ),
++          )
++        : CommonScaffold(
++            appBar: appBar,
++            backgroundColor: backgroundColor,
++            body: body,
++          );
+ 
+     final isTv = globalState.isAndroidTV;
+     return PopScope(
+@@ -185,227 +180,7 @@ class AdaptiveSheetScaffold extends StatelessWidget {
+               if (ModalRoute.of(context)?.isCurrent != true) return;
+               Navigator.of(context).pop();
+             },
+-      child: CommonScaffold(
+-        appBar: appBar,
+-        backgroundColor: backgroundColor,
+-        body: body,
+-      ),
+-    );
+-  }
+-}
+-
+-class _ExpandableBottomSheet extends StatefulWidget {
+-  final String title;
+-  final Widget body;
+-  final List<Widget> actions;
+-  final bool? expandable;
+-  final double? initialFraction;
+-  final double? maxFraction;
+-
+-  const _ExpandableBottomSheet({
+-    required this.title,
+-    required this.body,
+-    required this.actions,
+-    this.expandable,
+-    this.initialFraction,
+-    this.maxFraction,
+-  });
+-
+-  @override
+-  State<_ExpandableBottomSheet> createState() => _ExpandableBottomSheetState();
+-}
+-
+-class _ExpandableBottomSheetState extends State<_ExpandableBottomSheet>
+-    with SingleTickerProviderStateMixin {
+-  late final AnimationController _controller;
+-  late final CurvedAnimation _curve;
+-  double _dragStartY = 0.0;
+-  double _dragStartValue = 0.0;
+-
+-  @override
+-  void initState() {
+-    super.initState();
+-    _controller = AnimationController(
+-      vsync: this,
+-      duration: const Duration(milliseconds: 260),
+-    );
+-    _curve = CurvedAnimation(
+-      parent: _controller,
+-      curve: Curves.easeOutCubic,
+-      reverseCurve: Curves.easeInCubic,
+-    );
+-  }
+-
+-  @override
+-  void dispose() {
+-    _curve.dispose();
+-    _controller.dispose();
+-    super.dispose();
+-  }
+-
+-  bool get _isExpanded => _controller.value >= 0.5;
+-
+-  void _expand() {
+-    if (!mounted) return;
+-    HapticFeedback.selectionClick();
+-    _controller.forward();
+-  }
+-
+-  void _collapse() {
+-    if (!mounted) return;
+-    HapticFeedback.selectionClick();
+-    _controller.reverse();
+-  }
+-
+-  void _toggle() {
+-    _isExpanded ? _collapse() : _expand();
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final scopeProps = _SheetScope.maybeOf(context) ?? const SheetProps();
+-    final expandable = widget.expandable ?? scopeProps.expandable;
+-    final initialFraction =
+-        widget.initialFraction ?? scopeProps.initialFraction;
+-    final maxFraction = widget.maxFraction ?? scopeProps.maxFraction;
+-
+-    final screenHeight = MediaQuery.sizeOf(context).height;
+-    final initialHeight = screenHeight * initialFraction;
+-    final maxHeight = scopeProps.maxHeight ?? (screenHeight * maxFraction);
+-    final travel = maxHeight - initialHeight;
+-
+-    final appBar = AppBar(
+-      forceMaterialTransparency: true,
+-      automaticallyImplyLeading: false,
+-      centerTitle: true,
+-      backgroundColor: Colors.transparent,
+-      elevation: 0,
+-      scrolledUnderElevation: 0,
+-      surfaceTintColor: Colors.transparent,
+-      title: EmojiText(widget.title),
+-      actions: genActions(widget.actions),
+-    );
+-
+-    final header = GestureDetector(
+-      behavior: HitTestBehavior.opaque,
+-      onTap: expandable && travel > 0 ? _toggle : null,
+-      onVerticalDragStart: (details) {
+-        if (!expandable || travel <= 0) return;
+-        _dragStartY = details.globalPosition.dy;
+-        _dragStartValue = _controller.value;
+-      },
+-      onVerticalDragUpdate: (details) {
+-        if (!expandable || travel <= 0) return;
+-        final delta = _dragStartY - details.globalPosition.dy;
+-        _controller.value = (_dragStartValue + delta / travel).clamp(0.0, 1.0);
+-      },
+-      onVerticalDragEnd: (details) {
+-        if (!expandable || travel <= 0) return;
+-        final vy = details.velocity.pixelsPerSecond.dy;
+-        if (vy < -250) {
+-          _expand();
+-        } else if (vy > 250) {
+-          if (_dragStartValue > 0.5) {
+-            _collapse();
+-          } else {
+-            Navigator.of(context).pop();
+-          }
+-        } else {
+-          _controller.value >= 0.4 ? _expand() : _collapse();
+-        }
+-      },
+-      child: Column(
+-        mainAxisSize: MainAxisSize.min,
+-        children: [
+-          Padding(
+-            padding: const EdgeInsets.only(top: 16),
+-            child: Container(
+-              alignment: Alignment.center,
+-              height: 4,
+-              width: 32,
+-              decoration: BoxDecoration(
+-                borderRadius: BorderRadius.circular(2),
+-                color: context.colorScheme.onSurfaceVariant,
+-              ),
+-            ),
+-          ),
+-          appBar,
+-        ],
+-      ),
+-    );
+-
+-    Widget bodyContent = widget.body;
+-    if (expandable && travel > 0) {
+-      bodyContent = NotificationListener<ScrollNotification>(
+-        onNotification: (notification) {
+-          if (notification is ScrollUpdateNotification) {
+-            if (notification.metrics.pixels <= 0 &&
+-                (notification.scrollDelta ?? 0) < -12 &&
+-                _controller.value > 0.5) {
+-              _collapse();
+-            }
+-          } else if (notification is OverscrollNotification) {
+-            if (notification.overscroll < -10 && _controller.value > 0.5) {
+-              _collapse();
+-            }
+-          }
+-          return false;
+-        },
+-        child: bodyContent,
+-      );
+-    }
+-
+-    final backgroundColor = context.colorScheme.surfaceContainerLow;
+-    final isTv = globalState.isAndroidTV;
+-
+-    final sheetContent = Container(
+-      clipBehavior: Clip.antiAlias,
+-      decoration: ShapeDecoration(
+-        color: backgroundColor,
+-        shape: const RoundedSuperellipseBorder(
+-          borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
+-        ),
+-      ),
+-      child: Column(
+-        mainAxisSize: MainAxisSize.min,
+-        children: [
+-          header,
+-          Flexible(flex: 1, child: bodyContent),
+-        ],
+-      ),
+-    );
+-
+-    return PopScope(
+-      canPop: !isTv && !_isExpanded,
+-      onPopInvokedWithResult: (didPop, result) {
+-        if (didPop) return;
+-        if (_isExpanded) {
+-          _collapse();
+-          return;
+-        }
+-        if (isTv) {
+-          if (dismissTvInputFocus()) return;
+-          if (ModalRoute.of(context)?.isCurrent != true) return;
+-          Navigator.of(context).pop();
+-        }
+-      },
+-      child: AnimatedBuilder(
+-        animation: _curve,
+-        child: sheetContent,
+-        builder: (context, child) {
+-          final currentMaxHeight = (expandable && travel > 0)
+-              ? initialHeight + travel * _curve.value
+-              : (scopeProps.maxHeight ?? initialHeight);
+-
+-          return ConstrainedBox(
+-            constraints: BoxConstraints(
+-              maxHeight: currentMaxHeight,
+-              minWidth: double.infinity,
+-            ),
+-            child: child,
+-          );
+-        },
+-      ),
++      child: content,
+     );
+   }
+ }
 diff --git a/lib/widgets/text.dart b/lib/widgets/text.dart
 index be7e8305..386e3d2c 100644
 --- a/lib/widgets/text.dart
