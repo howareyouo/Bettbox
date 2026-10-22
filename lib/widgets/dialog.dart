@@ -75,6 +75,7 @@ class CommonDialog extends ConsumerWidget {
               Navigator.of(context).pop();
             },
       child: AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         title: titleTrailing == null
             ? EmojiText(title)
             : Row(
@@ -134,11 +135,7 @@ class CommonModal extends ConsumerWidget {
       child: Container(
         width: size.width * 0.85,
         height: size.height * 0.85,
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
         clipBehavior: Clip.antiAlias,
         child: child,
       ),

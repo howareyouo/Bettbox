@@ -19,7 +19,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final Map<int, FocusNode> _navFocusNodes = {};
+  final Map<PageLabel, GlobalKey<NavigatorState>> _navigatorKeys = {};
   int _currentNavIndex = 0;
+
+  GlobalKey<NavigatorState> _getNavigatorKey(PageLabel label) {
+    final key = _navigatorKeys.putIfAbsent(label, () => GlobalKey());
+    pageNavigationController.register(label, key);
+    return key;
+  }
 
   FocusNode _getNavFocusNode(int index) {
     return _navFocusNodes.putIfAbsent(index, () => FocusNode());
@@ -44,6 +51,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    pageNavigationController.seed(globalState.appState.pageLabel);
     if (globalState.isAndroidTV) {
       _requestNavFocus(0);
     }
@@ -53,6 +61,9 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     for (final node in _navFocusNodes.values) {
       node.dispose();
+    }
+    for (final label in _navigatorKeys.keys) {
+      pageNavigationController.unregister(label);
     }
     super.dispose();
   }
@@ -163,6 +174,7 @@ class _HomePageState extends State<HomePage> {
                   item: navigationItem,
                   isMobile: isMobile,
                   keep: navigationItem.keep || keepAll,
+                  navigatorKey: _getNavigatorKey(navigationItem.label),
                   view: navigationItem.builder(context),
                 );
               },
@@ -335,12 +347,14 @@ class _NavigationPage extends StatelessWidget {
     required this.item,
     required this.isMobile,
     required this.keep,
+    required this.navigatorKey,
     required this.view,
   });
 
   final NavigationItem item;
   final bool isMobile;
   final bool keep;
+  final GlobalKey<NavigatorState>? navigatorKey;
   final Widget view;
 
   @override
@@ -351,7 +365,7 @@ class _NavigationPage extends StatelessWidget {
       child: isMobile
           ? view
           : Navigator(
-              key: ValueKey('${item.label.name}_navigator'),
+              key: navigatorKey,
               pages: [MaterialPage(child: view)],
               onDidRemovePage: (_) {},
             ),

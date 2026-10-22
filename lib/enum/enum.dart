@@ -631,9 +631,7 @@ enum SidebarFlyoutDelay {
 
 enum CacheTag { logs, rules, requests, proxiesList }
 
-enum Language { yaml, javaScript }
-
-enum ImportOption { code, url, file }
+enum ImportOption { url, file }
 
 enum ScrollPositionCacheKeys { tools, profiles, proxiesList, proxiesTabList }
 

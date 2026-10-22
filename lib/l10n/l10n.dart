@@ -6910,6 +6910,61 @@ class AppLocalizations {
     );
   }
 
+  /// `Opened in an external editor. Changes are synced back to the app automatically when you save the file.`
+  String get externalEditorTip {
+    return Intl.message(
+      'Opened in an external editor. Changes are synced back to the app automatically when you save the file.',
+      name: 'externalEditorTip',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `External Editor`
+  String get externalEditor {
+    return Intl.message(
+      'External Editor',
+      name: 'externalEditor',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Set Editor`
+  String get setEditor {
+    return Intl.message('Set Editor', name: 'setEditor', desc: '', args: []);
+  }
+
+  /// `Failed to launch editor "{editor}". Make sure it is installed and the path is correct, or select Auto Detect.`
+  String externalEditorLaunchFailed(Object editor) {
+    return Intl.message(
+      'Failed to launch editor "$editor". Make sure it is installed and the path is correct, or select Auto Detect.',
+      name: 'externalEditorLaunchFailed',
+      desc: '',
+      args: [editor],
+    );
+  }
+
+  /// `Editor not found. Enter the full path to the editor executable.`
+  String get externalEditorNotFound {
+    return Intl.message(
+      'Editor not found. Enter the full path to the editor executable.',
+      name: 'externalEditorNotFound',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Auto Detect`
+  String get autoDetect {
+    return Intl.message('Auto Detect', name: 'autoDetect', desc: '', args: []);
+  }
+
+  /// `Done`
+  String get done {
+    return Intl.message('Done', name: 'done', desc: '', args: []);
+  }
+
   /// `Speed Test`
   String get speedTest {
     return Intl.message('Speed Test', name: 'speedTest', desc: '', args: []);

@@ -423,7 +423,6 @@ class _GroupHeader extends ConsumerWidget {
     final labelLightStyle = textTheme.labelMedium?.toLight;
 
     return CommonCard(
-      elevated: false,
       radius: 16,
       type: CommonCardType.filled,
       onPressed: onToggle,

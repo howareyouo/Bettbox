@@ -1194,7 +1194,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
                 shadowColor: Colors.black.withValues(
                   alpha: isLight ? 0.35 : 0.6,
                 ),
-                shape: RoundedSuperellipseBorder(
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
                     color: colorScheme.outlineVariant.withValues(

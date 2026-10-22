@@ -20,6 +20,7 @@ import 'clash/lib.dart';
 import 'common/common.dart';
 import 'common/external_control.dart';
 import 'common/network_matcher.dart';
+import 'common/url_import.dart';
 import 'models/models.dart';
 
 ReceivePort? _serviceReceiverPort;
@@ -28,6 +29,10 @@ ReceivePort? _messageReceiverPort;
 Future<void> main(List<String> args) async {
   globalState.isService = false;
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (await UrlImport.interceptStartup(args)) {
+    return;
+  }
 
   if (system.isDesktop &&
       (args.contains('--exit') || args.contains('--restart'))) {

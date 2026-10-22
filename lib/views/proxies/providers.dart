@@ -6,7 +6,7 @@ import 'package:bett_box/common/common.dart';
 import 'package:bett_box/models/common.dart';
 import 'package:bett_box/models/core.dart';
 import 'package:bett_box/models/profile.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/app.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
@@ -279,11 +279,10 @@ class ProviderItem extends StatelessWidget {
         if (!context.mounted) return;
         BaseNavigator.push(
           context,
-          EditorPage(
+          ViewerPage(
             title: '${appLocalizations.view} - ${provider.name}',
             content: content,
-            readOnly: true,
-            simple: provider.type == 'Rule',
+            highlightMode: provider.type == 'Rule' ? editorYamlMode : null,
           ),
           maintainState: false,
         );

@@ -32,7 +32,7 @@ class OptionsDialog<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonDialog(
       title: title,
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

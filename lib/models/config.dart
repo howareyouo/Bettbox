@@ -230,6 +230,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     @JsonKey(fromJson: sidebarFlyoutEntriesSafeFromJson)
     List<SidebarFlyoutEntry> sidebarFlyoutEntries,
     String? dashboardTitle,
+    @Default('') String externalEditor,
     @Default(<String>[]) List<String> toolboxTiles,
     @Default(false) bool mrsCopyRawLink,
     @JsonKey(unknownEnumValue: MrsRawSource.bettRules)

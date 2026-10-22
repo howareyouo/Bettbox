@@ -156,8 +156,3 @@ const legacyPrimaryColors = [
   0xFFD97706,
   0xFF334155,
 ];
-
-const scriptTemplate = '''
-const main = (config) => {
-  return config;
-}''';
