@@ -51,7 +51,11 @@ class DragReorderGrid<T extends Object> extends StatefulWidget {
 class _DragReorderGridState<T extends Object>
     extends State<DragReorderGrid<T>> {
   final _gridKey = GlobalKey();
+  final _tileKeys = <Object, GlobalKey>{};
   DateTime _lastMove = DateTime.fromMillisecondsSinceEpoch(0);
+
+  GlobalKey _tileKeyOf(T item) =>
+      _tileKeys.putIfAbsent(widget.keyOf(item), GlobalKey.new);
 
   bool get _draggable => !globalState.isAndroidTV;
 
@@ -70,6 +74,7 @@ class _DragReorderGridState<T extends Object>
   Widget _buildTile(BuildContext context, T item) {
     final child = widget.itemBuilder(context, item);
     if (!_draggable) return child;
+    final tileKey = _tileKeyOf(item);
     final target = DragTarget<T>(
       onWillAcceptWithDetails: (details) {
         if (widget.keyOf(details.data) != widget.keyOf(item)) {
@@ -81,7 +86,7 @@ class _DragReorderGridState<T extends Object>
     );
     final feedback = Builder(
       builder: (_) {
-        final box = context.findRenderObject();
+        final box = tileKey.currentContext?.findRenderObject();
         final size = box is RenderBox && box.hasSize ? box.size : null;
         return Material(
           type: MaterialType.transparency,
@@ -97,23 +102,23 @@ class _DragReorderGridState<T extends Object>
       },
     );
     final placeholder = Opacity(opacity: 0.3, child: child);
-    if (system.isDesktop) {
-      return Draggable<T>(
-        data: item,
-        feedback: feedback,
-        childWhenDragging: placeholder,
-        onDragStarted: () => HapticFeedback.selectionClick(),
-        child: target,
-      );
-    }
-    return LongPressDraggable<T>(
-      data: item,
-      delay: const Duration(milliseconds: 300),
-      feedback: feedback,
-      childWhenDragging: placeholder,
-      onDragStarted: () => HapticFeedback.mediumImpact(),
-      child: target,
-    );
+    final draggable = system.isDesktop
+        ? Draggable<T>(
+            data: item,
+            feedback: feedback,
+            childWhenDragging: placeholder,
+            onDragStarted: () => HapticFeedback.selectionClick(),
+            child: target,
+          )
+        : LongPressDraggable<T>(
+            data: item,
+            delay: const Duration(milliseconds: 300),
+            feedback: feedback,
+            childWhenDragging: placeholder,
+            onDragStarted: () => HapticFeedback.mediumImpact(),
+            child: target,
+          );
+    return KeyedSubtree(key: tileKey, child: draggable);
   }
 
   @override
