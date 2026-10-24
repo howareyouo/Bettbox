@@ -253,10 +253,56 @@ index 00000000..54558a75
 +final pageNavigationController = PageNavigationController.instance;
 \ No newline at end of file
 diff --git a/lib/controller.dart b/lib/controller.dart
-index 566230fb..e16b0351 100644
+index 566230fb..fbdca124 100644
 --- a/lib/controller.dart
 +++ b/lib/controller.dart
-@@ -1511,6 +1511,7 @@ class AppController {
+@@ -526,31 +526,36 @@ class AppController {
+     bool validate = true,
+     bool applyUnchanged = true,
+   }) async {
+-    if (_updatingProfileIds.contains(profile.id)) {
+-      _ref
+-          .read(profilesProvider.notifier)
+-          .setProfile(profile.copyWith(isUpdating: false));
+-      return;
+-    }
++    // A duplicate trigger must not clear isUpdating: an earlier update for
++    // this profile is still in flight and owns the flag until it finishes.
++    if (_updatingProfileIds.contains(profile.id)) return;
+     _updatingProfileIds.add(profile.id);
++    setProfile(profile.copyWith(isUpdating: true));
+     try {
+       final modified = applyUnchanged
+           ? null
+           : await profile.profileLastModified;
+       final newProfile = await profile.update(validate: validate);
+-      _ref
+-          .read(profilesProvider.notifier)
+-          .setProfile(newProfile.copyWith(isUpdating: false));
++      setProfile(newProfile.copyWith(isUpdating: false));
+       if (profile.id != _ref.read(currentProfileIdProvider)) return;
+       if (modified != null && modified == await profile.profileLastModified) {
+         return;
+       }
+       applyProfileDebounce(silence: true);
++    } on Object {
++      _clearProfileUpdating(profile.id);
++      rethrow;
+     } finally {
+       _updatingProfileIds.remove(profile.id);
+     }
+   }
+ 
++  void _clearProfileUpdating(String profileId) {
++    final current = _ref.read(profilesProvider).getProfile(profileId);
++    if (current == null || !current.isUpdating) return;
++    setProfile(current.copyWith(isUpdating: false));
++  }
++
+   void setProfile(Profile profile) {
+     _ref.read(profilesProvider.notifier).setProfile(profile);
+   }
+@@ -1511,6 +1516,7 @@ class AppController {
        ).popUntil((route) => route.isFirst);
      }
      _ref.read(currentPageLabelProvider.notifier).value = pageLabel;
