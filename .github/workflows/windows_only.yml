@@ -1,13 +1,13 @@
 name: windows-only sync & build
 
-# 单一流水线，三种触发：push 到 main / 每 2 小时 cron / 手动（Actions 页 Run workflow）
+# 单一流水线，三种触发：push 到 main / 每天一次 cron / 手动（Actions 页 Run workflow）
 #   sync job：按 own_files.txt 清单导出自有功能补丁（有变化则提交回 main）
 #             → 对比上游 SHA，有变化（或 push/手动强制）则重建 windows-only 分支
 #   build job：构建 Windows 安装包并发布 Release
 # 防循环：使用 GITHUB_TOKEN 的 push 不会触发新的 workflow run（GitHub 官方行为）。
 on:
   schedule:
-    - cron: '17 */2 * * *'
+    - cron: '17 21 * * *'
   push:
     branches: [main]
   workflow_dispatch:
