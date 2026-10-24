@@ -1,9 +1,9 @@
 diff --git a/lib/widgets/drag_reorder_grid.dart b/lib/widgets/drag_reorder_grid.dart
 new file mode 100644
-index 00000000..001c0c80
+index 00000000..1390bcd4
 --- /dev/null
 +++ b/lib/widgets/drag_reorder_grid.dart
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,235 @@
 +import 'package:bett_box/common/common.dart';
 +import 'package:bett_box/state.dart';
 +import 'package:flutter/gestures.dart';
@@ -56,6 +56,11 @@ index 00000000..001c0c80
 +
 +class _DragReorderGridState<T extends Object>
 +    extends State<DragReorderGrid<T>> {
++  /// The dragged tile's center must penetrate this fraction of the target
++  /// tile from its near edge before a swap fires, so skimming tile borders
++  /// does not reorder.
++  static const double _swapHysteresis = 0.15;
++
 +  final _gridKey = GlobalKey();
 +  final _tileKeys = <Object, GlobalKey>{};
 +  DateTime _lastMove = DateTime.fromMillisecondsSinceEpoch(0);
@@ -65,9 +70,10 @@ index 00000000..001c0c80
 +
 +  bool get _draggable => !globalState.isAndroidTV;
 +
-+  void _move(T from, T to) {
++  void _move(T from, T to, Offset feedbackTopLeft) {
 +    final now = DateTime.now();
 +    if (now.difference(_lastMove) < const Duration(milliseconds: 220)) return;
++    if (!_penetratesHysteresis(from, to, feedbackTopLeft)) return;
 +    _lastMove = now;
 +    final items = [...widget.items];
 +    final source = items.indexOf(from);
@@ -77,17 +83,45 @@ index 00000000..001c0c80
 +    widget.onReorder(items);
 +  }
 +
++  bool _penetratesHysteresis(T from, T to, Offset feedbackTopLeft) {
++    final target = _tileRect(to);
++    final source = _tileRect(from);
++    if (target == null || source == null) return true;
++    final dx = target.left - source.left;
++    final dy = target.top - source.top;
++    if (dx == 0 && dy == 0) return true;
++    final dragCenter = feedbackTopLeft + source.size.center(Offset.zero);
++    if (dy.abs() > dx.abs()) {
++      final margin = target.height * _swapHysteresis;
++      return dy > 0
++          ? dragCenter.dy - target.top >= margin
++          : target.bottom - dragCenter.dy >= margin;
++    }
++    final margin = target.width * _swapHysteresis;
++    return dx > 0
++        ? dragCenter.dx - target.left >= margin
++        : target.right - dragCenter.dx >= margin;
++  }
++
++  Rect? _tileRect(T item) {
++    final box = _tileKeyOf(item).currentContext?.findRenderObject();
++    if (box is! RenderBox || !box.hasSize) return null;
++    return box.localToGlobal(Offset.zero) & box.size;
++  }
++
 +  Widget _buildTile(BuildContext context, T item) {
 +    final child = widget.itemBuilder(context, item);
 +    if (!_draggable) return child;
 +    final tileKey = _tileKeyOf(item);
 +    final target = DragTarget<T>(
-+      onWillAcceptWithDetails: (details) {
++      // onWillAccept fires only on target entry; the penetration threshold
++      // needs re-checking on every pointer update, which only onMove gives.
++      onMove: (details) {
 +        if (widget.keyOf(details.data) != widget.keyOf(item)) {
-+          _move(details.data, item);
++          _move(details.data, item, details.offset);
 +        }
-+        return false;
 +      },
++      onWillAcceptWithDetails: (_) => false,
 +      builder: (_, _, _) => child,
 +    );
 +    final feedback = Builder(
@@ -162,7 +196,7 @@ index 00000000..001c0c80
 +    with SingleTickerProviderStateMixin {
 +  late final _controller = AnimationController(
 +    vsync: this,
-+    duration: const Duration(milliseconds: 360),
++    duration: const Duration(milliseconds: 500),
 +    value: 1,
 +  );
 +  late final _curve = CurvedAnimation(
