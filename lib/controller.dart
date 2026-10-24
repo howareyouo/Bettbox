@@ -526,29 +526,34 @@ class AppController {
     bool validate = true,
     bool applyUnchanged = true,
   }) async {
-    if (_updatingProfileIds.contains(profile.id)) {
-      _ref
-          .read(profilesProvider.notifier)
-          .setProfile(profile.copyWith(isUpdating: false));
-      return;
-    }
+    // A duplicate trigger must not clear isUpdating: an earlier update for
+    // this profile is still in flight and owns the flag until it finishes.
+    if (_updatingProfileIds.contains(profile.id)) return;
     _updatingProfileIds.add(profile.id);
+    setProfile(profile.copyWith(isUpdating: true));
     try {
       final modified = applyUnchanged
           ? null
           : await profile.profileLastModified;
       final newProfile = await profile.update(validate: validate);
-      _ref
-          .read(profilesProvider.notifier)
-          .setProfile(newProfile.copyWith(isUpdating: false));
+      setProfile(newProfile.copyWith(isUpdating: false));
       if (profile.id != _ref.read(currentProfileIdProvider)) return;
       if (modified != null && modified == await profile.profileLastModified) {
         return;
       }
       applyProfileDebounce(silence: true);
+    } on Object {
+      _clearProfileUpdating(profile.id);
+      rethrow;
     } finally {
       _updatingProfileIds.remove(profile.id);
     }
+  }
+
+  void _clearProfileUpdating(String profileId) {
+    final current = _ref.read(profilesProvider).getProfile(profileId);
+    if (current == null || !current.isUpdating) return;
+    setProfile(current.copyWith(isUpdating: false));
   }
 
   void setProfile(Profile profile) {
