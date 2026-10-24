@@ -50,6 +50,11 @@ class DragReorderGrid<T extends Object> extends StatefulWidget {
 
 class _DragReorderGridState<T extends Object>
     extends State<DragReorderGrid<T>> {
+  /// The dragged tile's center must penetrate this fraction of the target
+  /// tile from its near edge before a swap fires, so skimming tile borders
+  /// does not reorder.
+  static const double _swapHysteresis = 0.15;
+
   final _gridKey = GlobalKey();
   final _tileKeys = <Object, GlobalKey>{};
   DateTime _lastMove = DateTime.fromMillisecondsSinceEpoch(0);
@@ -59,9 +64,10 @@ class _DragReorderGridState<T extends Object>
 
   bool get _draggable => !globalState.isAndroidTV;
 
-  void _move(T from, T to) {
+  void _move(T from, T to, Offset feedbackTopLeft) {
     final now = DateTime.now();
     if (now.difference(_lastMove) < const Duration(milliseconds: 220)) return;
+    if (!_penetratesHysteresis(from, to, feedbackTopLeft)) return;
     _lastMove = now;
     final items = [...widget.items];
     final source = items.indexOf(from);
@@ -71,17 +77,45 @@ class _DragReorderGridState<T extends Object>
     widget.onReorder(items);
   }
 
+  bool _penetratesHysteresis(T from, T to, Offset feedbackTopLeft) {
+    final target = _tileRect(to);
+    final source = _tileRect(from);
+    if (target == null || source == null) return true;
+    final dx = target.left - source.left;
+    final dy = target.top - source.top;
+    if (dx == 0 && dy == 0) return true;
+    final dragCenter = feedbackTopLeft + source.size.center(Offset.zero);
+    if (dy.abs() > dx.abs()) {
+      final margin = target.height * _swapHysteresis;
+      return dy > 0
+          ? dragCenter.dy - target.top >= margin
+          : target.bottom - dragCenter.dy >= margin;
+    }
+    final margin = target.width * _swapHysteresis;
+    return dx > 0
+        ? dragCenter.dx - target.left >= margin
+        : target.right - dragCenter.dx >= margin;
+  }
+
+  Rect? _tileRect(T item) {
+    final box = _tileKeyOf(item).currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
   Widget _buildTile(BuildContext context, T item) {
     final child = widget.itemBuilder(context, item);
     if (!_draggable) return child;
     final tileKey = _tileKeyOf(item);
     final target = DragTarget<T>(
-      onWillAcceptWithDetails: (details) {
+      // onWillAccept fires only on target entry; the penetration threshold
+      // needs re-checking on every pointer update, which only onMove gives.
+      onMove: (details) {
         if (widget.keyOf(details.data) != widget.keyOf(item)) {
-          _move(details.data, item);
+          _move(details.data, item, details.offset);
         }
-        return false;
       },
+      onWillAcceptWithDetails: (_) => false,
       builder: (_, _, _) => child,
     );
     final feedback = Builder(
@@ -156,7 +190,7 @@ class _FlipTileState extends State<_FlipTile>
     with SingleTickerProviderStateMixin {
   late final _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 360),
+    duration: const Duration(milliseconds: 500),
     value: 1,
   );
   late final _curve = CurvedAnimation(
