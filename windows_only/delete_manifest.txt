@@ -5,8 +5,8 @@
 #   1. 目录级删除（这里）：平台构建产物，非 Windows 平台不会用到 —— 删
 #   2. 文件级删除（这里）：依赖无 Windows 实现插件的页面 —— 删
 #   3. 行级修改（用补丁）：scan.dart 的引用可能被上游新代码引用（如 iperf 页），
-#      由手工补丁 strip_iperf_scan.patch 在 windows-only 上摘除（见 pipeline 文档 §3.5；
-#      早期曾用 strip_scan_page.patch，后并入 main 代码删除，上游新增 iperf 页后重新引入）
+#      由手工补丁 strip_iperf_scan.patch 在 windows-only 上摘除
+#      （见根目录 AGENTS.md §2「手工补丁」与 §5 例外场景）
 #   4. 保留不动：Platform.is*/isAndroidTV 等运行时判断（Windows 上恒为
 #      false，天然正确；删了反而增加与上游的冲突面）
 

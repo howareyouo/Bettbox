@@ -48,7 +48,7 @@ bash windows_only/build_windows_only.sh main windows-only-rebuild
 
 补丁无法应用 → 现场保留在 `.worktrees/windows-only-rebuild`，
 `git apply --3way ../windows_only/patches/xxx.patch` 辅助重做。
-详见 `windows_only/windows_only_pipeline.md` §6。
+详见根目录 `AGENTS.md`「验证」与「故障处理」。
 
 ## 提交
 

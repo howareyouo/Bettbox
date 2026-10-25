@@ -1,10 +1,10 @@
 <h1 align="center">⚡ Bettbox · Windows</h1>
 
-这是 [Bettbox](https://github.com/appshubcc/Bettbox) 的 Windows 定向 fork，基于上游持续更新。此仓库主要增加 Windows 专属交互与构建发布流程；Windows-only 发布版会从上游重新生成，并裁去非 Windows 平台文件。上游项目本身仍是多平台项目。
+这是 [Bettbox](https://github.com/appshubcc/Bettbox) 的 Windows 定向 fork，基于上游持续更新。此仓库主要增加 Windows 专属交互与构建发布流程；Windows-only 发布版由 CI 从本 fork 的 `main` 自动裁剪生成，裁去非 Windows 平台文件。上游项目本身仍是多平台项目。
 
 ## Fork 改动
 
-- **Windows-only 发布**：从上游干净基线构建，仅保留 Windows 所需代码，并通过 GitHub Actions 自动同步、构建和发布。
+- **Windows-only 发布**：CI 从 fork `main` 干净重建（删除非 Windows 平台文件、应用少量手工裁剪补丁），并自动构建发布。
 - **外部编辑器**：可使用外部编辑器修改配置或脚本。
 - **配置查看**：提供配置/订阅内容的只读查看页面。
 - **资料卡交互**：增加拖拽排序与悬停预览。
@@ -17,7 +17,7 @@ Windows-only 构建会删除 Android、iOS、Linux、macOS、Web 平台目录及
 ## 下载与构建
 
 - Windows-only 自动构建产物：查看本仓库的 [Releases](https://github.com/howareyouo/Bettbox/releases) 和 [`windows-only` 分支](https://github.com/howareyouo/Bettbox/tree/windows-only)。
-- 构建流程说明：[`windows_only/windows_only_pipeline.md`](windows_only/windows_only_pipeline.md)。流水线以最新 `upstream/main` 为基线，按裁剪清单删除非 Windows 文件，再应用 fork 功能补丁并构建发布。
+- 构建流程说明与 AI 协作指南：[`AGENTS.md`](AGENTS.md)。流水线从 fork `main` 干净重建：按裁剪清单删除非 Windows 文件、应用手工补丁，再构建发布。
 
 ## 上游与许可
 
