@@ -305,6 +305,99 @@ class _InputDialogState extends State<InputDialog> {
   }
 }
 
+/// Shared reorderable add/edit/delete list used by [ListInputPage] and
+/// [MapInputPage]; T is String for the former, MapEntry for the latter.
+class _InputListView<T> extends StatelessWidget {
+  final List<T> items;
+  final Widget Function(T item) titleBuilder;
+  final Widget Function(T item)? subtitleBuilder;
+  final Widget Function(T item)? leadingBuilder;
+  final Object Function(T item) keyOf;
+  final bool Function(T item)? canDelete;
+  final VoidCallback onAdd;
+  final ValueChanged<T> onEdit;
+  final ValueChanged<T> onDelete;
+  final ValueChanged<List<T>> onReorder;
+  final ReorderItemProxyDecorator? proxyDecorator;
+
+  const _InputListView({
+    required this.items,
+    required this.titleBuilder,
+    required this.keyOf,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onReorder,
+    this.subtitleBuilder,
+    this.leadingBuilder,
+    this.canDelete,
+    this.proxyDecorator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatLayout(
+      floatingWidget: FloatWrapper(
+        child: FloatingActionButton(
+          onPressed: onAdd,
+          child: const Icon(Icons.add),
+        ),
+      ),
+      child: items.isEmpty
+          ? NullStatus(label: appLocalizations.noData)
+          : ScrollEdgeRise(
+              builder: (_, rise) => ReorderableListView.builder(
+                padding: EdgeInsets.only(
+                  top: rise,
+                  bottom: 16 + 64 + MediaQuery.viewPaddingOf(context).bottom,
+                ),
+                proxyDecorator: proxyDecorator,
+                buildDefaultDragHandles: false,
+                itemCount: items.length,
+                itemBuilder: (_, index) {
+                  final e = items[index];
+                  return _InputItem(
+                    key: ValueKey(keyOf(e)),
+                    ReorderableDelayedDragStartListener(
+                      index: index,
+                      child: CommonCard(
+                        elevated: false,
+                        child: ListItem(
+                          leading: leadingBuilder?.call(e),
+                          title: titleBuilder(e),
+                          subtitle: subtitleBuilder?.call(e),
+                          trailing: (canDelete == null || canDelete!(e))
+                              ? IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () {
+                                    onDelete(e);
+                                  },
+                                )
+                              : null,
+                        ),
+                        onPressed: () {
+                          onEdit(e);
+                        },
+                      ),
+                    ),
+                  );
+                },
+                // ignore: deprecated_member_use
+                onReorder: (oldIndex, newIndex) {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final nextItems = List<T>.from(items);
+                  final item = nextItems.removeAt(oldIndex);
+                  nextItems.insert(newIndex, item);
+                  onReorder(nextItems);
+                },
+              ),
+            ),
+    );
+  }
+}
+
 class ListInputPage extends StatelessWidget {
   final String title;
   final List<String> items;
@@ -371,67 +464,20 @@ class ListInputPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FloatLayout(
-      floatingWidget: FloatWrapper(
-        child: FloatingActionButton(
-          onPressed: () async {
-            _handleAddOrEdit();
-          },
-          child: const Icon(Icons.add),
-        ),
-      ),
-      child: items.isEmpty
-          ? NullStatus(label: appLocalizations.noData)
-          : ScrollEdgeRise(
-              builder: (_, rise) => ReorderableListView.builder(
-                padding: EdgeInsets.only(
-                  top: rise,
-                  bottom: 16 + 64 + MediaQuery.viewPaddingOf(context).bottom,
-                ),
-                buildDefaultDragHandles: false,
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final e = items[index];
-                  return _InputItem(
-                    key: ValueKey(e),
-                    ReorderableDelayedDragStartListener(
-                      index: index,
-                      child: CommonCard(
-                        elevated: false,
-                        child: ListItem(
-                          leading: leadingBuilder != null
-                              ? leadingBuilder!(e)
-                              : null,
-                          title: titleBuilder(e),
-                          subtitle: subtitleBuilder != null
-                              ? subtitleBuilder!(e)
-                              : null,
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () {
-                              _handleDelete(e);
-                            },
-                          ),
-                        ),
-                        onPressed: () {
-                          _handleAddOrEdit(e);
-                        },
-                      ),
-                    ),
-                  );
-                },
-                // ignore: deprecated_member_use
-                onReorder: (oldIndex, newIndex) {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final nextItems = List<String>.from(items);
-                  final item = nextItems.removeAt(oldIndex);
-                  nextItems.insert(newIndex, item);
-                  onChange(nextItems);
-                },
-              ),
-            ),
+    return _InputListView<String>(
+      items: items,
+      titleBuilder: titleBuilder,
+      subtitleBuilder: subtitleBuilder,
+      leadingBuilder: leadingBuilder,
+      keyOf: (e) => e,
+      onAdd: () async {
+        _handleAddOrEdit();
+      },
+      onEdit: _handleAddOrEdit,
+      onDelete: (e) {
+        _handleDelete(e);
+      },
+      onReorder: onChange,
     );
   }
 }
@@ -520,70 +566,22 @@ class MapInputPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FloatLayout(
-      floatingWidget: FloatWrapper(
-        child: FloatingActionButton(
-          onPressed: () async {
-            _handleAddOrEdit();
-          },
-          child: const Icon(Icons.add),
-        ),
-      ),
-      child: items.isEmpty
-          ? NullStatus(label: appLocalizations.noData)
-          : ScrollEdgeRise(
-              builder: (_, rise) => ReorderableListView.builder(
-                padding: EdgeInsets.only(
-                  top: rise,
-                  bottom: 16 + 64 + MediaQuery.viewPaddingOf(context).bottom,
-                ),
-                proxyDecorator: proxyDecorator,
-                buildDefaultDragHandles: false,
-                itemCount: items.length,
-                itemBuilder: (_, index) {
-                  final e = items[index];
-                  return _InputItem(
-                    key: ValueKey(e.key),
-                    ReorderableDelayedDragStartListener(
-                      index: index,
-                      child: CommonCard(
-                        elevated: false,
-                        child: ListItem(
-                          leading: leadingBuilder != null
-                              ? leadingBuilder!(e)
-                              : null,
-                          title: titleBuilder(e),
-                          subtitle: subtitleBuilder != null
-                              ? subtitleBuilder!(e)
-                              : null,
-                          trailing: (canDelete == null || canDelete!(e))
-                              ? IconButton(
-                                  icon: const Icon(Icons.delete_outline),
-                                  onPressed: () {
-                                    _handleDelete(e);
-                                  },
-                                )
-                              : null,
-                        ),
-                        onPressed: () {
-                          _handleAddOrEdit(e);
-                        },
-                      ),
-                    ),
-                  );
-                },
-                // ignore: deprecated_member_use
-                onReorder: (oldIndex, newIndex) {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final nextItems = List<MapEntry<String, String>>.from(items);
-                  final item = nextItems.removeAt(oldIndex);
-                  nextItems.insert(newIndex, item);
-                  onChange(Map.fromEntries(nextItems));
-                },
-              ),
-            ),
+    return _InputListView<MapEntry<String, String>>(
+      items: items,
+      titleBuilder: titleBuilder,
+      subtitleBuilder: subtitleBuilder,
+      leadingBuilder: leadingBuilder,
+      canDelete: canDelete,
+      keyOf: (e) => e.key,
+      onAdd: () async {
+        _handleAddOrEdit();
+      },
+      onEdit: _handleAddOrEdit,
+      onDelete: _handleDelete,
+      proxyDecorator: proxyDecorator,
+      onReorder: (nextItems) {
+        onChange(Map.fromEntries(nextItems));
+      },
     );
   }
 }

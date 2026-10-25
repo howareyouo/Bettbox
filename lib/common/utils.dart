@@ -2,13 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
-
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:bett_box/l10n/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -610,11 +607,6 @@ class Utils {
     return '$timestamp$randomStr';
   }
 
-  String getDateStringLast2(int value) {
-    var valueRaw = '0$value';
-    return valueRaw.substring(valueRaw.length - 2);
-  }
-
   String generateRandomString({int minLength = 10, int maxLength = 100}) {
     const latinChars =
         'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -648,31 +640,6 @@ class Utils {
         .join();
 
     return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}';
-  }
-
-  String getTimeDifference(DateTime dateTime) {
-    var currentDateTime = DateTime.now();
-    var difference = currentDateTime.difference(dateTime);
-    var inHours = difference.inHours;
-    var inMinutes = difference.inMinutes;
-    var inSeconds = difference.inSeconds;
-
-    return '${getDateStringLast2(inHours)}:${getDateStringLast2(inMinutes)}:${getDateStringLast2(inSeconds)}';
-  }
-
-  String getTimeText(int? timeStamp) {
-    if (timeStamp == null) {
-      return '00:00:00';
-    }
-    final diff = timeStamp / 1000;
-    final inHours = (diff / 3600).floor();
-    if (inHours > 99) {
-      return '99:59:59';
-    }
-    final inMinutes = (diff / 60 % 60).floor();
-    final inSeconds = (diff % 60).floor();
-
-    return '${getDateStringLast2(inHours)}:${getDateStringLast2(inMinutes)}:${getDateStringLast2(inSeconds)}';
   }
 
   Locale getSystemLocale() {
@@ -826,10 +793,6 @@ class Utils {
     return parameters[fileNameKey];
   }
 
-  FlutterView getScreen() {
-    return WidgetsBinding.instance.platformDispatcher.views.first;
-  }
-
   List<String> parseReleaseBody(String? body) {
     if (body == null) return [];
     const pattern = r'^\s*-\s+(.+)';
@@ -865,51 +828,6 @@ class Utils {
 
   int getProfilesColumns(double viewWidth) {
     return min(max((viewWidth / 320).floor(), 1), 3);
-  }
-
-  final _indexPrimary = [50, 100, 200, 300, 400, 500, 600, 700, 800, 850, 900];
-
-  MaterialColor _createPrimarySwatch(Color color) {
-    final Map<int, Color> swatch = <int, Color>{};
-    final int a = color.alpha8bit;
-    final int r = color.red8bit;
-    final int g = color.green8bit;
-    final int b = color.blue8bit;
-    for (final int strength in _indexPrimary) {
-      final double ds = 0.5 - strength / 1000;
-      swatch[strength] = Color.fromARGB(
-        a,
-        r + ((ds < 0 ? r : (255 - r)) * ds).round(),
-        g + ((ds < 0 ? g : (255 - g)) * ds).round(),
-        b + ((ds < 0 ? b : (255 - b)) * ds).round(),
-      );
-    }
-    swatch[50] = swatch[50]!.lighten(18);
-    swatch[100] = swatch[100]!.lighten(16);
-    swatch[200] = swatch[200]!.lighten(14);
-    swatch[300] = swatch[300]!.lighten(10);
-    swatch[400] = swatch[400]!.lighten(6);
-    swatch[700] = swatch[700]!.darken(2);
-    swatch[800] = swatch[800]!.darken(3);
-    swatch[900] = swatch[900]!.darken(4);
-    return MaterialColor(color.value32bit, swatch);
-  }
-
-  List<Color> getMaterialColorShades(Color color) {
-    final swatch = _createPrimarySwatch(color);
-    return <Color>[
-      if (swatch[50] != null) swatch[50]!,
-      if (swatch[100] != null) swatch[100]!,
-      if (swatch[200] != null) swatch[200]!,
-      if (swatch[300] != null) swatch[300]!,
-      if (swatch[400] != null) swatch[400]!,
-      if (swatch[500] != null) swatch[500]!,
-      if (swatch[600] != null) swatch[600]!,
-      if (swatch[700] != null) swatch[700]!,
-      if (swatch[800] != null) swatch[800]!,
-      if (swatch[850] != null) swatch[850]!,
-      if (swatch[900] != null) swatch[900]!,
-    ];
   }
 
   String getBackupFileName() {
@@ -1223,17 +1141,6 @@ class Utils {
   SingleActivator controlSingleActivator(LogicalKeyboardKey trigger) {
     final control = system.isMacOS ? false : true;
     return SingleActivator(trigger, control: control, meta: !control);
-  }
-
-  FutureOr<T> handleWatch<T>(Function function) async {
-    if (kDebugMode) {
-      final stopwatch = Stopwatch()..start();
-      final res = await function();
-      stopwatch.stop();
-      commonPrint.debug('Time：${stopwatch.elapsedMilliseconds} ms');
-      return res;
-    }
-    return await function();
   }
 
   String generateSecret() {

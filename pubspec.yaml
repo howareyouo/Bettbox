@@ -101,6 +101,7 @@ flutter:
     - assets/images/
     - assets/images/avatars/
     - assets/images/platforms/
+    - assets/tv_upload/
   fonts:
     - family: JetBrainsMono
       fonts:

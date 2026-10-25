@@ -70,48 +70,43 @@ const List<DashboardWidget> defaultAndroidDashboardWidgets = [
   DashboardWidget.startButton,
 ];
 
-List<DashboardWidget> dashboardWidgetsSafeFromJson(
-  List<dynamic>? dashboardWidgets,
+List<T> enumListSafeFromJson<T>(
+  List<dynamic>? json,
+  T Function(dynamic e) decode,
+  List<T> fallback,
 ) {
   try {
-    return dashboardWidgets
-            ?.map((e) => $enumDecode(_$DashboardWidgetEnumMap, e))
-            .toList() ??
-        (system.isAndroid
-            ? defaultAndroidDashboardWidgets
-            : defaultDashboardWidgets);
+    return json?.map(decode).toList() ?? fallback;
   } catch (_) {
-    return system.isAndroid
-        ? defaultAndroidDashboardWidgets
-        : defaultDashboardWidgets;
+    return fallback;
   }
 }
+
+List<DashboardWidget> dashboardWidgetsSafeFromJson(
+  List<dynamic>? dashboardWidgets,
+) => enumListSafeFromJson(
+  dashboardWidgets,
+  (e) => $enumDecode(_$DashboardWidgetEnumMap, e),
+  system.isAndroid
+      ? defaultAndroidDashboardWidgets
+      : defaultDashboardWidgets,
+);
 
 List<DashboardWidget> mobileDashboardWidgetsSafeFromJson(
   List<dynamic>? dashboardWidgets,
-) {
-  try {
-    return dashboardWidgets
-            ?.map((e) => $enumDecode(_$DashboardWidgetEnumMap, e))
-            .toList() ??
-        defaultAndroidDashboardWidgets;
-  } catch (_) {
-    return defaultAndroidDashboardWidgets;
-  }
-}
+) => enumListSafeFromJson(
+  dashboardWidgets,
+  (e) => $enumDecode(_$DashboardWidgetEnumMap, e),
+  defaultAndroidDashboardWidgets,
+);
 
 List<DashboardWidget> desktopDashboardWidgetsSafeFromJson(
   List<dynamic>? dashboardWidgets,
-) {
-  try {
-    return dashboardWidgets
-            ?.map((e) => $enumDecode(_$DashboardWidgetEnumMap, e))
-            .toList() ??
-        defaultDashboardWidgets;
-  } catch (_) {
-    return defaultDashboardWidgets;
-  }
-}
+) => enumListSafeFromJson(
+  dashboardWidgets,
+  (e) => $enumDecode(_$DashboardWidgetEnumMap, e),
+  defaultDashboardWidgets,
+);
 
 const List<SidebarFlyoutEntry> defaultSidebarFlyoutEntries = [
   SidebarFlyoutEntry.resources,
@@ -126,22 +121,24 @@ const List<SidebarFlyoutEntry> defaultSidebarFlyoutEntries = [
 
 List<SidebarFlyoutEntry> sidebarFlyoutEntriesSafeFromJson(
   List<dynamic>? sidebarFlyoutEntries,
-) {
-  try {
-    return sidebarFlyoutEntries
-            ?.map((e) => $enumDecode(_$SidebarFlyoutEntryEnumMap, e))
-            .toList() ??
-        defaultSidebarFlyoutEntries;
-  } catch (_) {
-    return defaultSidebarFlyoutEntries;
-  }
-}
+) => enumListSafeFromJson(
+  sidebarFlyoutEntries,
+  (e) => $enumDecode(_$SidebarFlyoutEntryEnumMap, e),
+  defaultSidebarFlyoutEntries,
+);
 
 const List<MediaPlatform> defaultPinnedMediaPlatforms = [
   MediaPlatform.reddit,
   MediaPlatform.gemini,
   MediaPlatform.cloudflare,
 ];
+
+const _renamedMediaPlatforms = {
+  'chatgpt': MediaPlatform.openai,
+  'qqnews': MediaPlatform.tencent,
+  'alidnsprobe': MediaPlatform.alibaba,
+  'bytedance': MediaPlatform.douyin,
+};
 
 List<MediaPlatform> pinnedMediaPlatformsSafeFromJson(
   List<dynamic>? pinnedMediaPlatforms,
@@ -151,20 +148,9 @@ List<MediaPlatform> pinnedMediaPlatformsSafeFromJson(
     final list = <MediaPlatform>[];
     for (final e in pinnedMediaPlatforms) {
       final str = e.toString();
-      if (str == 'chatgpt') {
-        list.add(MediaPlatform.openai);
-        continue;
-      }
-      if (str == 'qqnews') {
-        list.add(MediaPlatform.tencent);
-        continue;
-      }
-      if (str == 'alidnsprobe') {
-        list.add(MediaPlatform.alibaba);
-        continue;
-      }
-      if (str == 'bytedance') {
-        list.add(MediaPlatform.douyin);
+      final renamed = _renamedMediaPlatforms[str];
+      if (renamed != null) {
+        list.add(renamed);
         continue;
       }
       final p = MediaPlatform.values.where((v) => v.name == str).firstOrNull;

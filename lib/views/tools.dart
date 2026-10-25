@@ -33,6 +33,21 @@ import 'backup_and_recovery.dart';
 import 'developer.dart';
 import 'theme.dart';
 
+void _openLoopbackManager() {
+  windows?.runas(
+    '"${join(dirname(Platform.resolvedExecutable), "WindowsLoopbackManager.exe")}"',
+    '',
+    showWindow: true,
+  );
+}
+
+Future<void> _confirmDisclaimer() async {
+  final accepted = await globalState.appController.showDisclaimer();
+  if (!accepted) {
+    globalState.appController.handleExit();
+  }
+}
+
 class _SearchItem {
   final String title;
   final String? subtitle;
@@ -85,6 +100,62 @@ class ToolsShortcut {
   }
 }
 
+const _flyoutPages = <SidebarFlyoutEntry, (IconData, Widget, bool)>{
+  SidebarFlyoutEntry.resources: (Icons.storage, ResourcesView(), false),
+  SidebarFlyoutEntry.script: (Icons.terminal_outlined, ScriptsView(), false),
+  SidebarFlyoutEntry.theme: (Icons.style, ThemeView(), true),
+  SidebarFlyoutEntry.backupAndRecovery: (
+    Icons.cloud_sync,
+    BackupAndRecovery(),
+    true,
+  ),
+  SidebarFlyoutEntry.hotkeyManagement: (Icons.keyboard, HotKeyView(), true),
+  SidebarFlyoutEntry.basicConfig: (
+    Icons.developer_board_rounded,
+    ConfigView(),
+    true,
+  ),
+  SidebarFlyoutEntry.otherSettings: (
+    Icons.settings_suggest_outlined,
+    OtherSettingView(),
+    true,
+  ),
+  SidebarFlyoutEntry.application: (
+    Icons.settings,
+    ApplicationSettingView(),
+    true,
+  ),
+  SidebarFlyoutEntry.about: (Icons.info, AboutView(), true),
+};
+
+String? _flyoutSubtitle(SidebarFlyoutEntry entry) => switch (entry) {
+  SidebarFlyoutEntry.resources => appLocalizations.resourcesDesc,
+  SidebarFlyoutEntry.script => appLocalizations.scriptDesc,
+  SidebarFlyoutEntry.theme => appLocalizations.themeDesc,
+  SidebarFlyoutEntry.backupAndRecovery =>
+    appLocalizations.backupAndRecoveryDesc,
+  SidebarFlyoutEntry.hotkeyManagement => appLocalizations.hotkeyManagementDesc,
+  SidebarFlyoutEntry.basicConfig => appLocalizations.basicConfigDesc,
+  SidebarFlyoutEntry.otherSettings => appLocalizations.otherSettingsDesc,
+  SidebarFlyoutEntry.application => appLocalizations.applicationDesc,
+  _ => null,
+};
+
+ToolsShortcut? _flyoutPageShortcut(SidebarFlyoutEntry entry) {
+  final page = _flyoutPages[entry];
+  if (page == null) {
+    return null;
+  }
+  final (icon, child, wrap) = page;
+  return ToolsShortcut(
+    icon: Icon(icon),
+    title: entry.localizedName,
+    subtitle: _flyoutSubtitle(entry),
+    builder: (_) => child,
+    wrap: wrap,
+  );
+}
+
 List<ToolsShortcut> getToolsShortcuts(
   List<NavigationItem> moreItems,
   List<SidebarFlyoutEntry> entries,
@@ -110,76 +181,16 @@ List<ToolsShortcut> getToolsShortcuts(
     for (final entry in SidebarFlyoutEntry.supportedValues)
       if (entries.contains(entry))
         ?switch (entry) {
-          SidebarFlyoutEntry.resources => ToolsShortcut(
-            icon: const Icon(Icons.storage),
-            title: appLocalizations.resources,
-            subtitle: appLocalizations.resourcesDesc,
-            builder: (_) => const ResourcesView(),
-            wrap: false,
-          ),
-          SidebarFlyoutEntry.script => ToolsShortcut(
-            icon: const Icon(Icons.terminal_outlined),
-            title: appLocalizations.script,
-            subtitle: appLocalizations.scriptDesc,
-            builder: (_) => const ScriptsView(),
-            wrap: false,
-          ),
           SidebarFlyoutEntry.toolbox => buildNavigationShortcut(
             PageLabel.toolbox,
-          ),
-          SidebarFlyoutEntry.theme => ToolsShortcut(
-            icon: const Icon(Icons.style),
-            title: appLocalizations.theme,
-            subtitle: appLocalizations.themeDesc,
-            builder: (_) => const ThemeView(),
-          ),
-          SidebarFlyoutEntry.backupAndRecovery => ToolsShortcut(
-            icon: const Icon(Icons.cloud_sync),
-            title: appLocalizations.backupAndRecovery,
-            subtitle: appLocalizations.backupAndRecoveryDesc,
-            builder: (_) => const BackupAndRecovery(),
-          ),
-          SidebarFlyoutEntry.hotkeyManagement => ToolsShortcut(
-            icon: const Icon(Icons.keyboard),
-            title: appLocalizations.hotkeyManagement,
-            subtitle: appLocalizations.hotkeyManagementDesc,
-            builder: (_) => const HotKeyView(),
           ),
           SidebarFlyoutEntry.loopback => ToolsShortcut(
             icon: const Icon(Icons.lock),
             title: appLocalizations.loopback,
             subtitle: appLocalizations.loopbackDesc,
-            onTap: () {
-              windows?.runas(
-                '"${join(dirname(Platform.resolvedExecutable), "WindowsLoopbackManager.exe")}"',
-                '',
-                showWindow: true,
-              );
-            },
+            onTap: _openLoopbackManager,
           ),
-          SidebarFlyoutEntry.basicConfig => ToolsShortcut(
-            icon: const Icon(Icons.developer_board_rounded),
-            title: appLocalizations.basicConfig,
-            subtitle: appLocalizations.basicConfigDesc,
-            builder: (_) => const ConfigView(),
-          ),
-          SidebarFlyoutEntry.otherSettings => ToolsShortcut(
-            icon: const Icon(Icons.settings_suggest_outlined),
-            title: appLocalizations.otherSettings,
-            subtitle: appLocalizations.otherSettingsDesc,
-            builder: (_) => const OtherSettingView(),
-          ),
-          SidebarFlyoutEntry.application => ToolsShortcut(
-            icon: const Icon(Icons.settings),
-            title: appLocalizations.application,
-            subtitle: appLocalizations.applicationDesc,
-            builder: (_) => const ApplicationSettingView(),
-          ),
-          SidebarFlyoutEntry.about => ToolsShortcut(
-            icon: const Icon(Icons.info),
-            title: appLocalizations.about,
-            builder: (_) => const AboutView(),
-          ),
+          _ => _flyoutPageShortcut(entry),
         },
   ];
 }
@@ -290,20 +301,46 @@ class _ToolViewState extends ConsumerState<ToolsView> {
     );
   }
 
-  List<_SearchItem> _buildSearchItems(List<NavigationItem> moreItems) {
-    final items = <_SearchItem>[];
-    final settingsCategory = appLocalizations.settings;
-    final configCategory = '$settingsCategory/${appLocalizations.basicConfig}';
-    final themeCategory = '$settingsCategory/${appLocalizations.theme}';
-    final backupCategory =
-        '$settingsCategory/${appLocalizations.backupAndRecovery}';
-    final appCategory = '$settingsCategory/${appLocalizations.application}';
-    final otherCategory = appLocalizations.other;
-    final otherSettingsCategory =
-        '$settingsCategory/${appLocalizations.otherSettings}';
+  _SearchItem _searchNav(
+    String category,
+    String title,
+    String? subtitle,
+    IconData? icon,
+    Widget page, {
+    String? pageTitle,
+  }) {
+    return _SearchItem(
+      title: title,
+      subtitle: subtitle,
+      category: category,
+      leading: icon == null ? null : Icon(icon),
+      onTap: (context, _) => _pushPage(context, pageTitle ?? title, page),
+    );
+  }
 
-    for (final item in moreItems) {
-      items.add(
+  List<_SearchItem> _group(
+    String category,
+    String pageTitle,
+    Widget page,
+    List<(String, String?)> rows,
+  ) {
+    return [
+      for (final (title, subtitle) in rows)
+        _SearchItem(
+          title: title,
+          subtitle: subtitle,
+          category: category,
+          onTap: (context, _) => _pushPage(context, pageTitle, page),
+        ),
+    ];
+  }
+
+  List<_SearchItem> _buildSearchItems(List<NavigationItem> moreItems) {
+    final settings = appLocalizations.settings;
+    final config = '$settings/${appLocalizations.basicConfig}';
+    final other = appLocalizations.other;
+    return [
+      for (final item in moreItems)
         _SearchItem(
           title: Intl.message(item.label.name),
           subtitle: item.description != null
@@ -317,1144 +354,385 @@ class _ToolViewState extends ConsumerState<ToolsView> {
             _buildNavigationPage(item),
           ),
         ),
-      );
-    }
-
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.language,
-        subtitle: appLocalizations.language,
-        category: settingsCategory,
-        leading: const Icon(Icons.language_outlined),
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.language, const _LocaleItem()),
+      _searchNav(
+        settings,
+        appLocalizations.language,
+        appLocalizations.language,
+        Icons.language_outlined,
+        const _LocaleItem(),
       ),
-      _SearchItem(
-        title: appLocalizations.theme,
-        subtitle: appLocalizations.themeDesc,
-        category: settingsCategory,
-        leading: const Icon(Icons.style),
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.theme, const ThemeView()),
+      _searchNav(
+        settings,
+        appLocalizations.theme,
+        appLocalizations.themeDesc,
+        Icons.style,
+        const ThemeView(),
       ),
-      _SearchItem(
-        title: appLocalizations.backupAndRecovery,
-        subtitle: appLocalizations.backupAndRecoveryDesc,
-        category: settingsCategory,
-        leading: const Icon(Icons.cloud_sync),
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.backupAndRecovery,
-          const BackupAndRecovery(),
-        ),
+      _searchNav(
+        settings,
+        appLocalizations.backupAndRecovery,
+        appLocalizations.backupAndRecoveryDesc,
+        Icons.cloud_sync,
+        const BackupAndRecovery(),
       ),
       if (system.isDesktop)
-        _SearchItem(
-          title: appLocalizations.hotkeyManagement,
-          subtitle: appLocalizations.hotkeyManagementDesc,
-          category: settingsCategory,
-          leading: const Icon(Icons.keyboard),
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.hotkeyManagement,
-            const HotKeyView(),
-          ),
+        _searchNav(
+          settings,
+          appLocalizations.hotkeyManagement,
+          appLocalizations.hotkeyManagementDesc,
+          Icons.keyboard,
+          const HotKeyView(),
         ),
       if (system.isWindows)
         _SearchItem(
           title: appLocalizations.loopback,
           subtitle: appLocalizations.loopbackDesc,
-          category: settingsCategory,
+          category: settings,
           leading: const Icon(Icons.lock),
-          onTap: (context, _) {
-            windows?.runas(
-              '"${join(dirname(Platform.resolvedExecutable), "WindowsLoopbackManager.exe")}"',
-              '',
-              showWindow: true,
-            );
-          },
+          onTap: (_, _) => _openLoopbackManager(),
         ),
       if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.accessControl,
-          subtitle: appLocalizations.accessControlDesc,
-          category: settingsCategory,
-          leading: const Icon(Icons.view_list),
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.appAccessControl,
-            const AccessView(),
-          ),
+        _searchNav(
+          settings,
+          appLocalizations.accessControl,
+          appLocalizations.accessControlDesc,
+          Icons.view_list,
+          const AccessView(),
+          pageTitle: appLocalizations.appAccessControl,
         ),
-      _SearchItem(
-        title: appLocalizations.basicConfig,
-        subtitle: appLocalizations.basicConfigDesc,
-        category: settingsCategory,
-        leading: const Icon(Icons.developer_board_rounded),
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.basicConfig,
-          const ConfigView(),
-        ),
+      _searchNav(
+        settings,
+        appLocalizations.basicConfig,
+        appLocalizations.basicConfigDesc,
+        Icons.developer_board_rounded,
+        const ConfigView(),
       ),
-      _SearchItem(
-        title: appLocalizations.otherSettings,
-        subtitle: appLocalizations.otherSettingsDesc,
-        category: settingsCategory,
-        leading: const Icon(Icons.settings_suggest_outlined),
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
-        ),
+      _searchNav(
+        settings,
+        appLocalizations.otherSettings,
+        appLocalizations.otherSettingsDesc,
+        Icons.settings_suggest_outlined,
+        const OtherSettingView(),
       ),
-      _SearchItem(
-        title: appLocalizations.application,
-        subtitle: appLocalizations.applicationDesc,
-        category: settingsCategory,
-        leading: const Icon(Icons.settings),
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.application,
-          const ApplicationSettingView(),
-        ),
+      _searchNav(
+        settings,
+        appLocalizations.application,
+        appLocalizations.applicationDesc,
+        Icons.settings,
+        const ApplicationSettingView(),
       ),
       _SearchItem(
         title: appLocalizations.disclaimer,
-        category: otherCategory,
+        category: other,
         leading: const Icon(Icons.gavel),
-        onTap: (context, _) async {
-          final accepted = await globalState.appController.showDisclaimer();
-          if (!accepted) {
-            globalState.appController.handleExit();
-          }
-        },
+        onTap: (_, _) => _confirmDisclaimer(),
       ),
-      _SearchItem(
-        title: appLocalizations.about,
-        category: otherCategory,
-        leading: const Icon(Icons.info),
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.about, const AboutView()),
+      _searchNav(
+        other,
+        appLocalizations.about,
+        null,
+        Icons.info,
+        const AboutView(),
       ),
-      _SearchItem(
-        title: appLocalizations.developerMode,
-        category: otherCategory,
-        leading: const Icon(Icons.developer_board),
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.developerMode,
-          const DeveloperView(),
-        ),
+      _searchNav(
+        other,
+        appLocalizations.developerMode,
+        null,
+        Icons.developer_board,
+        const DeveloperView(),
       ),
-    ]);
-
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.themeMode,
-        category: themeCategory,
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.theme, const ThemeView()),
+      ..._group(
+        '$settings/${appLocalizations.theme}',
+        appLocalizations.theme,
+        const ThemeView(),
+        [
+          (appLocalizations.themeMode, null),
+          (appLocalizations.themeColor, null),
+          (appLocalizations.pureBlackMode, null),
+          (appLocalizations.harmonyFont, appLocalizations.harmonyFontDesc),
+          if (system.isAndroid)
+            (appLocalizations.darkIcon, appLocalizations.darkIconDesc),
+          if (system.isWindows)
+            (
+              appLocalizations.trayIconInvert,
+              appLocalizations.trayIconInvertDesc,
+            ),
+          (appLocalizations.textScale, null),
+        ],
       ),
-      _SearchItem(
-        title: appLocalizations.themeColor,
-        category: themeCategory,
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.theme, const ThemeView()),
+      ..._group(
+        '$settings/${appLocalizations.backupAndRecovery}',
+        appLocalizations.backupAndRecovery,
+        const BackupAndRecovery(),
+        [
+          (appLocalizations.remote, null),
+          (appLocalizations.local, null),
+          (appLocalizations.recoveryStrategy, null),
+        ],
       ),
-      _SearchItem(
-        title: appLocalizations.pureBlackMode,
-        category: themeCategory,
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.theme, const ThemeView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.harmonyFont,
-        subtitle: appLocalizations.harmonyFontDesc,
-        category: themeCategory,
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.theme, const ThemeView()),
-      ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.darkIcon,
-          subtitle: appLocalizations.darkIconDesc,
-          category: themeCategory,
-          onTap: (context, _) =>
-              _pushPage(context, appLocalizations.theme, const ThemeView()),
-        ),
-      if (system.isWindows)
-        _SearchItem(
-          title: appLocalizations.trayIconInvert,
-          subtitle: appLocalizations.trayIconInvertDesc,
-          category: themeCategory,
-          onTap: (context, _) =>
-              _pushPage(context, appLocalizations.theme, const ThemeView()),
-        ),
-      _SearchItem(
-        title: appLocalizations.textScale,
-        category: themeCategory,
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.theme, const ThemeView()),
-      ),
-    ]);
-
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.remote,
-        category: backupCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.backupAndRecovery,
-          const BackupAndRecovery(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.local,
-        category: backupCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.backupAndRecovery,
-          const BackupAndRecovery(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.recoveryStrategy,
-        category: backupCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.backupAndRecovery,
-          const BackupAndRecovery(),
-        ),
-      ),
-    ]);
-
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.autoLaunch,
-        subtitle: appLocalizations.autoLaunchDesc,
-        category: appCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.application,
-          const ApplicationSettingView(),
-        ),
-      ),
-      if (system.isDesktop)
-        _SearchItem(
-          title: appLocalizations.silentLaunch,
-          subtitle: appLocalizations.silentLaunchDesc,
-          category: appCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.application,
-            const ApplicationSettingView(),
+      ..._group(
+        '$settings/${appLocalizations.application}',
+        appLocalizations.application,
+        const ApplicationSettingView(),
+        [
+          (appLocalizations.autoLaunch, appLocalizations.autoLaunchDesc),
+          if (system.isDesktop)
+            (appLocalizations.silentLaunch, appLocalizations.silentLaunchDesc),
+          (appLocalizations.autoRun, appLocalizations.autoRunDesc),
+          if (system.isAndroid)
+            (appLocalizations.exclude, appLocalizations.excludeDesc),
+          if (system.isDesktop && (system.isWindows || system.isLinux))
+            (
+              appLocalizations.alwaysShowTitleBar,
+              appLocalizations.alwaysShowTitleBarDesc,
+            ),
+          if (system.isMacOS)
+            (appLocalizations.keepDockIcon, appLocalizations.keepDockIconDesc),
+          (
+            appLocalizations.showStartSwitch,
+            appLocalizations.showStartSwitchDesc,
           ),
-        ),
-      _SearchItem(
-        title: appLocalizations.autoRun,
-        subtitle: appLocalizations.autoRunDesc,
-        category: appCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.application,
-          const ApplicationSettingView(),
-        ),
-      ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.exclude,
-          subtitle: appLocalizations.excludeDesc,
-          category: appCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.application,
-            const ApplicationSettingView(),
+          if (system.isDesktop)
+            (
+              appLocalizations.sidebarFlyout,
+              appLocalizations.sidebarFlyoutDesc,
+            ),
+          if (system.isAndroid)
+            (
+              appLocalizations.navBarHapticFeedback,
+              appLocalizations.navBarHapticFeedbackDesc,
+            ),
+          (
+            appLocalizations.onlyStatisticsProxy,
+            appLocalizations.onlyStatisticsProxyDesc,
           ),
-        ),
-      if (system.isDesktop && (system.isWindows || system.isLinux))
-        _SearchItem(
-          title: appLocalizations.alwaysShowTitleBar,
-          subtitle: appLocalizations.alwaysShowTitleBarDesc,
-          category: appCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.application,
-            const ApplicationSettingView(),
+          (
+            appLocalizations.autoCheckUpdate,
+            appLocalizations.autoCheckUpdateDesc,
           ),
-        ),
-      if (system.isMacOS)
-        _SearchItem(
-          title: appLocalizations.keepDockIcon,
-          subtitle: appLocalizations.keepDockIconDesc,
-          category: appCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.application,
-            const ApplicationSettingView(),
+        ],
+      ),
+      ..._group(
+        '$settings/${appLocalizations.otherSettings}',
+        appLocalizations.otherSettings,
+        const OtherSettingView(),
+        [
+          (
+            appLocalizations.autoCloseConnections,
+            appLocalizations.autoCloseConnectionsDesc,
           ),
-        ),
-      _SearchItem(
-        title: appLocalizations.showStartSwitch,
-        subtitle: appLocalizations.showStartSwitchDesc,
-        category: appCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.application,
-          const ApplicationSettingView(),
-        ),
-      ),
-      if (system.isDesktop)
-        _SearchItem(
-          title: appLocalizations.sidebarFlyout,
-          subtitle: appLocalizations.sidebarFlyoutDesc,
-          category: appCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.application,
-            const ApplicationSettingView(),
+          if (system.isAndroid)
+            (
+              appLocalizations.flushDnsOnNetworkChange,
+              appLocalizations.flushDnsOnNetworkChangeDesc,
+            ),
+          (appLocalizations.smartAutoStop, appLocalizations.smartAutoStopDesc),
+          (appLocalizations.networkMatch, appLocalizations.networkMatchHint),
+          if (system.isAndroid)
+            (appLocalizations.dozeSuspend, appLocalizations.dozeSuspendDesc),
+          if (system.isAndroid)
+            (
+              appLocalizations.quickResponse,
+              appLocalizations.quickResponseDesc,
+            ),
+          if (system.isAndroid)
+            (appLocalizations.storeFix, appLocalizations.storeFixDesc),
+          (
+            appLocalizations.loopbackProtection,
+            appLocalizations.loopbackProtectionDesc,
           ),
-        ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.navBarHapticFeedback,
-          subtitle: appLocalizations.navBarHapticFeedbackDesc,
-          category: appCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.application,
-            const ApplicationSettingView(),
+          (appLocalizations.disableQuic, appLocalizations.disableQuicDesc),
+          (appLocalizations.excludeChina, appLocalizations.excludeChinaDesc),
+          if (system.isAndroid)
+            (
+              appLocalizations.notificationHighPriority,
+              appLocalizations.notificationHighPriorityDesc,
+            ),
+          if (system.isAndroid)
+            (
+              appLocalizations.networkSpeedNotification,
+              appLocalizations.networkSpeedNotificationDesc,
+            ),
+          if (!system.isAndroid)
+            (
+              appLocalizations.trayEnhancement,
+              appLocalizations.trayEnhancementDesc,
+            ),
+          if (system.isMacOS)
+            (
+              appLocalizations.enableTraySpeed,
+              appLocalizations.enableTraySpeedDesc,
+            ),
+          if (system.isWindows)
+            (appLocalizations.highPriority, appLocalizations.highPriorityDesc),
+          if (system.isWindows)
+            (appLocalizations.networkFix, appLocalizations.networkFixDesc),
+          if (system.isAndroid)
+            (
+              appLocalizations.batteryOptimization,
+              appLocalizations.batteryOptimizationDesc,
+            ),
+        ],
+      ),
+      ..._group(
+        '$config/${appLocalizations.general}',
+        appLocalizations.general,
+        const _GeneralListView(),
+        [
+          (appLocalizations.logLevel, null),
+          ('UA', null),
+          (appLocalizations.keepAliveIntervalDesc, appLocalizations.interval),
+          (appLocalizations.testUrl, null),
+          (appLocalizations.port, null),
+          ('IPv6', appLocalizations.ipv6Desc),
+          (appLocalizations.allowLan, appLocalizations.allowLanDesc),
+          (appLocalizations.unifiedDelay, appLocalizations.unifiedDelayDesc),
+          (
+            appLocalizations.findProcessMode,
+            appLocalizations.findProcessModeDesc,
           ),
-        ),
-      _SearchItem(
-        title: appLocalizations.autoCloseConnections,
-        subtitle: appLocalizations.autoCloseConnectionsDesc,
-        category: otherSettingsCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
-        ),
-      ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.flushDnsOnNetworkChange,
-          subtitle: appLocalizations.flushDnsOnNetworkChangeDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
+          (appLocalizations.tcpConcurrent, appLocalizations.tcpConcurrentDesc),
+          (
+            appLocalizations.externalController,
+            appLocalizations.externalControllerDesc,
           ),
-        ),
-      _SearchItem(
-        title: appLocalizations.onlyStatisticsProxy,
-        subtitle: appLocalizations.onlyStatisticsProxyDesc,
-        category: appCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.application,
-          const ApplicationSettingView(),
-        ),
+          (appLocalizations.controlSecret, appLocalizations.controlSecretDesc),
+        ],
       ),
-      _SearchItem(
-        title: appLocalizations.autoCheckUpdate,
-        subtitle: appLocalizations.autoCheckUpdateDesc,
-        category: appCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.application,
-          const ApplicationSettingView(),
-        ),
-      ),
-    ]);
-
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.smartAutoStop,
-        subtitle: appLocalizations.smartAutoStopDesc,
-        category: otherSettingsCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.networkMatch,
-        subtitle: appLocalizations.networkMatchHint,
-        category: otherSettingsCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
-        ),
-      ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.dozeSuspend,
-          subtitle: appLocalizations.dozeSuspendDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
+      ..._group(
+        '$config/${appLocalizations.network}',
+        appLocalizations.network,
+        const NetworkListView(),
+        [
+          ('VPN', appLocalizations.vpnEnableDesc),
+          (appLocalizations.allowBypass, appLocalizations.allowBypassDesc),
+          if (system.isDesktop)
+            (appLocalizations.systemProxy, appLocalizations.systemProxyDesc),
+          if (system.isDesktop)
+            (appLocalizations.bypassDomain, appLocalizations.bypassDomainDesc),
+          if (system.isDesktop)
+            (appLocalizations.tun, appLocalizations.tunDesc),
+          if (system.isMacOS) (appLocalizations.autoSetSystemDns, null),
+          if (!system.isAndroid)
+            (appLocalizations.strictRoute, appLocalizations.strictRouteDesc),
+          (
+            appLocalizations.icmpForwarding,
+            appLocalizations.icmpForwardingDesc,
           ),
-        ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.quickResponse,
-          subtitle: appLocalizations.quickResponseDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
+          (appLocalizations.dnsHijack, appLocalizations.dnsHijackDesc),
+          (
+            appLocalizations.endpointIndependentNat,
+            appLocalizations.endpointIndependentNatDesc,
           ),
-        ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.storeFix,
-          subtitle: appLocalizations.storeFixDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
+          (appLocalizations.stackMode, null),
+          ('MTU', null),
+          (
+            appLocalizations.bypassPrivateRoute,
+            appLocalizations.bypassPrivateRouteDesc,
           ),
-        ),
-      _SearchItem(
-        title: appLocalizations.loopbackProtection,
-        subtitle: appLocalizations.loopbackProtectionDesc,
-        category: otherSettingsCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
-        ),
+        ],
       ),
-      _SearchItem(
-        title: appLocalizations.disableQuic,
-        subtitle: appLocalizations.disableQuicDesc,
-        category: otherSettingsCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
+      ..._group('$config/DNS', 'DNS', const DnsListView(), [
+        (appLocalizations.overrideDns, appLocalizations.overrideDnsDesc),
+        (appLocalizations.status, appLocalizations.statusDesc),
+        (appLocalizations.listen, null),
+        (appLocalizations.cacheAlgorithm, null),
+        (appLocalizations.useHosts, null),
+        (appLocalizations.useSystemHosts, null),
+        ('IPv6', null),
+        (appLocalizations.respectRules, appLocalizations.respectRulesDesc),
+        ('PreferH3', appLocalizations.preferH3Desc),
+        (appLocalizations.dnsMode, null),
+        (appLocalizations.fakeipRange, null),
+        (appLocalizations.fakeipRangeV6, null),
+        (appLocalizations.fakeIpFilterMode, null),
+        (appLocalizations.fakeipFilter, null),
+        (appLocalizations.fakeipTtl, null),
+        (
+          appLocalizations.defaultNameserver,
+          appLocalizations.defaultNameserverDesc,
         ),
-      ),
-      _SearchItem(
-        title: appLocalizations.excludeChina,
-        subtitle: appLocalizations.excludeChinaDesc,
-        category: otherSettingsCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.otherSettings,
-          const OtherSettingView(),
+        (
+          appLocalizations.nameserverPolicy,
+          appLocalizations.nameserverPolicyDesc,
         ),
+        (appLocalizations.nameserver, appLocalizations.nameserverDesc),
+        (appLocalizations.fallback, appLocalizations.fallbackDesc),
+        (
+          appLocalizations.proxyNameserver,
+          appLocalizations.proxyNameserverDesc,
+        ),
+        (
+          appLocalizations.directNameserver,
+          appLocalizations.directNameserverDesc,
+        ),
+        (appLocalizations.directNameserverFollowPolicy, null),
+        ('Geoip', null),
+        (appLocalizations.geoipCode, null),
+        (
+          appLocalizations.fallbackConcurrent,
+          appLocalizations.fallbackConcurrentDesc,
+        ),
+        (appLocalizations.ipcidr, null),
+        (appLocalizations.domain, null),
+      ]),
+      ..._group('$config/NTP', 'NTP', const NtpListView(), [
+        (appLocalizations.overrideNtp, appLocalizations.overrideNtpDesc),
+        (appLocalizations.ntpStatus, appLocalizations.ntpStatusDesc),
+        (appLocalizations.writeToSystem, appLocalizations.writeToSystemDesc),
+        (appLocalizations.ntpServer, null),
+        (appLocalizations.ntpPort, null),
+        (appLocalizations.ntpInterval, null),
+      ]),
+      ..._group(
+        '$config/Hosts',
+        appLocalizations.basicConfig,
+        const ConfigView(),
+        [('Hosts', appLocalizations.hostsDesc)],
       ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.notificationHighPriority,
-          subtitle: appLocalizations.notificationHighPriorityDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
+      ..._group(
+        '$config/${appLocalizations.sniffer}',
+        appLocalizations.sniffer,
+        const SnifferListView(),
+        [
+          (
+            appLocalizations.overrideSniffer,
+            appLocalizations.overrideSnifferDesc,
           ),
-        ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.networkSpeedNotification,
-          subtitle: appLocalizations.networkSpeedNotificationDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
+          (appLocalizations.snifferStatus, appLocalizations.snifferStatusDesc),
+          (appLocalizations.forceDnsMapping, null),
+          (appLocalizations.parsePureIp, null),
+          (appLocalizations.overrideDestination, null),
+          (appLocalizations.httpPortSniffer, null),
+          (appLocalizations.tlsPortSniffer, null),
+          (appLocalizations.quicPortSniffer, null),
+          (appLocalizations.forceDomain, null),
+          (appLocalizations.skipDomain, null),
+          (appLocalizations.skipSrcAddress, null),
+          (appLocalizations.skipDstAddress, null),
+        ],
+      ),
+      ..._group(
+        '$config/${appLocalizations.tunnel}',
+        appLocalizations.tunnel,
+        const TunnelListView(),
+        [(appLocalizations.tunnel, appLocalizations.tunnelDesc)],
+      ),
+      ..._group(
+        '$config/${appLocalizations.experimental}',
+        appLocalizations.experimental,
+        const ExperimentalListView(),
+        [
+          (
+            appLocalizations.overrideExperimental,
+            appLocalizations.overrideExperimentalDesc,
           ),
-        ),
-      if (!system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.trayEnhancement,
-          subtitle: appLocalizations.trayEnhancementDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
-          ),
-        ),
-      if (system.isMacOS)
-        _SearchItem(
-          title: appLocalizations.enableTraySpeed,
-          subtitle: appLocalizations.enableTraySpeedDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
-          ),
-        ),
-      if (system.isWindows)
-        _SearchItem(
-          title: appLocalizations.highPriority,
-          subtitle: appLocalizations.highPriorityDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
-          ),
-        ),
-      if (system.isWindows)
-        _SearchItem(
-          title: appLocalizations.networkFix,
-          subtitle: appLocalizations.networkFixDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
-          ),
-        ),
-      if (system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.batteryOptimization,
-          subtitle: appLocalizations.batteryOptimizationDesc,
-          category: otherSettingsCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.otherSettings,
-            const OtherSettingView(),
-          ),
-        ),
-    ]);
-
-    final generalCategory = '$configCategory/${appLocalizations.general}';
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.logLevel,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: 'UA',
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.keepAliveIntervalDesc,
-        subtitle: appLocalizations.interval,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.testUrl,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.port,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: 'IPv6',
-        subtitle: appLocalizations.ipv6Desc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.allowLan,
-        subtitle: appLocalizations.allowLanDesc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.unifiedDelay,
-        subtitle: appLocalizations.unifiedDelayDesc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.findProcessMode,
-        subtitle: appLocalizations.findProcessModeDesc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.tcpConcurrent,
-        subtitle: appLocalizations.tcpConcurrentDesc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.externalController,
-        subtitle: appLocalizations.externalControllerDesc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.controlSecret,
-        subtitle: appLocalizations.controlSecretDesc,
-        category: generalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.general,
-          const _GeneralListView(),
-        ),
-      ),
-    ]);
-
-    final networkCategory = '$configCategory/${appLocalizations.network}';
-    items.addAll([
-      _SearchItem(
-        title: 'VPN',
-        subtitle: appLocalizations.vpnEnableDesc,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.allowBypass,
-        subtitle: appLocalizations.allowBypassDesc,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      if (system.isDesktop)
-        _SearchItem(
-          title: appLocalizations.systemProxy,
-          subtitle: appLocalizations.systemProxyDesc,
-          category: networkCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.network,
-            const NetworkListView(),
-          ),
-        ),
-      if (system.isDesktop)
-        _SearchItem(
-          title: appLocalizations.bypassDomain,
-          subtitle: appLocalizations.bypassDomainDesc,
-          category: networkCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.network,
-            const NetworkListView(),
-          ),
-        ),
-      if (system.isDesktop)
-        _SearchItem(
-          title: appLocalizations.tun,
-          subtitle: appLocalizations.tunDesc,
-          category: networkCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.network,
-            const NetworkListView(),
-          ),
-        ),
-      if (system.isMacOS)
-        _SearchItem(
-          title: appLocalizations.autoSetSystemDns,
-          category: networkCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.network,
-            const NetworkListView(),
-          ),
-        ),
-      if (!system.isAndroid)
-        _SearchItem(
-          title: appLocalizations.strictRoute,
-          subtitle: appLocalizations.strictRouteDesc,
-          category: networkCategory,
-          onTap: (context, _) => _pushPage(
-            context,
-            appLocalizations.network,
-            const NetworkListView(),
-          ),
-        ),
-      _SearchItem(
-        title: appLocalizations.icmpForwarding,
-        subtitle: appLocalizations.icmpForwardingDesc,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.dnsHijack,
-        subtitle: appLocalizations.dnsHijackDesc,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.endpointIndependentNat,
-        subtitle: appLocalizations.endpointIndependentNatDesc,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.stackMode,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      _SearchItem(
-        title: 'MTU',
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.bypassPrivateRoute,
-        subtitle: appLocalizations.bypassPrivateRouteDesc,
-        category: networkCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.network,
-          const NetworkListView(),
-        ),
-      ),
-    ]);
-
-    final dnsCategory = '$configCategory/DNS';
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.overrideDns,
-        subtitle: appLocalizations.overrideDnsDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.status,
-        subtitle: appLocalizations.statusDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.listen,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.cacheAlgorithm,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.useHosts,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.useSystemHosts,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: 'IPv6',
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.respectRules,
-        subtitle: appLocalizations.respectRulesDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: 'PreferH3',
-        subtitle: appLocalizations.preferH3Desc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.dnsMode,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fakeipRange,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fakeipRangeV6,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fakeIpFilterMode,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fakeipFilter,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fakeipTtl,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.defaultNameserver,
-        subtitle: appLocalizations.defaultNameserverDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.nameserverPolicy,
-        subtitle: appLocalizations.nameserverPolicyDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.nameserver,
-        subtitle: appLocalizations.nameserverDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fallback,
-        subtitle: appLocalizations.fallbackDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.proxyNameserver,
-        subtitle: appLocalizations.proxyNameserverDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.directNameserver,
-        subtitle: appLocalizations.directNameserverDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.directNameserverFollowPolicy,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: 'Geoip',
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.geoipCode,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.fallbackConcurrent,
-        subtitle: appLocalizations.fallbackConcurrentDesc,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.ipcidr,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.domain,
-        category: dnsCategory,
-        onTap: (context, _) => _pushPage(context, 'DNS', const DnsListView()),
-      ),
-    ]);
-
-    final ntpCategory = '$configCategory/NTP';
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.overrideNtp,
-        subtitle: appLocalizations.overrideNtpDesc,
-        category: ntpCategory,
-        onTap: (context, _) => _pushPage(context, 'NTP', const NtpListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.ntpStatus,
-        subtitle: appLocalizations.ntpStatusDesc,
-        category: ntpCategory,
-        onTap: (context, _) => _pushPage(context, 'NTP', const NtpListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.writeToSystem,
-        subtitle: appLocalizations.writeToSystemDesc,
-        category: ntpCategory,
-        onTap: (context, _) => _pushPage(context, 'NTP', const NtpListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.ntpServer,
-        category: ntpCategory,
-        onTap: (context, _) => _pushPage(context, 'NTP', const NtpListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.ntpPort,
-        category: ntpCategory,
-        onTap: (context, _) => _pushPage(context, 'NTP', const NtpListView()),
-      ),
-      _SearchItem(
-        title: appLocalizations.ntpInterval,
-        category: ntpCategory,
-        onTap: (context, _) => _pushPage(context, 'NTP', const NtpListView()),
-      ),
-    ]);
-
-    items.add(
-      _SearchItem(
-        title: 'Hosts',
-        subtitle: appLocalizations.hostsDesc,
-        category: '$configCategory/Hosts',
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.basicConfig,
-          const ConfigView(),
-        ),
-      ),
-    );
-
-    final snifferCategory = '$configCategory/${appLocalizations.sniffer}';
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.overrideSniffer,
-        subtitle: appLocalizations.overrideSnifferDesc,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.snifferStatus,
-        subtitle: appLocalizations.snifferStatusDesc,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.forceDnsMapping,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.parsePureIp,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.overrideDestination,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.httpPortSniffer,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.tlsPortSniffer,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.quicPortSniffer,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.forceDomain,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.skipDomain,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.skipSrcAddress,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.skipDstAddress,
-        category: snifferCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.sniffer,
-          const SnifferListView(),
-        ),
-      ),
-    ]);
-
-    items.add(
-      _SearchItem(
-        title: appLocalizations.tunnel,
-        subtitle: appLocalizations.tunnelDesc,
-        category: '$configCategory/${appLocalizations.tunnel}',
-        onTap: (context, _) =>
-            _pushPage(context, appLocalizations.tunnel, const TunnelListView()),
-      ),
-    );
-
-    final experimentalCategory =
-        '$configCategory/${appLocalizations.experimental}';
-    items.addAll([
-      _SearchItem(
-        title: appLocalizations.overrideExperimental,
-        subtitle: appLocalizations.overrideExperimentalDesc,
-        category: experimentalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.experimental,
-          const ExperimentalListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.quicGoDisableGso,
-        category: experimentalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.experimental,
-          const ExperimentalListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.quicGoDisableEcn,
-        category: experimentalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.experimental,
-          const ExperimentalListView(),
-        ),
-      ),
-      _SearchItem(
-        title: appLocalizations.dialerIp4pConvert,
-        category: experimentalCategory,
-        onTap: (context, _) => _pushPage(
-          context,
-          appLocalizations.experimental,
-          const ExperimentalListView(),
-        ),
-      ),
-    ]);
-
-    return items;
+          (appLocalizations.quicGoDisableGso, null),
+          (appLocalizations.quicGoDisableEcn, null),
+          (appLocalizations.dialerIp4pConvert, null),
+        ],
+      ),
+    ];
   }
 
   List<Widget> _buildSearchResults(List<_SearchItem> items) {
@@ -1540,20 +818,79 @@ class _ToolViewState extends ConsumerState<ToolsView> {
         title: appLocalizations.settings,
         items: [
           _LocaleItem(),
-          _ThemeItem(),
-          _BackupItem(),
-          if (system.isDesktop) _HotkeyItem(),
-          if (system.isWindows) _LoopbackItem(),
-          if (system.isAndroid) _AccessItem(),
-          _ConfigItem(),
-          _OtherSettingItem(),
-          _SettingItem(),
+          _navItem(
+            Icons.style,
+            appLocalizations.theme,
+            appLocalizations.themeDesc,
+            const ThemeView(),
+          ),
+          _navItem(
+            Icons.cloud_sync,
+            appLocalizations.backupAndRecovery,
+            appLocalizations.backupAndRecoveryDesc,
+            const BackupAndRecovery(),
+          ),
+          if (system.isDesktop)
+            _navItem(
+              Icons.keyboard,
+              appLocalizations.hotkeyManagement,
+              appLocalizations.hotkeyManagementDesc,
+              const HotKeyView(),
+            ),
+          if (system.isWindows)
+            _actionItem(
+              Icons.lock,
+              appLocalizations.loopback,
+              appLocalizations.loopbackDesc,
+              _openLoopbackManager,
+            ),
+          if (system.isAndroid)
+            _navItem(
+              Icons.view_list,
+              appLocalizations.accessControl,
+              appLocalizations.accessControlDesc,
+              const AccessView(),
+              pageTitle: appLocalizations.appAccessControl,
+            ),
+          _navItem(
+            Icons.developer_board_rounded,
+            appLocalizations.basicConfig,
+            appLocalizations.basicConfigDesc,
+            const ConfigView(),
+          ),
+          _navItem(
+            Icons.settings_suggest_outlined,
+            appLocalizations.otherSettings,
+            appLocalizations.otherSettingsDesc,
+            const OtherSettingView(),
+          ),
+          _navItem(
+            Icons.settings,
+            appLocalizations.application,
+            appLocalizations.applicationDesc,
+            const ApplicationSettingView(),
+          ),
         ],
       ),
       _buildModernSection(
         context,
         title: appLocalizations.other,
-        items: [_DisclaimerItem(), if (vm2.b) _DeveloperItem(), _InfoItem()],
+        items: [
+          _actionItem(
+            Icons.gavel,
+            appLocalizations.disclaimer,
+            null,
+            _confirmDisclaimer,
+          ),
+          if (vm2.b)
+            _navItem(
+              Icons.developer_board,
+              appLocalizations.developerMode,
+              null,
+              const DeveloperView(),
+            ),
+          _navItem(Icons.info, appLocalizations.about, null, const AboutView()),
+        ],
       ),
     ];
 
@@ -1587,6 +924,35 @@ class _ToolViewState extends ConsumerState<ToolsView> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _navItem(
+    IconData icon,
+    String title,
+    String? subtitle,
+    Widget page, {
+    String? pageTitle,
+  }) {
+    return ListItem.next(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle),
+      delegate: NextDelegate(title: pageTitle ?? title, builder: (_) => page),
+    );
+  }
+
+  Widget _actionItem(
+    IconData icon,
+    String title,
+    String? subtitle,
+    VoidCallback onTap,
+  ) {
+    return ListItem(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle),
+      onTap: onTap,
     );
   }
 }
@@ -1651,196 +1017,6 @@ class _LocaleItem extends ConsumerWidget {
         },
         textBuilder: (locale) => _getLocaleString(locale),
         value: currentLocale,
-      ),
-    );
-  }
-}
-
-class _ThemeItem extends StatelessWidget {
-  const _ThemeItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.style),
-      title: Text(appLocalizations.theme),
-      subtitle: Text(appLocalizations.themeDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.theme,
-        builder: (_) => const ThemeView(),
-      ),
-    );
-  }
-}
-
-class _BackupItem extends StatelessWidget {
-  const _BackupItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.cloud_sync),
-      title: Text(appLocalizations.backupAndRecovery),
-      subtitle: Text(appLocalizations.backupAndRecoveryDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.backupAndRecovery,
-        builder: (_) => const BackupAndRecovery(),
-      ),
-    );
-  }
-}
-
-class _HotkeyItem extends StatelessWidget {
-  const _HotkeyItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.keyboard),
-      title: Text(appLocalizations.hotkeyManagement),
-      subtitle: Text(appLocalizations.hotkeyManagementDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.hotkeyManagement,
-        builder: (_) => const HotKeyView(),
-      ),
-    );
-  }
-}
-
-class _LoopbackItem extends StatelessWidget {
-  const _LoopbackItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem(
-      leading: const Icon(Icons.lock),
-      title: Text(appLocalizations.loopback),
-      subtitle: Text(appLocalizations.loopbackDesc),
-      onTap: () {
-        windows?.runas(
-          '"${join(dirname(Platform.resolvedExecutable), "WindowsLoopbackManager.exe")}"',
-          '',
-          showWindow: true,
-        );
-      },
-    );
-  }
-}
-
-class _AccessItem extends StatelessWidget {
-  const _AccessItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.view_list),
-      title: Text(appLocalizations.accessControl),
-      subtitle: Text(appLocalizations.accessControlDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.appAccessControl,
-        builder: (_) => const AccessView(),
-      ),
-    );
-  }
-}
-
-class _ConfigItem extends StatelessWidget {
-  const _ConfigItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.developer_board_rounded),
-      title: Text(appLocalizations.basicConfig),
-      subtitle: Text(appLocalizations.basicConfigDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.basicConfig,
-        builder: (_) => const ConfigView(),
-      ),
-    );
-  }
-}
-
-class _OtherSettingItem extends StatelessWidget {
-  const _OtherSettingItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.settings_suggest_outlined),
-      title: Text(appLocalizations.otherSettings),
-      subtitle: Text(appLocalizations.otherSettingsDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.otherSettings,
-        builder: (_) => const OtherSettingView(),
-      ),
-    );
-  }
-}
-
-class _SettingItem extends StatelessWidget {
-  const _SettingItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.settings),
-      title: Text(appLocalizations.application),
-      subtitle: Text(appLocalizations.applicationDesc),
-      delegate: NextDelegate(
-        title: appLocalizations.application,
-        builder: (_) => const ApplicationSettingView(),
-      ),
-    );
-  }
-}
-
-class _DisclaimerItem extends StatelessWidget {
-  const _DisclaimerItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem(
-      leading: const Icon(Icons.gavel),
-      title: Text(appLocalizations.disclaimer),
-      onTap: () async {
-        final isDisclaimerAccepted = await globalState.appController
-            .showDisclaimer();
-        if (!isDisclaimerAccepted) {
-          globalState.appController.handleExit();
-        }
-      },
-    );
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  const _InfoItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.info),
-      title: Text(appLocalizations.about),
-      delegate: NextDelegate(
-        title: appLocalizations.about,
-        builder: (_) => const AboutView(),
-      ),
-    );
-  }
-}
-
-class _DeveloperItem extends StatelessWidget {
-  const _DeveloperItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem.next(
-      leading: const Icon(Icons.developer_board),
-      title: Text(appLocalizations.developerMode),
-      delegate: NextDelegate(
-        title: appLocalizations.developerMode,
-        builder: (_) => const DeveloperView(),
       ),
     );
   }

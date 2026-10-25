@@ -20,3 +20,4 @@ export 'core_status_dialog.dart';
 export 'media_unlock.dart';
 export 'media_unlock_small.dart';
 export 'tile.dart';
+export 'dashboard_widget_ext.dart';

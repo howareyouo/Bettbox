@@ -165,10 +165,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
   }
 
   void _handleShowExternalEditorSetting() {
-    showDialog(
-      context: context,
-      builder: (_) => const ExternalEditorDialog(),
-    );
+    showDialog(context: context, builder: (_) => const ExternalEditorDialog());
   }
 
   Widget _buildScriptTag({required IconData icon, required String label}) {
@@ -568,11 +565,108 @@ class _ScriptImportOptionsDialog extends StatelessWidget {
   }
 }
 
-class _ScriptCustomOptionsSheet extends ConsumerStatefulWidget {
+abstract class _OptionsSheetWidget extends ConsumerStatefulWidget {
+  const _OptionsSheetWidget();
+
+  SheetType get type;
+  String get sheetTitle;
+}
+
+/// Shared state machine for the three switch-option sheets: options map,
+/// dirty/saving/loading flags, discard confirmation and the common sheet
+/// scaffold (pop guard, saving blocker, save action, progress bar).
+abstract class _SwitchOptionsSheetState<W extends _OptionsSheetWidget>
+    extends ConsumerState<W> {
+  Map<String, bool> _options = {};
+  bool _isLoading = true;
+  bool _dirty = false;
+  bool _isSaving = false;
+
+  Future<void> handleSave();
+  Widget buildContent();
+
+  void _onOptionChanged(String key, bool value) {
+    setState(() {
+      _options[key] = value;
+      _dirty = true;
+    });
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (_isSaving) return false;
+    if (!_dirty) return true;
+    return _showSaveChangesDialog(onSave: handleSave);
+  }
+
+  Widget buildOptionsBody({
+    required int itemCount,
+    required Widget Function(BuildContext context, int index) itemBuilder,
+  }) {
+    return FadeBox(
+      alignment: Alignment.center,
+      child: _isLoading
+          ? const Center(
+              child: SyncedLoading(
+                size: 40,
+                child: CircularProgressIndicator(),
+              ),
+            )
+          : itemCount == 0
+          ? NullStatus(label: appLocalizations.noStatusAvailable)
+          : RepaintBoundary(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                itemCount: itemCount,
+                itemBuilder: itemBuilder,
+              ),
+            ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonPopScope(
+      onPop: _confirmDiscard,
+      child: AbsorbPointer(
+        absorbing: _isSaving,
+        child: AdaptiveSheetScaffold(
+          type: widget.type,
+          title: widget.sheetTitle,
+          actions: [
+            IconButton(
+              onPressed: (_dirty && !_isSaving) ? handleSave : null,
+              icon: const Icon(Icons.save),
+              tooltip: appLocalizations.save,
+            ),
+          ],
+          body: Column(
+            children: [
+              if (_isSaving)
+                LinearProgressIndicator(
+                  minHeight: 2,
+                  color: context.colorScheme.primary,
+                ),
+              Expanded(child: buildContent()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScriptCustomOptionsSheet extends _OptionsSheetWidget {
+  @override
   final SheetType type;
   final Script script;
 
   const _ScriptCustomOptionsSheet({required this.type, required this.script});
+
+  @override
+  String get sheetTitle => appLocalizations.customScriptOptions;
 
   @override
   ConsumerState<_ScriptCustomOptionsSheet> createState() =>
@@ -580,13 +674,9 @@ class _ScriptCustomOptionsSheet extends ConsumerStatefulWidget {
 }
 
 class __ScriptCustomOptionsSheetState
-    extends ConsumerState<_ScriptCustomOptionsSheet> {
-  Map<String, bool> _options = {};
+    extends _SwitchOptionsSheetState<_ScriptCustomOptionsSheet> {
   Map<String, String> _icons = {};
   Set<String> _policyGroupOptions = {};
-  bool _isLoading = true;
-  bool _dirty = false;
-  bool _isSaving = false;
 
   @override
   void initState() {
@@ -627,9 +717,8 @@ class __ScriptCustomOptionsSheetState
     setState(() => _applyData(data));
   }
 
-  bool get _hasUnsavedChanges => _dirty;
-
-  Future<void> _handleSave({bool popSheet = true}) async {
+  @override
+  Future<void> handleSave({bool popSheet = true}) async {
     if (_isSaving) return;
     final scripts = ref.read(scriptStateProvider).scripts;
     final index = scripts.indexWhere((item) => item.id == widget.script.id);
@@ -667,7 +756,7 @@ class __ScriptCustomOptionsSheetState
       _options.addAll(values);
       _dirty = true;
     });
-    await _handleSave(popSheet: false);
+    await handleSave(popSheet: false);
   }
 
   Future<void> _handleOpenOtherOptions(List<String> keys) async {
@@ -682,19 +771,6 @@ class __ScriptCustomOptionsSheetState
         );
       },
     );
-  }
-
-  void _onOptionChanged(String key, bool value) {
-    setState(() {
-      _options[key] = value;
-      _dirty = true;
-    });
-  }
-
-  Future<bool> _confirmDiscard() async {
-    if (_isSaving) return false;
-    if (!_hasUnsavedChanges) return true;
-    return _showSaveChangesDialog(onSave: _handleSave);
   }
 
   ({List<String> groups, List<String> others, bool split}) _splitOptions() {
@@ -715,87 +791,42 @@ class __ScriptCustomOptionsSheetState
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent() {
     final keys = _options.keys.toList();
     final (:groups, :others, :split) = _splitOptions();
     final displayKeys = split ? groups : keys;
-    return CommonPopScope(
-      onPop: _confirmDiscard,
-      child: AbsorbPointer(
-        absorbing: _isSaving,
-        child: AdaptiveSheetScaffold(
-          type: widget.type,
-          title: appLocalizations.customScriptOptions,
-          actions: [
-            IconButton(
-              onPressed: (_dirty && !_isSaving) ? _handleSave : null,
-              icon: const Icon(Icons.save),
-              tooltip: appLocalizations.save,
+    return buildOptionsBody(
+      itemCount: displayKeys.length + (split ? 1 : 0),
+      itemBuilder: (_, index) {
+        if (split && index == displayKeys.length) {
+          return RepaintBoundary(
+            child: _ScriptNavTile(
+              label: appLocalizations.scriptOtherOptions,
+              assetIcon: 'assets/images/settings.svg',
+              onTap: () {
+                _handleOpenOtherOptions(others);
+              },
             ),
-          ],
-          body: Column(
-            children: [
-              if (_isSaving)
-                LinearProgressIndicator(
-                  minHeight: 2,
-                  color: context.colorScheme.primary,
-                ),
-              Expanded(
-                child: FadeBox(
-                  alignment: Alignment.center,
-                  child: _isLoading
-                      ? const Center(
-                          child: SyncedLoading(
-                            size: 40,
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      : keys.isEmpty
-                      ? NullStatus(label: appLocalizations.noStatusAvailable)
-                      : RepaintBoundary(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            itemCount: displayKeys.length + (split ? 1 : 0),
-                            itemBuilder: (_, index) {
-                              if (split && index == displayKeys.length) {
-                                return RepaintBoundary(
-                                  child: _ScriptNavTile(
-                                    label: appLocalizations.scriptOtherOptions,
-                                    assetIcon: 'assets/images/settings.svg',
-                                    onTap: () {
-                                      _handleOpenOtherOptions(others);
-                                    },
-                                  ),
-                                );
-                              }
-                              final key = displayKeys[index];
-                              return RepaintBoundary(
-                                child: _ScriptOptionTile(
-                                  label: key,
-                                  value: _options[key] ?? true,
-                                  iconUrl: _icons[key],
-                                  onChanged: (v) {
-                                    _onOptionChanged(key, v);
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                ),
-              ),
-            ],
+          );
+        }
+        final key = displayKeys[index];
+        return RepaintBoundary(
+          child: _ScriptOptionTile(
+            label: key,
+            value: _options[key] ?? true,
+            iconUrl: _icons[key],
+            onChanged: (v) {
+              _onOptionChanged(key, v);
+            },
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class _ScriptOtherOptionsSheet extends StatefulWidget {
+class _ScriptOtherOptionsSheet extends _OptionsSheetWidget {
+  @override
   final SheetType type;
   final Map<String, bool> values;
   final Map<String, String> icons;
@@ -809,22 +840,24 @@ class _ScriptOtherOptionsSheet extends StatefulWidget {
   });
 
   @override
-  State<_ScriptOtherOptionsSheet> createState() =>
+  String get sheetTitle => appLocalizations.scriptOtherOptions;
+
+  @override
+  ConsumerState<_ScriptOtherOptionsSheet> createState() =>
       _ScriptOtherOptionsSheetState();
 }
 
-class _ScriptOtherOptionsSheetState extends State<_ScriptOtherOptionsSheet> {
-  late Map<String, bool> _options;
-  bool _dirty = false;
-  bool _isSaving = false;
-
+class _ScriptOtherOptionsSheetState
+    extends _SwitchOptionsSheetState<_ScriptOtherOptionsSheet> {
   @override
   void initState() {
     super.initState();
     _options = Map<String, bool>.from(widget.values);
+    _isLoading = false;
   }
 
-  Future<void> _handleSave() async {
+  @override
+  Future<void> handleSave() async {
     if (_isSaving || !_dirty) return;
     setState(() => _isSaving = true);
     try {
@@ -838,69 +871,24 @@ class _ScriptOtherOptionsSheetState extends State<_ScriptOtherOptionsSheet> {
     }
   }
 
-  Future<bool> _confirmDiscard() async {
-    if (_isSaving) return false;
-    if (!_dirty) return true;
-    return _showSaveChangesDialog(onSave: _handleSave);
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent() {
     final keys = _options.keys.toList();
-    return CommonPopScope(
-      onPop: _confirmDiscard,
-      child: AbsorbPointer(
-        absorbing: _isSaving,
-        child: AdaptiveSheetScaffold(
-          type: widget.type,
-          title: appLocalizations.scriptOtherOptions,
-          actions: [
-            IconButton(
-              onPressed: (_dirty && !_isSaving) ? _handleSave : null,
-              icon: const Icon(Icons.save),
-              tooltip: appLocalizations.save,
-            ),
-          ],
-          body: Column(
-            children: [
-              if (_isSaving)
-                LinearProgressIndicator(
-                  minHeight: 2,
-                  color: context.colorScheme.primary,
-                ),
-              Expanded(
-                child: keys.isEmpty
-                    ? NullStatus(label: appLocalizations.noStatusAvailable)
-                    : RepaintBoundary(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          itemCount: keys.length,
-                          itemBuilder: (_, index) {
-                            final key = keys[index];
-                            return RepaintBoundary(
-                              child: _ScriptOptionTile(
-                                label: key,
-                                value: _options[key] ?? true,
-                                iconUrl: widget.icons[key],
-                                onChanged: (v) {
-                                  setState(() {
-                                    _options[key] = v;
-                                    _dirty = true;
-                                  });
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-              ),
-            ],
+    return buildOptionsBody(
+      itemCount: keys.length,
+      itemBuilder: (_, index) {
+        final key = keys[index];
+        return RepaintBoundary(
+          child: _ScriptOptionTile(
+            label: key,
+            value: _options[key] ?? true,
+            iconUrl: widget.icons[key],
+            onChanged: (v) {
+              _onOptionChanged(key, v);
+            },
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -909,6 +897,7 @@ class _ScriptOptionTile extends StatelessWidget {
   final String label;
   final bool value;
   final String? iconUrl;
+  final bool locked;
   final ValueChanged<bool> onChanged;
 
   const _ScriptOptionTile({
@@ -916,6 +905,7 @@ class _ScriptOptionTile extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.iconUrl,
+    this.locked = false,
   });
 
   @override
@@ -930,7 +920,7 @@ class _ScriptOptionTile extends StatelessWidget {
               ? CommonTargetIcon(src: iconUrl!, size: 24)
               : const Icon(Icons.alt_route),
           title: Text(label),
-          trailing: Switch(value: value, onChanged: onChanged),
+          trailing: Switch(value: value, onChanged: locked ? null : onChanged),
         ),
       ),
     );
@@ -1011,11 +1001,15 @@ Future<void> showGroupSwitchOptions(
   );
 }
 
-class _GroupSwitchOptionsSheet extends ConsumerStatefulWidget {
+class _GroupSwitchOptionsSheet extends _OptionsSheetWidget {
+  @override
   final SheetType type;
   final String profileId;
 
   const _GroupSwitchOptionsSheet({required this.type, required this.profileId});
+
+  @override
+  String get sheetTitle => appLocalizations.customScriptOptions;
 
   @override
   ConsumerState<_GroupSwitchOptionsSheet> createState() =>
@@ -1023,16 +1017,12 @@ class _GroupSwitchOptionsSheet extends ConsumerStatefulWidget {
 }
 
 class _GroupSwitchOptionsSheetState
-    extends ConsumerState<_GroupSwitchOptionsSheet> {
+    extends _SwitchOptionsSheetState<_GroupSwitchOptionsSheet> {
   late final Mode _mode;
   List<String> _groupNames = [];
   String? _matchTarget;
-  Map<String, bool> _options = {};
   Map<String, bool> _originalOptions = {};
   Set<String> _lockedGroups = {};
-  bool _isLoading = true;
-  bool _dirty = false;
-  bool _isSaving = false;
 
   @override
   void initState() {
@@ -1107,41 +1097,8 @@ class _GroupSwitchOptionsSheetState
     return locked;
   }
 
-  bool get _hasUnsavedChanges => _dirty;
-
-  void _onOptionChanged(String key, bool value) {
-    setState(() {
-      _options[key] = value;
-      _dirty = true;
-    });
-  }
-
-  Future<bool> _confirmDiscard() async {
-    if (_isSaving) return false;
-    if (!_hasUnsavedChanges) return true;
-    final res = await globalState.showCommonDialog<bool>(
-      child: CommonDialog(
-        title: appLocalizations.saveChanges,
-        actions: [
-          TextButton(
-            onPressed: () => globalState.navigatorKey.currentState?.pop(false),
-            child: Text(appLocalizations.cancel),
-          ),
-          FilledButton(
-            onPressed: () => globalState.navigatorKey.currentState?.pop(true),
-            child: Text(appLocalizations.save),
-          ),
-        ],
-      ),
-    );
-    if (res == true) {
-      await _handleSave();
-      return false;
-    }
-    return res == false;
-  }
-
-  Future<void> _handleSave() async {
+  @override
+  Future<void> handleSave() async {
     if (_isSaving) return;
     if (widget.profileId != ref.read(currentProfileIdProvider)) {
       _dirty = false;
@@ -1201,87 +1158,23 @@ class _GroupSwitchOptionsSheetState
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent() {
     final keys = _options.keys.toList();
-    return CommonPopScope(
-      onPop: _confirmDiscard,
-      child: AbsorbPointer(
-        absorbing: _isSaving,
-        child: AdaptiveSheetScaffold(
-          type: widget.type,
-          title: appLocalizations.customScriptOptions,
-          actions: [
-            IconButton(
-              onPressed: (_dirty && !_isSaving) ? _handleSave : null,
-              icon: const Icon(Icons.save),
-              tooltip: appLocalizations.save,
-            ),
-          ],
-          body: Column(
-            children: [
-              if (_isSaving)
-                LinearProgressIndicator(
-                  minHeight: 2,
-                  color: context.colorScheme.primary,
-                ),
-              Expanded(
-                child: FadeBox(
-                  alignment: Alignment.center,
-                  child: _isLoading
-                      ? const Center(
-                          child: SyncedLoading(
-                            size: 40,
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      : keys.isEmpty
-                      ? NullStatus(label: appLocalizations.noStatusAvailable)
-                      : RepaintBoundary(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            itemCount: keys.length,
-                            itemBuilder: (_, index) {
-                              final key = keys[index];
-                              final val = _options[key] ?? true;
-                              final locked = _lockedGroups.contains(key);
-                              return RepaintBoundary(
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 4,
-                                  ),
-                                  child: CommonCard(
-                                    type: CommonCardType.filled,
-                                    child: ListTile(
-                                      contentPadding: const EdgeInsets.only(
-                                        left: 16,
-                                        right: 16,
-                                      ),
-                                      leading: const Icon(Icons.alt_route),
-                                      title: Text(key),
-                                      trailing: Switch(
-                                        value: val,
-                                        onChanged: locked
-                                            ? null
-                                            : (v) {
-                                                _onOptionChanged(key, v);
-                                              },
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                ),
-              ),
-            ],
+    return buildOptionsBody(
+      itemCount: keys.length,
+      itemBuilder: (_, index) {
+        final key = keys[index];
+        return RepaintBoundary(
+          child: _ScriptOptionTile(
+            label: key,
+            value: _options[key] ?? true,
+            locked: _lockedGroups.contains(key),
+            onChanged: (v) {
+              _onOptionChanged(key, v);
+            },
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

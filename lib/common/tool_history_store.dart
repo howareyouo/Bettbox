@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:bett_box/common/function.dart';
 import 'package:bett_box/common/path.dart';
 import 'package:synchronized/synchronized.dart';
 
@@ -43,12 +44,7 @@ class ToolHistoryStore {
 
   Future<void> _write(Map<String, List<String>> data) async {
     final file = await _file;
-    await file.parent.create(recursive: true);
-    final tempFile = File(
-      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
-    );
-    await tempFile.writeAsString(json.encode(data), flush: true);
-    await tempFile.rename(file.path);
+    await atomicWriteString(file.path, json.encode(data));
   }
 
   Future<List<String>> load(String key) => _lock.synchronized(

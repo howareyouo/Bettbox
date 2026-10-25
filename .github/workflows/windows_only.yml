@@ -1,10 +1,11 @@
 name: windows-only sync & build
 
 # 单一流水线，三种触发：push 到 main / 每天一次 cron / 手动（Actions 页 Run workflow）
-#   sync job：按 own_files.txt 清单导出自有功能补丁（有变化则提交回 main）
-#             → 对比上游 SHA，有变化（或 push/手动强制）则重建 windows-only 分支
+#   sync job：对比 main HEAD 与 windows-only 分支记录的 .source-sha，
+#             有变化（或 push/手动强制）则从 main 重建 windows-only 分支
 #   build job：构建 Windows 安装包并发布 Release
-# 防循环：使用 GITHUB_TOKEN 的 push 不会触发新的 workflow run（GitHub 官方行为）。
+# windows-only = main 裁剪版（delete_manifest + 手工补丁），与上游同步发生在
+# 「rebase main」时，CI 不感知上游。
 on:
   schedule:
     - cron: '17 21 * * *'
@@ -13,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: 'Force build even if upstream unchanged (manual verification)'
+        description: 'Force build even if main unchanged (manual verification)'
         required: false
         default: 'false'
         type: boolean
@@ -21,18 +22,18 @@ on:
 permissions:
   contents: write
 
-# 串行化，避免 cron 与 push 两个 run 并发 force-push windows-only 分支或并发提交 main
+# 串行化，避免 cron 与 push 两个 run 并发 force-push windows-only 分支
 concurrency:
   group: windows-only-pipeline
   cancel-in-progress: false
 
 jobs:
   sync:
-    name: Export patches & rebuild windows-only from upstream
+    name: Rebuild windows-only from main
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
-      upstream_sha: ${{ steps.check.outputs.upstream_sha }}
+      source_sha: ${{ steps.check.outputs.source_sha }}
       flutter_version: ${{ steps.fver.outputs.flutter_version }}
     steps:
       - name: Checkout fork
@@ -40,82 +41,59 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch upstream main
-        run: |
-          git remote add upstream https://github.com/appshubcc/Bettbox.git
-          git fetch --depth=200 upstream main
-          git fetch origin windows-only || true
+      - name: Fetch windows-only branch
+        run: git fetch origin windows-only || true
 
-      - name: Check for upstream changes
+      - name: Check for main changes
         id: check
         run: |
-          UPSTREAM_SHA=$(git rev-parse upstream/main)
-          echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
-          LAST_SHA=$(git show origin/windows-only:.upstream-sha 2>/dev/null || echo "none")
+          SOURCE_SHA=$(git rev-parse HEAD)
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          LAST_SHA=$(git show origin/windows-only:.source-sha 2>/dev/null || echo "none")
           echo "last_sha=$LAST_SHA"
-          if [ "$LAST_SHA" = "$UPSTREAM_SHA" ]; then
+          if [ "$LAST_SHA" = "$SOURCE_SHA" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No upstream changes (still $UPSTREAM_SHA)"
+            echo "No changes since last build (still $SOURCE_SHA)"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "Upstream changed: $LAST_SHA -> $UPSTREAM_SHA"
+            echo "main changed: $LAST_SHA -> $SOURCE_SHA"
           fi
 
-      # 跟随上游:上游 CI(build.yaml)pin 的 Flutter 版本即权威版本,上游升级时自动跟进。
-      # 解析失败时兜底读上游 pubspec environment.flutter;仍失败回退默认值并打 warning,
-      # 不静默用错版本。SDK/构建缓存 key 含版本号,版本没变则缓存照常命中,稳态不受影响。
-      - name: Detect upstream Flutter version
+      # 跟随上游:main rebase 上游时 CI(build.yaml) pin 的 Flutter 版本随 main 走,
+      # 权威版本即 main 上的 build.yaml。解析失败时兜底读 pubspec environment.flutter;
+      # 仍失败回退默认值并打 warning,不静默用错版本。
+      # SDK/构建缓存 key 含版本号,版本没变则缓存照常命中,稳态不受影响。
+      - name: Detect Flutter version
         id: fver
         run: |
-          V=$(git show upstream/main:.github/workflows/build.yaml 2>/dev/null \
-              | grep -E 'flutter-version:' \
+          V=$(grep -E 'flutter-version:' .github/workflows/build.yaml 2>/dev/null \
               | grep -oE '[0-9]+\.[0-9x]+\.[0-9x]+' | tail -n 1)
           if [ -z "$V" ]; then
-            V=$(git show upstream/main:pubspec.yaml 2>/dev/null \
-                | sed -n '/^environment:/,/^[^ ]/p' \
+            V=$(sed -n '/^environment:/,/^[^ ]/p' pubspec.yaml 2>/dev/null \
                 | grep -E 'flutter:' \
                 | grep -oE '[0-9]+(\.[0-9x]+)+' | tail -n 1)
           fi
           if [ -z "$V" ]; then
             V='3.47.7'
-            echo "::warning::Failed to detect upstream Flutter version, falling back to ${V}"
+            echo "::warning::Failed to detect Flutter version, falling back to ${V}"
           fi
-          echo "Upstream Flutter version: ${V}"
+          echo "Flutter version: ${V}"
           echo "flutter_version=${V}" >> "$GITHUB_OUTPUT"
-
-      # auto_export.sh 末行输出 CHANGED / CLEAN；CHANGED 时提交补丁回 main。
-      # 提交用的是 GITHUB_TOKEN，不会再触发本 workflow，无循环。
-      - name: Auto-export patches from main
-        run: |
-          chmod +x windows_only/auto_export.sh
-          OUTPUT=$(bash windows_only/auto_export.sh upstream/main 2>&1)
-          echo "$OUTPUT"
-          if [ "$(echo "$OUTPUT" | tail -n 1)" = "CHANGED" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add windows_only/patches/
-            if git diff --cached --quiet; then
-              echo "No patch changes to commit"
-            else
-              git commit -m "chore(windows_only): auto-export patches [skip ci]"
-              git push origin main
-            fi
-          fi
 
       - name: Run windows-only rebuild script
         if: steps.check.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
         run: |
           chmod +x windows_only/build_windows_only.sh
-          windows_only/build_windows_only.sh upstream/main windows-only-rebuild
+          windows_only/build_windows_only.sh main windows-only-rebuild
           git push --force origin windows-only-rebuild:windows-only
 
   build:
-    name: Build for Windows 
+    name: Build for Windows
     needs: sync
     if: needs.sync.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
     runs-on: windows-latest
     env:
-      UPSTREAM_SHA: ${{ needs.sync.outputs.upstream_sha }}
+      SOURCE_SHA: ${{ needs.sync.outputs.source_sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout windows-only branch
@@ -129,7 +107,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          # 版本号由 sync job 从上游 build.yaml 的 pin 解析(fver 步骤),上游升级自动跟进;
+          # 版本号由 sync job 从 main 的 build.yaml pin 解析(fver 步骤),rebase 上游时自动跟进;
           # 缓存 key 含解析出的 VERSION,版本不变则命中不变。
           flutter-version: ${{ needs.sync.outputs.flutter_version }}
           cache: true
@@ -292,9 +270,9 @@ jobs:
       # 同名 zip（双层 zip，Windows 下解压冲突），Release 即唯一分发渠道。
       - name: Create GitHub Release
         run: |
-          $tag = "windows-only-$env:UPSTREAM_SHA"
+          $tag = "windows-only-$env:SOURCE_SHA"
           gh release create "$tag" "$env:ARTIFACT" `
-            --title "Bettbox Windows-only (upstream $($env:UPSTREAM_SHA.Substring(0,8)))" `
-            --notes "Automatically rebuilt from upstream main @ $env:UPSTREAM_SHA`nWindows-only build with mobile platform code removed." `
+            --title "Bettbox Windows-only (main@$($env:SOURCE_SHA.Substring(0,8)))" `
+            --notes "Automatically rebuilt from fork main @ $env:SOURCE_SHA`nWindows-only build with mobile platform code removed." `
             --repo "$env:GITHUB_REPOSITORY" || `
             gh release upload "$tag" "$env:ARTIFACT" --repo "$env:GITHUB_REPOSITORY" --clobber || true

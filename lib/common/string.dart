@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 import 'app_localizations.dart';
-import 'print.dart';
 
 extension StringExtension on String {
   bool get isHttpUrl {
@@ -65,16 +64,6 @@ extension StringExtension on String {
 
   bool get isSvg {
     return endsWith('.svg');
-  }
-
-  bool get isRegex {
-    try {
-      RegExp(this);
-      return true;
-    } catch (e) {
-      commonPrint.debug(e.toString());
-      return false;
-    }
   }
 
   String toMd5() {

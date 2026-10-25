@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'connections_count.dart';
+import 'dashboard_widget_ext.dart';
 import 'intranet_ip.dart';
 import 'memory_info.dart';
 import 'network_detection.dart';
@@ -32,9 +33,9 @@ DashboardTileSize resolveDashboardSize(
 Widget buildDashboardTile(DashboardTile tile) {
   final widget = tile.widget;
   final size = tile.size;
-  if (size == widget.nativeSize) return widget.widget.child;
+  if (size == widget.nativeSize) return widget.child;
   final variant = widget.variants.where((item) => item.nativeSize == size);
-  if (variant.isNotEmpty) return variant.first.widget.child;
+  if (variant.isNotEmpty) return variant.first.child;
   return switch (widget.family) {
     DashboardWidget.networkSpeed => NetworkSpeed(size: size),
     DashboardWidget.trafficUsage => TrafficUsage(size: size),
@@ -43,7 +44,7 @@ Widget buildDashboardTile(DashboardTile tile) {
     DashboardWidget.memoryInfo => MemoryInfo(size: size),
     DashboardWidget.connectionsCount => ConnectionsCount(size: size),
     DashboardWidget.startButton => StartButton(size: size),
-    _ => widget.widget.child,
+    _ => widget.child,
   };
 }
 

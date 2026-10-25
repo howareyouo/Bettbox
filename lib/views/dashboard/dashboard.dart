@@ -231,13 +231,8 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
             return AdaptiveSheetScaffold(
               type: type,
               body: _AddDashboardWidgetModal(
-                items: [
-                  for (final item in _addableWidgets(current)) item.widget,
-                ],
-                onAdd: (gridItem) {
-                  final widget = DashboardWidget.values.firstWhere(
-                    (item) => item.widget == gridItem,
-                  );
+                items: [for (final item in _addableWidgets(current)) item],
+                onAdd: (widget) {
                   _saveWidgets([
                     ..._currentWidgets(),
                     widget,
@@ -400,7 +395,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                           itemBuilder: (_, tile) => buildDashboardTile(tile),
                           canResize: (tile) => tile.widget.resizable,
                           onResize: _resizeWidget,
-                          canDelete: (tile) => tile.widget.widget.isDeletable,
+                          canDelete: (tile) => tile.widget.isDeletable,
                           onDelete: _deleteWidget,
                           onMove: _moveWidget,
                           overlayWrapper: (child) => DashboardWidgetMetrics(
@@ -430,21 +425,24 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
   }
 }
 
-List<GridItem> packGridItems(List<GridItem> items, int totalColumns) {
+List<T> packGridItems<T>(
+  List<T> items,
+  int totalColumns, {
+  required int Function(T item) cellCount,
+}) {
   if (items.isEmpty) return const [];
-  final pool = List<GridItem>.from(items);
-  final packed = <GridItem>[];
+  final pool = List<T>.from(items);
+  final packed = <T>[];
   var remainingColumns = totalColumns;
 
   while (pool.isNotEmpty) {
     final index = pool.indexWhere(
-      (item) =>
-          math.min(item.crossAxisCellCount, totalColumns) <= remainingColumns,
+      (item) => math.min(cellCount(item), totalColumns) <= remainingColumns,
     );
     if (index != -1) {
       final item = pool.removeAt(index);
       packed.add(item);
-      remainingColumns -= math.min(item.crossAxisCellCount, totalColumns);
+      remainingColumns -= math.min(cellCount(item), totalColumns);
       if (remainingColumns <= 0) {
         remainingColumns = totalColumns;
       }
@@ -457,8 +455,8 @@ List<GridItem> packGridItems(List<GridItem> items, int totalColumns) {
 }
 
 class _AddDashboardWidgetModal extends StatelessWidget {
-  final List<GridItem> items;
-  final void Function(GridItem item) onAdd;
+  final List<DashboardWidget> items;
+  final void Function(DashboardWidget item) onAdd;
 
   const _AddDashboardWidgetModal({required this.items, required this.onAdd});
 
@@ -466,7 +464,11 @@ class _AddDashboardWidgetModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = 12.mAp;
     const columns = 8;
-    final packedItems = packGridItems(items, columns);
+    final packedItems = packGridItems(
+      items,
+      columns,
+      cellCount: (item) => item.crossAxisCellCount,
+    );
     return DashboardWidgetMetrics(
       unitHeight: 84.0.ap,
       spacing: spacing,
@@ -484,11 +486,11 @@ class _AddDashboardWidgetModal extends StatelessWidget {
             crossAxisSpacing: spacing,
             mainAxisSpacing: spacing,
             children: [
-              for (final item in packedItems)
-                item.wrap(
+              for (final widget in packedItems)
+                widget.gridItem.wrap(
                   builder: (child) {
                     return _AddedContainer(
-                      onAdd: () => onAdd(item),
+                      onAdd: () => onAdd(widget),
                       child: child,
                     );
                   },

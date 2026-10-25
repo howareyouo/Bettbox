@@ -10,7 +10,11 @@ void main() {
     const item3 = GridItem(crossAxisCellCount: 4, child: SizedBox());
     const item4 = GridItem(crossAxisCellCount: 4, child: SizedBox());
 
-    final packed = packGridItems([item1, item2, item3, item4], 8);
+    final packed = packGridItems(
+      [item1, item2, item3, item4],
+      8,
+      cellCount: (item) => item.crossAxisCellCount,
+    );
 
     expect(packed, [item1, item3, item2, item4]);
   });
@@ -20,7 +24,11 @@ void main() {
     const item2 = GridItem(crossAxisCellCount: 4, child: SizedBox());
     const item3 = GridItem(crossAxisCellCount: 8, child: SizedBox());
 
-    final packed = packGridItems([item1, item2, item3], 8);
+    final packed = packGridItems(
+      [item1, item2, item3],
+      8,
+      cellCount: (item) => item.crossAxisCellCount,
+    );
 
     expect(packed, [item1, item2, item3]);
   });
@@ -30,12 +38,19 @@ void main() {
     const item2 = GridItem(crossAxisCellCount: 8, child: SizedBox());
     const item3 = GridItem(crossAxisCellCount: 8, child: SizedBox());
 
-    final packed = packGridItems([item1, item2, item3], 8);
+    final packed = packGridItems(
+      [item1, item2, item3],
+      8,
+      cellCount: (item) => item.crossAxisCellCount,
+    );
 
     expect(packed, [item1, item2, item3]);
   });
 
   test('packGridItems handles empty list', () {
-    expect(packGridItems([], 8), isEmpty);
+    expect(
+      packGridItems([], 8, cellCount: (item) => item.crossAxisCellCount),
+      isEmpty,
+    );
   });
 }

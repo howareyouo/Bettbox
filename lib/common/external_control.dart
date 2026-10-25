@@ -46,7 +46,7 @@ class ExternalControl {
     _server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final portFilePath = await appPath.controlPortFilePath;
     try {
-      await File(portFilePath).writeAsString('${_server!.port}');
+      await atomicWriteString(portFilePath, '${_server!.port}');
     } catch (_) {}
     _listen();
   }

@@ -4,8 +4,6 @@ import 'dart:io';
 
 import 'package:bett_box/common/system.dart';
 import 'package:bett_box/common/app_localizations.dart';
-import 'package:bett_box/views/dashboard/widgets/widgets.dart';
-import 'package:bett_box/widgets/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -96,8 +94,6 @@ extension LogLevelExt on LogLevel {
 }
 
 enum LogSource { core, app }
-
-enum TransportProtocol { udp, tcp }
 
 enum TrafficUnit { B, KB, MB, GB, TB }
 
@@ -383,50 +379,39 @@ enum FunctionTag {
 }
 
 enum DashboardWidget {
-  networkSpeed(GridItem(crossAxisCellCount: 8, child: NetworkSpeed())),
-  networkSpeedSmall(
-    GridItem(crossAxisCellCount: 4, child: NetworkSpeedSmall()),
-  ),
-  outboundModeV2(GridItem(crossAxisCellCount: 8, child: OutboundModeV2())),
-  outboundMode(GridItem(crossAxisCellCount: 4, child: OutboundMode())),
-  trafficUsage(GridItem(crossAxisCellCount: 4, child: TrafficUsage())),
-  networkDetection(GridItem(crossAxisCellCount: 4, child: NetworkDetection())),
-  tunButton(
-    GridItem(crossAxisCellCount: 4, child: TUNButton()),
-    platforms: desktopPlatforms,
-  ),
-  vpnButton(
-    GridItem(crossAxisCellCount: 4, child: VpnButton()),
-    platforms: [SupportPlatform.Android],
-  ),
-  systemProxyButton(
-    GridItem(crossAxisCellCount: 4, child: SystemProxyButton()),
-    platforms: desktopPlatforms,
-  ),
-  intranetIp(GridItem(crossAxisCellCount: 4, child: IntranetIP())),
-  memoryInfo(GridItem(crossAxisCellCount: 4, child: MemoryInfo())),
-  connectionsCount(GridItem(crossAxisCellCount: 4, child: ConnectionsCount())),
-  ipv6Switch(GridItem(crossAxisCellCount: 4, child: Ipv6Switch())),
-  wakelockSwitch(
-    GridItem(crossAxisCellCount: 4, child: WakelockSwitch()),
-    platforms: desktopPlatforms,
-  ),
-  dnsOverride(GridItem(crossAxisCellCount: 4, child: DnsOverride())),
-  snifferOverride(GridItem(crossAxisCellCount: 4, child: SnifferOverride())),
-  ntpOverride(GridItem(crossAxisCellCount: 4, child: NtpOverride())),
-  providersInfo(GridItem(crossAxisCellCount: 4, child: ProvidersInfo())),
-  fcmStatus(GridItem(crossAxisCellCount: 4, child: FcmStatus())),
-  onlinePanel(GridItem(crossAxisCellCount: 4, child: OnlinePanel())),
-  mediaUnlock(GridItem(crossAxisCellCount: 8, child: MediaUnlock())),
-  mediaUnlockSmall(GridItem(crossAxisCellCount: 4, child: MediaUnlockSmall())),
-  startButton(
-    GridItem(crossAxisCellCount: 4, isDeletable: false, child: StartButton()),
-  );
+  networkSpeed(8),
+  networkSpeedSmall(4),
+  outboundModeV2(8),
+  outboundMode(4),
+  trafficUsage(4),
+  networkDetection(4),
+  tunButton(4, platforms: desktopPlatforms),
+  vpnButton(4, platforms: [SupportPlatform.Android]),
+  systemProxyButton(4, platforms: desktopPlatforms),
+  intranetIp(4),
+  memoryInfo(4),
+  connectionsCount(4),
+  ipv6Switch(4),
+  wakelockSwitch(4, platforms: desktopPlatforms),
+  dnsOverride(4),
+  snifferOverride(4),
+  ntpOverride(4),
+  providersInfo(4),
+  fcmStatus(4),
+  onlinePanel(4),
+  mediaUnlock(8),
+  mediaUnlockSmall(4),
+  startButton(4, isDeletable: false);
 
-  final GridItem widget;
+  final int crossAxisCellCount;
+  final bool isDeletable;
   final List<SupportPlatform> platforms;
 
-  const DashboardWidget(this.widget, {this.platforms = SupportPlatform.values});
+  const DashboardWidget(
+    this.crossAxisCellCount, {
+    this.isDeletable = true,
+    this.platforms = SupportPlatform.values,
+  });
 
   static const _variantGroups = [
     [networkSpeedSmall, networkSpeed],

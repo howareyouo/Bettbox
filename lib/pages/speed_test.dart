@@ -9,24 +9,30 @@ import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
+import 'package:bett_box/widgets/outbound_picker.dart';
+import 'package:bett_box/widgets/throughput_chart.dart';
 import 'package:bett_box/widgets/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show Intl;
 import 'package:material_ui/material_ui.dart';
 
-import '../views/proxies/card.dart' show ProxyDelayText, proxyIconProvider;
 import 'toolbox/common.dart';
+export 'package:bett_box/widgets/outbound_picker.dart'
+    show
+        OutboundBatchScope,
+        OutboundBatchTarget,
+        buildSpeedTestOutboundPickerForTesting,
+        collectBatchNodes,
+        outboundBatchExcludedTypes,
+        showBatchOutboundPicker,
+        showOutboundPicker;
+export 'package:bett_box/common/function.dart'
+    show formatSpeedValue, formatSpeedUnit;
+export 'package:bett_box/widgets/throughput_chart.dart'
+    show ChartLegend, ThroughputChart;
 
 const _gaugeMarks = [0.0, 5.0, 10.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0];
 const _durations = [5, 10, 15, 20];
-
-String formatSpeedValue(double bps) {
-  final mbps = bps / 1e6;
-  if (mbps >= 1000) return (mbps / 1000).toStringAsFixed(2);
-  return mbps.toStringAsFixed(1);
-}
-
-String formatSpeedUnit(double bps) => bps / 1e6 >= 1000 ? 'Gbps' : 'Mbps';
 
 String _formatMs(double value) => value.round().toString();
 
@@ -88,22 +94,6 @@ double speedGaugeFraction(double bps) {
     if (mbps <= high) return (i + (mbps - low) / (high - low)) / segments;
   }
   return 1;
-}
-
-double _computePeak(
-  List<(double, double)> download,
-  List<(double, double)> upload,
-) {
-  var peak = 0.0;
-  for (var i = 0; i < download.length; i++) {
-    final v = download[i].$2;
-    if (v > peak) peak = v;
-  }
-  for (var i = 0; i < upload.length; i++) {
-    final v = upload[i].$2;
-    if (v > peak) peak = v;
-  }
-  return peak;
 }
 
 class SpeedTestPage extends ConsumerStatefulWidget {
@@ -190,15 +180,8 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
 
   List<Group> _groups() => ref.read(currentGroupsStateProvider).value;
 
-  String _effectiveProxy(List<Group> groups) {
-    if (_proxy.isEmpty || _proxy == 'DIRECT') return _proxy;
-    final exists = groups.any(
-      (group) =>
-          group.name == _proxy ||
-          group.all.any((proxy) => proxy.name == _proxy),
-    );
-    return exists ? _proxy : '';
-  }
+  String _effectiveProxy(List<Group> groups) =>
+      toolEffectiveProxy(groups, _proxy);
 
   String _requestProxy() {
     final isStart = ref.read(runTimeProvider) != null;
@@ -410,8 +393,9 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
   Future<void> _selectOutbound() async {
     if (_testing) return;
     final groups = _groups();
-    final result = await globalState.showCommonDialog<String>(
-      child: _OutboundPicker(selected: _effectiveProxy(groups), groups: groups),
+    final result = await showOutboundPicker(
+      selected: _effectiveProxy(groups),
+      groups: groups,
     );
     if (result == null || !mounted || result == _proxy) return;
     setState(() {
@@ -465,16 +449,56 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
     final showError = error.isNotEmpty && error != 'cancelled';
     final current = state?.error == 'cancelled' ? null : state;
 
-    final outbound = _OutboundCard(
-      isStart: isStart,
-      proxy: proxy,
-      state: current ?? _probe,
-      provider: _settings.provider,
-      probing: _probing,
+    final outboundState = current ?? _probe;
+    final outboundServer = outboundState?.server;
+    final outboundServerText = outboundServer == null
+        ? ''
+        : _serverText(
+            outboundServer,
+            outboundState?.provider ?? _settings.provider,
+          );
+    final outbound = ToolOutboundCard(
+      rows: [
+        ToolOutboundRow(
+          icon: Icons.arrow_outward_rounded,
+          label: appLocalizations.speedTestExitNode,
+          value: toolOutboundNode(
+            isStart: isStart,
+            proxy: proxy,
+            outbound: outboundState?.outbound,
+          ),
+          primary: true,
+          onTap: _exitInfoAction(current ?? _probe),
+        ),
+        ToolOutboundRow(
+          icon: Icons.alt_route_rounded,
+          label: appLocalizations.speedTestRoute,
+          value: toolOutboundRoute(
+            isStart: isStart,
+            proxy: proxy,
+            outbound: outboundState?.outbound,
+          ),
+          color: isStart ? null : context.colorScheme.tertiary,
+        ),
+        ToolOutboundRow(
+          icon: Icons.dns_rounded,
+          label: appLocalizations.speedTestServer,
+          value: showError
+              ? appLocalizations.speedTestErrorUnavailable
+              : outboundServer == null || outboundServerText.isEmpty
+              ? '—'
+              : outboundServerText,
+          color: showError ? context.colorScheme.error : null,
+        ),
+      ],
+      loading:
+          !showError &&
+          _probing &&
+          outboundState?.outbound == null &&
+          outboundState?.server == null,
+      showChevron: isStart,
       enabled: !_testing && isStart,
-      isError: showError,
       onTap: _selectOutbound,
-      onShowExitInfo: _exitInfoAction(current ?? _probe),
     );
     final chart = _downloadPoints.isEmpty && _uploadPoints.isEmpty
         ? null
@@ -1528,176 +1552,6 @@ class _SpeedTile extends StatelessWidget {
   }
 }
 
-class _OutboundCard extends StatelessWidget {
-  final bool isStart;
-  final String proxy;
-  final SpeedTestState? state;
-  final SpeedTestProvider provider;
-  final bool probing;
-  final bool enabled;
-  final bool isError;
-  final VoidCallback onTap;
-  final VoidCallback? onShowExitInfo;
-
-  const _OutboundCard({
-    required this.isStart,
-    required this.proxy,
-    required this.state,
-    required this.provider,
-    required this.probing,
-    required this.enabled,
-    this.isError = false,
-    required this.onTap,
-    this.onShowExitInfo,
-  });
-
-  String _node(List<String> chains) {
-    if (!isStart) return appLocalizations.direct;
-    if (chains.isEmpty) return '—';
-    final node = chains.last;
-    return node == 'DIRECT' ? appLocalizations.direct : node;
-  }
-
-  String _route(SpeedTestOutbound? outbound, List<String> chains) {
-    if (!isStart) return appLocalizations.speedTestCoreStopped;
-    if (proxy.isNotEmpty) {
-      final target = proxy == 'DIRECT' ? appLocalizations.direct : proxy;
-      final isNode = chains.length == 1 && proxy != 'DIRECT';
-      return isNode
-          ? appLocalizations.speedTestManual
-          : '${appLocalizations.speedTestManual} › $target';
-    }
-    if (chains.isEmpty) return appLocalizations.speedTestFollowRules;
-    final rule = outbound?.rule ?? '';
-    final payload = outbound?.rulePayload ?? '';
-    final head = rule.isEmpty
-        ? appLocalizations.speedTestFollowRules
-        : payload.isEmpty
-        ? rule
-        : '$rule($payload)';
-    return chains.length > 1 ? '$head › ${chains.first}' : head;
-  }
-
-  String _server(SpeedTestServer? server) {
-    if (isError) return appLocalizations.speedTestErrorUnavailable;
-    if (server == null) return '—';
-    final text = _serverText(server, state?.provider ?? provider);
-    return text.isEmpty ? '—' : text;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final outbound = state?.outbound;
-    final chains = outbound?.chains ?? const <String>[];
-    final loading =
-        !isError && probing && outbound == null && state?.server == null;
-    final rows = [
-      (
-        Icons.arrow_outward_rounded,
-        appLocalizations.speedTestExitNode,
-        _node(chains),
-        true,
-        false,
-      ),
-      (
-        Icons.alt_route_rounded,
-        appLocalizations.speedTestRoute,
-        _route(outbound, chains),
-        false,
-        false,
-      ),
-      (
-        Icons.dns_rounded,
-        appLocalizations.speedTestServer,
-        _server(state?.server),
-        false,
-        isError,
-      ),
-    ];
-    final labelStyle = context.textTheme.labelMedium?.copyWith(
-      color: colorScheme.onSurfaceVariant,
-    );
-    final valueStyle = context.textTheme.bodyMedium?.copyWith(
-      color: colorScheme.onSurface,
-    );
-    return ToolSurface(
-      onTap: enabled ? onTap : null,
-      padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Table(
-              columnWidths: const {
-                0: IntrinsicColumnWidth(),
-                1: FlexColumnWidth(),
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: [
-                for (final (index, (icon, label, value, primary, error))
-                    in rows.indexed)
-                  TableRow(
-                    children: [
-                      Padding(
-                        padding: EdgeInsetsDirectional.only(
-                          end: 14,
-                          top: index == 0 ? 0 : 6,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              icon,
-                              size: 14,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(label, style: labelStyle),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: index == 0 ? 0 : 6),
-                        child: ToolOutboundValue(
-                          text: value,
-                          loading: loading,
-                          onTap: primary ? onShowExitInfo : null,
-                          style: error
-                              ? valueStyle?.copyWith(color: colorScheme.error)
-                              : primary
-                              ? valueStyle?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                )
-                              : !isStart && index == 1
-                              ? valueStyle?.copyWith(
-                                  color: colorScheme.tertiary,
-                                )
-                              : valueStyle,
-                          skeletonWidth: 80.0 + 30 * index,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          if (isStart)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(start: 6),
-              child: Icon(
-                Icons.unfold_more_rounded,
-                size: 20,
-                color: enabled
-                    ? colorScheme.onSurfaceVariant
-                    : colorScheme.outlineVariant,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ChartCard extends StatelessWidget {
   final List<(double, double)> download;
   final List<(double, double)> upload;
@@ -1737,358 +1591,6 @@ class _ChartCard extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class ThroughputChart extends StatelessWidget {
-  final List<(double, double)> download;
-  final List<(double, double)> upload;
-  final double height;
-
-  const ThroughputChart({
-    super.key,
-    required this.download,
-    required this.upload,
-    this.height = 140,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final peak = _computePeak(download, upload);
-    return SizedBox(
-      height: height,
-      child: CustomPaint(
-        painter: _ThroughputPainter(
-          download: download,
-          upload: upload,
-          downloadColor: colorScheme.primary,
-          uploadColor: colorScheme.tertiary,
-          gridColor: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-        child: Align(
-          alignment: AlignmentDirectional.topEnd,
-          child: peak > 0
-              ? Text(
-                  '${formatSpeedValue(peak)} ${formatSpeedUnit(peak)}',
-                  style: context.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.outline,
-                  ),
-                )
-              : null,
-        ),
-      ),
-    );
-  }
-}
-
-class ChartLegend extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const ChartLegend({super.key, required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: context.textTheme.labelSmall?.copyWith(
-            color: context.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ThroughputPainter extends CustomPainter {
-  static const int _maxRenderPoints = 64;
-
-  static final Path _uploadStrokePath = Path();
-  static final Path _uploadFillPath = Path();
-  static final Path _downloadStrokePath = Path();
-  static final Path _downloadFillPath = Path();
-
-  static final Paint _gridPaint = Paint()..strokeWidth = 1;
-  static final Paint _fillPaint = Paint();
-  static final Paint _strokePaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2
-    ..strokeJoin = StrokeJoin.round;
-
-  static final List<(double, double)> _sampleBuffer = List.filled(
-    _maxRenderPoints,
-    (0.0, 0.0),
-  );
-
-  static Size? _cachedSize;
-  static Color? _cachedDownloadColor;
-  static Color? _cachedUploadColor;
-  static ui.Shader? _downloadShader;
-  static ui.Shader? _uploadShader;
-
-  final List<(double, double)> download;
-  final List<(double, double)> upload;
-  final Color downloadColor;
-  final Color uploadColor;
-  final Color gridColor;
-
-  _ThroughputPainter({
-    required this.download,
-    required this.upload,
-    required this.downloadColor,
-    required this.uploadColor,
-    required this.gridColor,
-  });
-
-  static void _ensureShaders(
-    Size size,
-    Color downloadColor,
-    Color uploadColor,
-  ) {
-    final sizeChanged = _cachedSize != size;
-    if (sizeChanged ||
-        _cachedDownloadColor != downloadColor ||
-        _downloadShader == null) {
-      _downloadShader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          downloadColor.withValues(alpha: 0.28),
-          downloadColor.withValues(alpha: 0),
-        ],
-      ).createShader(Offset.zero & size);
-      _cachedDownloadColor = downloadColor;
-    }
-    if (sizeChanged ||
-        _cachedUploadColor != uploadColor ||
-        _uploadShader == null) {
-      _uploadShader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          uploadColor.withValues(alpha: 0.28),
-          uploadColor.withValues(alpha: 0),
-        ],
-      ).createShader(Offset.zero & size);
-      _cachedUploadColor = uploadColor;
-    }
-    _cachedSize = size;
-  }
-
-  static int _downsample(
-    List<(double, double)> points,
-    double width,
-    double scaleY,
-  ) {
-    final len = points.length;
-    if (len < 2) return 0;
-
-    if (len <= _maxRenderPoints) {
-      _sampleBuffer[0] = points[0];
-      var outCount = 1;
-      var prevX = points[0].$1.clamp(0.0, 1.0) * width;
-      var prevY = points[0].$2 * scaleY;
-      final lastIndex = len - 1;
-      for (var i = 1; i < lastIndex; i++) {
-        final pt = points[i];
-        final curX = pt.$1.clamp(0.0, 1.0) * width;
-        final curY = pt.$2 * scaleY;
-        if ((curX - prevX).abs() < 0.25 && (curY - prevY).abs() < 0.25) {
-          continue;
-        }
-        _sampleBuffer[outCount++] = pt;
-        prevX = curX;
-        prevY = curY;
-      }
-      _sampleBuffer[outCount++] = points[lastIndex];
-      return outCount;
-    }
-
-    var peakIndex = 0;
-    var peakValue = -1.0;
-    for (var i = 0; i < len; i++) {
-      final y = points[i].$2;
-      if (y > peakValue) {
-        peakValue = y;
-        peakIndex = i;
-      }
-    }
-
-    _sampleBuffer[0] = points[0];
-    final bucketCount = _maxRenderPoints - 2;
-    final bucketSize = (len - 2) / bucketCount;
-    var a = 0;
-
-    for (var i = 0; i < bucketCount; i++) {
-      final rangeStart = (i * bucketSize).floor() + 1;
-      final rangeEnd = min(((i + 1) * bucketSize).floor() + 1, len - 1);
-
-      if (peakIndex >= rangeStart && peakIndex < rangeEnd) {
-        _sampleBuffer[i + 1] = points[peakIndex];
-        a = peakIndex;
-        continue;
-      }
-
-      final avgStart = rangeEnd;
-      final avgEnd = min(((i + 2) * bucketSize).floor() + 1, len);
-      var avgX = 0.0;
-      var avgY = 0.0;
-      final avgLen = avgEnd - avgStart;
-      if (avgLen > 0) {
-        for (var j = avgStart; j < avgEnd; j++) {
-          final pt = points[j];
-          avgX += pt.$1;
-          avgY += pt.$2;
-        }
-        avgX /= avgLen;
-        avgY /= avgLen;
-      } else {
-        final last = points[len - 1];
-        avgX = last.$1;
-        avgY = last.$2;
-      }
-
-      final pointA = points[a];
-      final ax = pointA.$1;
-      final ay = pointA.$2;
-      var maxArea = -1.0;
-      var nextA = rangeStart;
-
-      for (var j = rangeStart; j < rangeEnd; j++) {
-        final pt = points[j];
-        final area = ((ax - avgX) * (pt.$2 - ay) - (ax - pt.$1) * (avgY - ay))
-            .abs();
-        if (area > maxArea) {
-          maxArea = area;
-          nextA = j;
-        }
-      }
-
-      _sampleBuffer[i + 1] = points[nextA];
-      a = nextA;
-    }
-
-    _sampleBuffer[_maxRenderPoints - 1] = points[len - 1];
-    return _maxRenderPoints;
-  }
-
-  static void _drawSeries(
-    Canvas canvas,
-    Size size,
-    List<(double, double)> points,
-    double scaleY,
-    Color color,
-    ui.Shader shader,
-    Path strokePath,
-    Path fillPath,
-  ) {
-    final count = _downsample(points, size.width, scaleY);
-    if (count < 2) return;
-
-    strokePath.reset();
-    fillPath.reset();
-
-    final width = size.width;
-    final height = size.height;
-
-    final p0 = _sampleBuffer[0];
-    var prevX = p0.$1.clamp(0.0, 1.0) * width;
-    var prevY = height - p0.$2 * scaleY;
-    final firstX = prevX;
-
-    strokePath.moveTo(prevX, prevY);
-    for (var i = 1; i < count; i++) {
-      final pt = _sampleBuffer[i];
-      final curX = pt.$1.clamp(0.0, 1.0) * width;
-      final curY = height - pt.$2 * scaleY;
-      final midX = (prevX + curX) * 0.5;
-      strokePath.cubicTo(midX, prevY, midX, curY, curX, curY);
-      prevX = curX;
-      prevY = curY;
-    }
-
-    fillPath
-      ..addPath(strokePath, Offset.zero)
-      ..lineTo(prevX, height)
-      ..lineTo(firstX, height)
-      ..close();
-
-    _fillPaint.shader = shader;
-    canvas.drawPath(fillPath, _fillPaint);
-
-    _strokePaint.color = color;
-    canvas.drawPath(strokePath, _strokePaint);
-  }
-
-  static bool _seriesChanged(
-    List<(double, double)> a,
-    List<(double, double)> b,
-  ) {
-    if (identical(a, b)) return false;
-    final len = a.length;
-    if (len != b.length) return true;
-    if (len == 0) return false;
-    return a.last != b.last || a.first != b.first || a[len >> 1] != b[len >> 1];
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    _gridPaint.color = gridColor;
-    final quarterHeight = size.height * 0.25;
-    for (var i = 1; i <= 3; i++) {
-      final y = quarterHeight * i;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), _gridPaint);
-    }
-
-    final peak = _computePeak(download, upload);
-    if (peak <= 0) return;
-
-    final scaleY = size.height / (peak * 1.15);
-    _ensureShaders(size, downloadColor, uploadColor);
-
-    if (upload.length >= 2) {
-      _drawSeries(
-        canvas,
-        size,
-        upload,
-        scaleY,
-        uploadColor,
-        _uploadShader!,
-        _uploadStrokePath,
-        _uploadFillPath,
-      );
-    }
-    if (download.length >= 2) {
-      _drawSeries(
-        canvas,
-        size,
-        download,
-        scaleY,
-        downloadColor,
-        _downloadShader!,
-        _downloadStrokePath,
-        _downloadFillPath,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ThroughputPainter oldDelegate) {
-    return _seriesChanged(oldDelegate.download, download) ||
-        _seriesChanged(oldDelegate.upload, upload) ||
-        oldDelegate.downloadColor != downloadColor ||
-        oldDelegate.uploadColor != uploadColor ||
-        oldDelegate.gridColor != gridColor;
   }
 }
 
@@ -2170,7 +1672,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
           if (_settings.provider == SpeedTestProvider.speedtest)
             _item(
               title: appLocalizations.speedTestServer,
-              child: _QuickOutboundCard(
+              child: QuickOutboundCard(
                 title: switch (_settings.server) {
                   final server? => _speedTestNodeTitle(server),
                   null => appLocalizations.auto,
@@ -2339,7 +1841,7 @@ class _SpeedTestServerPickerState extends State<_SpeedTestServerPicker> {
   Widget _card(SpeedTestNode node, {bool latency = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: _QuickOutboundCard(
+      child: QuickOutboundCard(
         title: _speedTestNodeTitle(node),
         subtitle: _speedTestNodeSubtitle(node, latency: latency),
         icon: Icons.dns_rounded,
@@ -2378,7 +1880,7 @@ class _SpeedTestServerPickerState extends State<_SpeedTestServerPicker> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: _QuickOutboundCard(
+                  child: QuickOutboundCard(
                     title: appLocalizations.auto,
                     subtitle: appLocalizations.speedTestServerAutoDesc,
                     icon: Icons.auto_awesome_rounded,
@@ -2406,614 +1908,6 @@ class _SpeedTestServerPickerState extends State<_SpeedTestServerPicker> {
           ),
         ],
       ),
-    );
-  }
-}
-
-const _hiddenProxyTypes = {'Reject', 'RejectDrop', 'Pass', 'Compatible'};
-
-@visibleForTesting
-Widget buildSpeedTestOutboundPickerForTesting({
-  required String selected,
-  required List<Group> groups,
-  bool batch = false,
-}) => _OutboundPicker(selected: selected, groups: groups, batch: batch);
-
-class _OutboundPicker extends StatefulWidget {
-  final String selected;
-  final List<Group> groups;
-  final bool batch;
-
-  const _OutboundPicker({
-    required this.selected,
-    required this.groups,
-    this.batch = false,
-  });
-
-  @override
-  State<_OutboundPicker> createState() => _OutboundPickerState();
-}
-
-class _OutboundPickerState extends State<_OutboundPicker> {
-  late final Set<String> _expandedGroups = {
-    ...widget.groups
-        .where(
-          (group) =>
-              group.name == widget.selected ||
-              group.all.any((proxy) => proxy.name == widget.selected),
-        )
-        .map((group) => group.name),
-  };
-
-  void _select(String value) => Navigator.of(
-    context,
-  ).pop(widget.batch ? (scope: OutboundBatchScope.node, name: value) : value);
-
-  void _pickGroup(String name) =>
-      Navigator.of(context).pop((scope: OutboundBatchScope.group, name: name));
-
-  void _toggleGroup(String name) {
-    setState(() {
-      if (_expandedGroups.contains(name)) {
-        _expandedGroups.remove(name);
-      } else {
-        _expandedGroups.add(name);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final batch = widget.batch;
-    return CommonDialog(
-      title: batch
-          ? appLocalizations.mediaBatchScope
-          : appLocalizations.speedTestOutbound,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      overrideScroll: true,
-      child: ListView(
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        children: [
-          if (batch)
-            _QuickOutboundCard(
-              title: appLocalizations.mediaBatchAll,
-              subtitle: appLocalizations.mediaBatchAllDesc,
-              icon: Icons.done_all_rounded,
-              isSelected: false,
-              onTap: () => Navigator.of(
-                context,
-              ).pop((scope: OutboundBatchScope.all, name: '')),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickOutboundCard(
-                    title: appLocalizations.speedTestFollowRules,
-                    subtitle: appLocalizations.speedTestRoute,
-                    icon: Icons.alt_route_rounded,
-                    isSelected: widget.selected.isEmpty,
-                    onTap: () => _select(''),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _QuickOutboundCard(
-                    title: appLocalizations.direct,
-                    subtitle: 'DIRECT',
-                    icon: Icons.arrow_outward_rounded,
-                    isSelected: widget.selected == 'DIRECT',
-                    onTap: () => _select('DIRECT'),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 12),
-          for (final group in widget.groups) ...[
-            _OutboundGroupCard(
-              group: group,
-              isExpanded: _expandedGroups.contains(group.name),
-              isSelected: !batch && widget.selected == group.name,
-              onToggle: () => _toggleGroup(group.name),
-              onPick: batch ? () => _pickGroup(group.name) : null,
-            ),
-            if (_expandedGroups.contains(group.name)) ...[
-              const SizedBox(height: 8),
-              _OutboundProxyGrid(
-                group: group,
-                proxies: group.all
-                    .where(
-                      (p) =>
-                          !_hiddenProxyTypes.contains(p.type) &&
-                          !(batch &&
-                              outboundBatchExcludedTypes.contains(p.type)),
-                    )
-                    .toList(),
-                testUrl: group.testUrl,
-                selected: widget.selected,
-                highlightActive: !batch,
-                onSelect: _select,
-              ),
-            ],
-            const SizedBox(height: 10),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickOutboundCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _QuickOutboundCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final textTheme = context.textTheme;
-
-    return FocusStateBuilder(
-      builder: (context, hasFocus) {
-        final focused = hasFocus && globalState.isAndroidTV;
-        return Stack(
-          children: [
-            Container(
-              height: 64,
-              decoration: ShapeDecoration(
-                color: isSelected
-                    ? colorScheme.secondaryContainer
-                    : colorScheme.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: isSelected || focused
-                        ? colorScheme.primary
-                        : colorScheme.outlineVariant.withValues(alpha: 0.55),
-                    width: focused ? 2.5 : (isSelected ? 1.5 : 1),
-                  ),
-                ),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? colorScheme.primary.withValues(alpha: 0.15)
-                              : colorScheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          icon,
-                          size: 19,
-                          color: isSelected
-                              ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.only(
-                                right: isSelected ? 12 : 0,
-                              ),
-                              child: EmojiText(
-                                title,
-                                style: textTheme.bodyMedium?.copyWith(
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.onSurface,
-                                  fontSize: 13.5,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            EmojiText(
-                              subtitle,
-                              style: textTheme.labelSmall?.copyWith(
-                                color: colorScheme.outline,
-                                fontSize: 10.5,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (isSelected)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    size: 11,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _OutboundGroupCard extends ConsumerWidget {
-  final Group group;
-  final bool isExpanded;
-  final bool isSelected;
-  final VoidCallback onToggle;
-  final VoidCallback? onPick;
-
-  const _OutboundGroupCard({
-    required this.group,
-    required this.isExpanded,
-    required this.isSelected,
-    required this.onToggle,
-    this.onPick,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = context.colorScheme;
-    final textTheme = context.textTheme;
-    final icon = ref.watch(proxyIconProvider(group.name));
-
-    final activeProxyName =
-        ref.watch(getSelectedProxyNameProvider(group.name)) ?? group.now ?? '';
-
-    return FocusStateBuilder(
-      builder: (context, hasFocus) {
-        final focused = hasFocus && globalState.isAndroidTV;
-        return Stack(
-          children: [
-            Container(
-              height: 56,
-              decoration: ShapeDecoration(
-                color: isSelected
-                    ? colorScheme.secondaryContainer.withValues(alpha: 0.7)
-                    : colorScheme.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: isSelected || focused
-                        ? colorScheme.primary
-                        : colorScheme.outlineVariant.withValues(alpha: 0.55),
-                    width: focused ? 2.5 : (isSelected ? 1.5 : 1),
-                  ),
-                ),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: onToggle,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: icon.isNotEmpty
-                            ? CommonTargetIcon(src: icon, size: 18)
-                            : Icon(
-                                Icons.hub_outlined,
-                                size: 17,
-                                color: colorScheme.primary,
-                              ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            EmojiText(
-                              group.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurface,
-                                fontSize: 14,
-                              ),
-                            ),
-                            if (activeProxyName.isNotEmpty) ...[
-                              const SizedBox(height: 1),
-                              EmojiText(
-                                activeProxyName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.outline,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      if (onPick case final onPick?)
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(end: 4),
-                          child: FilledButton.tonal(
-                            onPressed: onPick,
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              minimumSize: const Size(0, 30),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              textStyle: textTheme.labelMedium,
-                            ),
-                            child: Text(appLocalizations.mediaBatchGroup),
-                          ),
-                        ),
-                      AnimatedRotation(
-                        turns: isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 20,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (isSelected)
-              Positioned(
-                top: 5,
-                right: 5,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    size: 11,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _OutboundProxyGrid extends ConsumerWidget {
-  final Group group;
-  final List<Proxy> proxies;
-  final String? testUrl;
-  final String selected;
-  final bool highlightActive;
-  final ValueChanged<String> onSelect;
-
-  const _OutboundProxyGrid({
-    required this.group,
-    required this.proxies,
-    this.testUrl,
-    required this.selected,
-    this.highlightActive = true,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activeProxyName =
-        ref.watch(getSelectedProxyNameProvider(group.name)) ?? group.now ?? '';
-    final hasManualSelection = proxies.any((p) => p.name == selected);
-
-    const columns = 2;
-    final rowCount = (proxies.length / columns).ceil();
-
-    return Column(
-      children: [
-        for (var i = 0; i < rowCount; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          Row(
-            children: [
-              for (var c = 0; c < columns; c++) ...[
-                if (c > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: Builder(
-                    builder: (context) {
-                      final idx = i * columns + c;
-                      if (idx >= proxies.length) return const SizedBox();
-                      final proxy = proxies[idx];
-                      final isSelected = hasManualSelection
-                          ? selected == proxy.name
-                          : highlightActive &&
-                                (activeProxyName == proxy.name ||
-                                    selected == proxy.name);
-                      return _OutboundProxyCard(
-                        proxy: proxy,
-                        testUrl: testUrl,
-                        isSelected: isSelected,
-                        onTap: () => onSelect(proxy.name),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _OutboundProxyCard extends StatelessWidget {
-  final Proxy proxy;
-  final String? testUrl;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _OutboundProxyCard({
-    required this.proxy,
-    this.testUrl,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final textTheme = context.textTheme;
-
-    return FocusStateBuilder(
-      builder: (context, hasFocus) {
-        final focused = hasFocus && globalState.isAndroidTV;
-        return Stack(
-          children: [
-            Container(
-              height: 56,
-              decoration: ShapeDecoration(
-                color: isSelected
-                    ? colorScheme.secondaryContainer
-                    : colorScheme.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: isSelected || focused
-                        ? colorScheme.primary
-                        : colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    width: focused ? 2.5 : (isSelected ? 1.5 : 1),
-                  ),
-                ),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(right: isSelected ? 12 : 0),
-                        child: EmojiText(
-                          proxy.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodyMedium?.copyWith(
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurface,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: EmojiText(
-                              proxy.type,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: textTheme.labelSmall?.copyWith(
-                                color: colorScheme.outline,
-                                fontSize: 10.5,
-                              ),
-                            ),
-                          ),
-                          ProxyDelayText(
-                            proxy: proxy,
-                            testUrl: testUrl,
-                            enableTest: false,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (isSelected)
-              Positioned(
-                top: 5,
-                right: 5,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    size: 11,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }
@@ -3292,65 +2186,4 @@ class _HistoryDetails extends StatelessWidget {
       ],
     );
   }
-}
-
-Future<String?> showOutboundPicker({
-  required String selected,
-  required List<Group> groups,
-}) => globalState.showCommonDialog<String>(
-  child: _OutboundPicker(selected: selected, groups: groups),
-);
-
-enum OutboundBatchScope { all, group, node }
-
-typedef OutboundBatchTarget = ({OutboundBatchScope scope, String name});
-
-const outboundBatchExcludedTypes = {
-  'Direct',
-  'Reject',
-  'RejectDrop',
-  'Pass',
-  'Compatible',
-  'Dns',
-};
-
-Future<OutboundBatchTarget?> showBatchOutboundPicker({
-  required List<Group> groups,
-}) async {
-  final value = await globalState.showCommonDialog<Object>(
-    child: _OutboundPicker(selected: '', groups: groups, batch: true),
-  );
-  return value is OutboundBatchTarget ? value : null;
-}
-
-List<String> collectBatchNodes(List<Group> groups, OutboundBatchTarget target) {
-  final byName = {for (final group in groups) group.name: group};
-  final names = <String>{};
-  void visit(Group group, Set<String> seen) {
-    if (!seen.add(group.name)) return;
-    for (final proxy in group.all) {
-      if (byName[proxy.name] case final child?) {
-        visit(child, seen);
-      } else if (!outboundBatchExcludedTypes.contains(proxy.type)) {
-        names.add(proxy.name);
-      }
-    }
-  }
-
-  switch (target.scope) {
-    case OutboundBatchScope.all:
-      for (final group in groups) {
-        for (final proxy in group.all) {
-          if (!byName.containsKey(proxy.name) &&
-              !outboundBatchExcludedTypes.contains(proxy.type)) {
-            names.add(proxy.name);
-          }
-        }
-      }
-    case OutboundBatchScope.group:
-      if (byName[target.name] case final group?) visit(group, {});
-    case OutboundBatchScope.node:
-      names.add(target.name);
-  }
-  return names.toList();
 }
