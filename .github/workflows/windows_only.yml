@@ -1,14 +1,12 @@
 name: windows-only sync & build
 
-# 单一流水线，三种触发：push 到 main / 每天一次 cron / 手动（Actions 页 Run workflow）
+# 单一流水线，两种触发：push 到 main / 手动（Actions 页 Run workflow）
 #   sync job：对比 main HEAD 与 windows-only 分支记录的 .source-sha，
 #             有变化（或 push/手动强制）则从 main 重建 windows-only 分支
 #   build job：构建 Windows 安装包并发布 Release
 # windows-only = main 裁剪版（delete_manifest + 手工补丁），与上游同步发生在
 # 「rebase main」时，CI 不感知上游。
 on:
-  schedule:
-    - cron: '17 21 * * *'
   push:
     branches: [main]
   workflow_dispatch:
@@ -22,7 +20,7 @@ on:
 permissions:
   contents: write
 
-# 串行化，避免 cron 与 push 两个 run 并发 force-push windows-only 分支
+# 串行化，避免多个 run 并发 force-push windows-only 分支
 concurrency:
   group: windows-only-pipeline
   cancel-in-progress: false
