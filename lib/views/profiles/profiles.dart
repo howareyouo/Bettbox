@@ -532,7 +532,8 @@ class _ProfileItemState extends State<ProfileItem> {
   void _openMenuAtTrailingButton() {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
-    _menuOpen?.call(offset: Offset(box.size.width - 42, 6));
+    // 弹层在锚点右侧固定再偏移 48；此处按 36px 按钮 + 6px 内边距反推锚点
+    _menuOpen?.call(offset: Offset(box.size.width - 54, 6));
   }
 
   Widget _buildTrailing(BuildContext context) {
