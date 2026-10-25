@@ -42,7 +42,7 @@ CI 全程不感知 upstream。
 
 | 文件 | 职责 |
 |---|---|
-| `.github/workflows/windows_only.yml` | CI：push main / cron（每日，兼失败重试）/ 手动 → 重建 windows-only → 构建发布（`sync` + `build` 两个 job） |
+| `.github/workflows/windows_only.yml` | CI：push main / 手动 → 重建 windows-only → 构建发布（`sync` + `build` 两个 job） |
 | `windows_only/build_windows_only.sh` | 裁剪脚本：`build_windows_only.sh [源 ref，默认 main] [输出分支，默认 windows-only-rebuild]`；退出码 `2` = 补丁无法应用（现场保留在 `.worktrees/`） |
 | `windows_only/delete_manifest.txt` | 删除清单：每行一个 `git rm` 目标，`#` 注释 |
 | `windows_only/patches/*.patch` | 手工裁剪补丁（目前仅 `strip_iperf_scan.patch`） |
