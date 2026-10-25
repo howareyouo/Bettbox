@@ -85,6 +85,8 @@ done
 # --- 4. 记录源 SHA 并提交 ---
 echo "$SOURCE_SHA" > .source-sha
 git add -A
+# main 的 .gitignore 有 `.*` 规则，点文件需强制 add 才能进提交
+git add -f .source-sha
 
 SOURCE_LOG=$(git log --oneline "$SOURCE_REF" -5 2>/dev/null | sed 's/^/    /')
 GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-windows-only bot}" \
