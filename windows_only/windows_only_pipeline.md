@@ -128,29 +128,54 @@ main，避免补丁。
 
 ---
 
-## 4. 工作流程
+## 4. 合并/更新流程
 
-### 4.1 日常：push main 即发布
+### 4.1 日常开发（fork 自己的功能）：push main 即发布
 
-1. push 到 main → CI 重建 windows-only → 构建 → Release `windows-only-<main SHA>`。
-2. 若补丁 apply 失败：构建中止，**工作区保留**，日志提示是哪个补丁失败（见 §6.2）。
+1. 在 main 上正常开发、提交，`git push origin main`。
+2. CI 自动：从 main 重建 windows-only → `flutter build windows` → 发布
+   Release `windows-only-<main SHA>`（旧 Release 不受影响）。
+3. **无清单、无补丁导出**：main 的全部代码自动进入 windows-only，
+   没有任何文件列表需要登记或同步。
+4. 若手工补丁 apply 失败：构建中止，**现场保留**，日志提示是哪个补丁（见 §6.2）。
 
-### 4.2 跟随上游：rebase main
+### 4.2 合并上游更新：rebase main
 
 ```bash
 git fetch upstream
-git rebase upstream/main      # 解决冲突（生成文件冲突直接 checkout --ours + 重跑 build_runner）
-git push origin main          # CI 自动重建 + 发布
+git log --oneline main..upstream/main   # 先看上游有什么
+git rebase upstream/main
+#   普通冲突：3-way 手工解决
+#   生成文件冲突（config.freezed.dart 等）：checkout --ours/theirs 后重跑 dart run build_runner build
+git push origin main                    # 之后同 §4.1，CI 自动重建 + 发布
 ```
 
-main 与上游的冲突在 rebase 时解决；CI 全程不感知 upstream。
+- 上游冲突**全部在 rebase 时解决**（有完整代码上下文、能跑本地测试）；CI 全程不感知 upstream。
+- rebase 后推送前，检查 §4.3 的例外场景：上游是否新引用了被删文件、
+  是否重构了补丁目标文件（如 iperf.dart）。
+- 上游偶尔重写历史（force-push）无影响：rebase 只关心 `upstream/main` 当前指向。
 
-### 4.3 新增/修改手工补丁
+### 4.3 需要同步 `windows_only/` 的例外场景
 
-1. 改 main 代码或直接编辑 `windows_only/patches/*.patch`（这类补丁是手工维护的，
-   与功能代码无绑定关系）。
-2. 本地验证：`bash windows_only/build_windows_only.sh main windows-only-rebuild`。
-3. push main。
+以下情况才需要动 `windows_only/`，其余改动一概不用：
+
+| 场景 | 动作 |
+|---|---|
+| main/上游代码引用了被 delete_manifest 删除的文件（如 `scan.dart`） | 优先在 main 内优雅解决（运行时判断、条件导入）；确需 windows-only 摘除 → 新增手工补丁 |
+| 改动了补丁目标文件（`iperf.dart`） | main 保持不改它；若上游重构逼你改 → 按新代码重做 `strip_iperf_scan.patch` |
+| 删除/重命名了 delete_manifest 里的路径 | fork 永久移除 → 删清单行；只是移动 → 改行内路径 |
+| 调整裁剪/构建/CI 脚本 | 直接改，改完本地验证 |
+
+### 4.4 本地验证（改动涉及裁剪时做）
+
+```bash
+bash windows_only/build_windows_only.sh main windows-only-rebuild
+# 通过后可选：
+cd .worktrees/windows-only-rebuild && flutter analyze   # 零问题即安全
+```
+
+补丁无法应用 → 现场保留在 `.worktrees/windows-only-rebuild`，
+`git apply --3way ../windows_only/patches/xxx.patch` 辅助重做（见 §6.2）。
 
 ---
 
@@ -162,6 +187,9 @@ bash windows_only/build_windows_only.sh main windows-only-rebuild
 
 # 手动触发 CI（等同 cron）
 #   GitHub → fork 仓库 → Actions → windows-only sync & build → Run workflow
+
+# 查看上游是否有更新
+git fetch upstream && git log --oneline main..upstream/main
 
 # 查看当前源基线
 git rev-parse main && git show origin/windows-only:.source-sha
@@ -199,8 +227,7 @@ cd .worktrees/windows-only-rebuild && git apply --3way ../windows_only/patches/x
 
 - 功能开发只在 main 上进行；**没有"功能清单"需要维护**，main 的全部代码都会进入
   windows-only（除 delete_manifest 删除项）。
-- 唯一需要同步 windows_only/ 的场景：改动引用了被删文件的上游代码（新增手工补丁）、
-  删除/重命名了 delete_manifest 里的路径、或调整裁剪/构建脚本本身。
+- 需要同步 windows_only/ 的场景见 §4.3（例外场景表），其余改动一概不用。
 - `windows_only/patches/*.patch` 是手工维护的裁剪补丁：改动目标文件时确认补丁仍能
   应用（本地跑 build_windows_only.sh 即验证）。
 - 验证一件事是否会影响 windows-only：本地跑
