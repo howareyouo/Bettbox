@@ -338,12 +338,10 @@ class _DelayAnimationPickerDialogState
                         squeeze: 1.15,
                         diameterRatio: 1.25,
                         selectionOverlay: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
                             color: context.colorScheme.primary.withValues(
                               alpha: 0.08,
                             ),
-                            borderRadius: BorderRadius.circular(8),
                             border: Border.symmetric(
                               horizontal: BorderSide(
                                 color: context.colorScheme.primary.withValues(

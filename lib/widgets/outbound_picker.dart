@@ -178,7 +178,7 @@ class QuickOutboundCard extends StatelessWidget {
                     ? colorScheme.secondaryContainer
                     : colorScheme.surface,
                 shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.zero,
                   side: BorderSide(
                     color: isSelected || focused
                         ? colorScheme.primary
@@ -188,7 +188,6 @@ class QuickOutboundCard extends StatelessWidget {
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
                 onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -318,7 +317,7 @@ class _OutboundGroupCard extends ConsumerWidget {
                     ? colorScheme.secondaryContainer.withValues(alpha: 0.7)
                     : colorScheme.surface,
                 shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.zero,
                   side: BorderSide(
                     color: isSelected || focused
                         ? colorScheme.primary
@@ -328,7 +327,6 @@ class _OutboundGroupCard extends ConsumerWidget {
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
                 onTap: onToggle,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -530,7 +528,7 @@ class _OutboundProxyCard extends StatelessWidget {
                     ? colorScheme.secondaryContainer
                     : colorScheme.surface,
                 shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.zero,
                   side: BorderSide(
                     color: isSelected || focused
                         ? colorScheme.primary
@@ -540,7 +538,6 @@ class _OutboundProxyCard extends StatelessWidget {
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(14),
                 onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(

@@ -71,10 +71,6 @@ class OptionItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
         color: selected ? colorScheme.secondaryContainer : Colors.transparent,
-        shape: const RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.all(Radius.circular(14)),
-        ),
-        clipBehavior: Clip.antiAlias,
         child: InkWell(
           focusColor: colorScheme.primary.withValues(alpha: 0.18),
           onTap: onTap,
