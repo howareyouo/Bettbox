@@ -826,7 +826,7 @@ class _ProviderSelector extends StatelessWidget {
       targetBuilder: (open) {
         return IconButton(
           tooltip: _providerName(value),
-          onPressed: enabled ? () => open(offset: const Offset(0, 20)) : null,
+          onPressed: enabled ? () => open() : null,
           icon: const Icon(Icons.speed_rounded),
         );
       },

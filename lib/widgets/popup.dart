@@ -44,9 +44,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
           return Align(
             alignment: Alignment.topRight,
             child: CustomSingleChildLayout(
-              delegate: OverflowAwareLayoutDelegate(
-                offset: value.translate(48, -8),
-              ),
+              delegate: OverflowAwareLayoutDelegate(offset: value),
               child: child,
             ),
           );
@@ -146,7 +144,7 @@ class PopupController extends ValueNotifier<bool> {
   }
 }
 
-typedef PopupOpen = Future<void> Function({Offset offset});
+typedef PopupOpen = Future<void> Function({Offset? offset});
 
 class CommonPopupBox extends StatefulWidget {
   final Widget Function(PopupOpen open) targetBuilder;
@@ -165,9 +163,9 @@ class CommonPopupBox extends StatefulWidget {
 class _CommonPopupBoxState extends State<CommonPopupBox> {
   bool _isOpen = false;
   final _targetOffsetValueNotifier = ValueNotifier<Offset>(Offset.zero);
-  Offset _offset = Offset.zero;
+  Offset? _offset;
 
-  Future<void> _open({Offset offset = Offset.zero}) {
+  Future<void> _open({Offset? offset}) {
     _offset = offset;
     _updateOffset();
     _isOpen = true;
@@ -191,6 +189,11 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     if (renderBox == null) {
       return;
     }
+    // 默认锚在目标右下角下方留 4 间距：菜单右边缘与按钮右边缘对齐，
+    // 顶边落在按钮之外，不再压住触发按钮。
+    final localAnchor =
+        _offset ??
+        Offset(renderBox.size.width, renderBox.size.height + 4);
     // 锚点须相对路由实际落入的 overlay 表达：桌面视图下路由推入
     // home 的嵌套 Navigator，其 overlay 原点 ≠ 窗口原点（侧边栏宽 +
     // header 高），用窗口坐标会在 overlay 里整体平移。
@@ -198,14 +201,14 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
         Overlay.of(context).context.findRenderObject() as RenderBox?;
     final Offset anchor;
     if (overlayBox != null && overlayBox.hasSize) {
-      anchor = renderBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+      anchor = renderBox.localToGlobal(localAnchor, ancestor: overlayBox);
     } else {
       final viewPadding = MediaQuery.of(context).viewPadding;
       anchor = renderBox.localToGlobal(
-        Offset(-viewPadding.left, -viewPadding.top),
+        localAnchor.translate(-viewPadding.left, -viewPadding.top),
       );
     }
-    _targetOffsetValueNotifier.value = anchor.translate(_offset.dx, _offset.dy);
+    _targetOffsetValueNotifier.value = anchor;
   }
 
   @override

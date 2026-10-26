@@ -66,7 +66,7 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> {
         targetBuilder: (open) {
           return IconButton(
             onPressed: () {
-              open(offset: const Offset(0, 20));
+              open();
             },
             tooltip: appLocalizations.more,
             icon: const Icon(Icons.more_vert),

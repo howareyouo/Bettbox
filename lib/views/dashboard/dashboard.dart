@@ -166,7 +166,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
             final button = IconButton(
               onPressed: () async {
                 _menuOpenNotifier.value = true;
-                await open(offset: const Offset(0, 20));
+                await open();
                 if (!mounted) return;
                 _menuOpenNotifier.value = false;
               },
