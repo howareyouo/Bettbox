@@ -191,12 +191,21 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     if (renderBox == null) {
       return;
     }
-    final viewPadding = MediaQuery.of(context).viewPadding;
-    _targetOffsetValueNotifier.value = renderBox
-        .localToGlobal(
-          Offset.zero.translate(viewPadding.right, viewPadding.top),
-        )
-        .translate(_offset.dx, _offset.dy);
+    // 锚点须相对路由实际落入的 overlay 表达：桌面视图下路由推入
+    // home 的嵌套 Navigator，其 overlay 原点 ≠ 窗口原点（侧边栏宽 +
+    // header 高），用窗口坐标会在 overlay 里整体平移。
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final Offset anchor;
+    if (overlayBox != null && overlayBox.hasSize) {
+      anchor = renderBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    } else {
+      final viewPadding = MediaQuery.of(context).viewPadding;
+      anchor = renderBox.localToGlobal(
+        Offset(-viewPadding.left, -viewPadding.top),
+      );
+    }
+    _targetOffsetValueNotifier.value = anchor.translate(_offset.dx, _offset.dy);
   }
 
   @override
