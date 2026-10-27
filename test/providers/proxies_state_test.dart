@@ -357,7 +357,7 @@ void main() {
     });
   });
 
-  group('后台排序', () {
+  group('分组排序', () {
     List<Proxy> nodes(int count) => [
       for (var i = count - 1; i >= 0; i--)
         _proxy('${String.fromCharCode(97 + i % 26)}$i'),
@@ -379,27 +379,8 @@ void main() {
       return container;
     }
 
-    Future<List<Proxy>> settled(
-      ProviderContainer container,
-      String query,
-      String group,
-    ) async {
-      final provider = sortedGroupProxiesProvider(query, group);
-      for (var i = 0; i < 200; i++) {
-        final value = container.read(provider);
-        if (value != null &&
-            value.isNotEmpty &&
-            value.first.name.startsWith('a') &&
-            value.last.name.startsWith('z')) {
-          return value;
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
-      fail('sort did not settle');
-    }
-
-    test('大分组首次排序在后台完成，结果与同步排序一致', () async {
-      final all = nodes(backgroundSortThreshold + 200);
+    test('大分组首次排序即可拿到结果', () {
+      final all = nodes(1200);
       final source = StateProvider<List<Group>>(
         (_) => [Group(type: GroupType.Selector, name: 'BG1', all: all)],
       );
@@ -407,64 +388,53 @@ void main() {
       final provider = sortedGroupProxiesProvider('', 'BG1');
       container.listen(provider, (_, _) {});
 
-      expect(container.read(provider), isNull);
-      final sorted = await settled(container, '', 'BG1');
-      expect(sorted, sortProxies(all, ProxiesSortType.name));
+      expect(container.read(provider), sortProxies(all, ProxiesSortType.name));
     });
 
-    test('分组刷新后先沿用上次顺序，不出现空白', () async {
+    test('分组刷新后立即返回新顺序', () {
       final source = StateProvider<List<Group>>(
         (_) => [
           Group(
             type: GroupType.Selector,
             name: 'BG2',
-            all: nodes(backgroundSortThreshold + 200),
+            all: nodes(1200),
           ),
         ],
       );
       final container = createContainer(source);
       final provider = sortedGroupProxiesProvider('', 'BG2');
       container.listen(provider, (_, _) {});
-      container.read(provider);
-      final first = await settled(container, '', 'BG2');
+      expect(container.read(provider).first.name, startsWith('a'));
 
       final refreshed = [
-        for (final proxy in nodes(backgroundSortThreshold + 200))
-          proxy.copyWith(type: 'Vmess'),
+        for (final proxy in nodes(1200)) proxy.copyWith(type: 'Vmess'),
       ];
       container.read(source.notifier).state = [
         Group(type: GroupType.Selector, name: 'BG2', all: refreshed),
       ];
-      final pending = container.read(provider);
-      expect(pending, isNotNull);
-      expect([for (final proxy in pending!) proxy.name], [
-        for (final proxy in first) proxy.name,
-      ]);
-      expect(pending.first.type, 'Vmess');
-
-      final other = createContainer(source);
-      expect(other.read(sortedGroupProxiesProvider('', 'BG2')), isNotNull);
+      final sorted = container.read(provider);
+      expect(sorted.first.type, 'Vmess');
+      expect(sorted, sortProxies(refreshed, ProxiesSortType.name));
     });
 
-    test('搜索结果同步排序，小分组同步排序', () {
+    test('搜索结果与大分组同步排序一致', () {
       final source = StateProvider<List<Group>>(
         (_) => [
           Group(
             type: GroupType.Selector,
             name: 'BG3',
-            all: nodes(backgroundSortThreshold * 3),
+            all: nodes(3000),
           ),
           Group(type: GroupType.Selector, name: 'SMALL', all: nodes(50)),
         ],
       );
       final container = createContainer(source);
       final searched = container.read(sortedGroupProxiesProvider('1', 'BG3'));
-      expect(searched, isNotNull);
-      expect(searched!.length, greaterThanOrEqualTo(backgroundSortThreshold));
+      expect(searched.length, greaterThanOrEqualTo(1000));
       expect(searched.first.name, startsWith('a'));
       expect(searched.last.name, startsWith('z'));
       final small = container.read(sortedGroupProxiesProvider('', 'SMALL'));
-      expect(small!.first.name, startsWith('a'));
+      expect(small.first.name, startsWith('a'));
       expect(small.last.name, startsWith('z'));
     });
   });

@@ -421,9 +421,6 @@ class _ProxyGroupViewState extends ConsumerState<ProxyGroupView> {
     final sortedProxies = ref.watch(
       sortedGroupProxiesProvider(ref.watch(queryProvider), widget.group.name),
     );
-    if (sortedProxies == null) {
-      return const SizedBox.shrink();
-    }
     proxies = sortedProxies;
     testUrl = widget.group.testUrl;
     final baseBottom =

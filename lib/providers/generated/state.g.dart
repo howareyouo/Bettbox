@@ -737,13 +737,13 @@ final class DelaySortSnapshotProvider
   }
 }
 
-String _$delaySortSnapshotHash() => r'aa68a20accb2bba1a6cb016773fca451d2810f5f';
+String _$delaySortSnapshotHash() => r'9d41e048054a0374681a4882937835c8a2c297de';
 
 @ProviderFor(SortedGroupProxies)
 final sortedGroupProxiesProvider = SortedGroupProxiesFamily._();
 
 final class SortedGroupProxiesProvider
-    extends $NotifierProvider<SortedGroupProxies, List<Proxy>?> {
+    extends $NotifierProvider<SortedGroupProxies, List<Proxy>> {
   SortedGroupProxiesProvider._({
     required SortedGroupProxiesFamily super.from,
     required (String, String) super.argument,
@@ -770,10 +770,10 @@ final class SortedGroupProxiesProvider
   SortedGroupProxies create() => SortedGroupProxies();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(List<Proxy>? value) {
+  Override overrideWithValue(List<Proxy> value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<List<Proxy>?>(value),
+      providerOverride: $SyncValueProvider<List<Proxy>>(value),
     );
   }
 
@@ -789,15 +789,15 @@ final class SortedGroupProxiesProvider
 }
 
 String _$sortedGroupProxiesHash() =>
-    r'1bd3bcbd085a31091125c00dac75dba27f7bfd03';
+    r'c934df915bce499ddad5c0e067ffeb7741b0dd68';
 
 final class SortedGroupProxiesFamily extends $Family
     with
         $ClassFamilyOverride<
           SortedGroupProxies,
-          List<Proxy>?,
-          List<Proxy>?,
-          List<Proxy>?,
+          List<Proxy>,
+          List<Proxy>,
+          List<Proxy>,
           (String, String)
         > {
   SortedGroupProxiesFamily._()
@@ -816,21 +816,21 @@ final class SortedGroupProxiesFamily extends $Family
   String toString() => r'sortedGroupProxiesProvider';
 }
 
-abstract class _$SortedGroupProxies extends $Notifier<List<Proxy>?> {
+abstract class _$SortedGroupProxies extends $Notifier<List<Proxy>> {
   late final _$args = ref.$arg as (String, String);
   String get query => _$args.$1;
   String get groupName => _$args.$2;
 
-  List<Proxy>? build(String query, String groupName);
+  List<Proxy> build(String query, String groupName);
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
-    final ref = this.ref as $Ref<List<Proxy>?, List<Proxy>?>;
+    final ref = this.ref as $Ref<List<Proxy>, List<Proxy>>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<List<Proxy>?, List<Proxy>?>,
-              List<Proxy>?,
+              AnyNotifier<List<Proxy>, List<Proxy>>,
+              List<Proxy>,
               Object?,
               Object?
             >;
