@@ -445,6 +445,7 @@ class SortedGroupProxies extends _$SortedGroupProxies {
   static final Map<String, List<Proxy>> _orderCache = {};
 
   List<Proxy>? _lastSorted;
+  List<Object>? _lastValues;
 
   List<Proxy> _remember(List<Proxy> sorted) {
     _lastSorted = sorted;
@@ -488,10 +489,15 @@ class SortedGroupProxies extends _$SortedGroupProxies {
     if (proxies.length < backgroundSortThreshold) {
       return _lastSorted = sortProxies(proxies, sortType, delayOf: delayOf);
     }
-    final pending = _reuseOrder(
-      _lastSorted ?? (query.isEmpty ? _orderCache[groupName] : null),
-      proxies,
-    );
+    final values = sortType == ProxiesSortType.name
+        ? _nameSortKeys(proxies)
+        : _delaySortValues(proxies, delayOf);
+    final pending = (!listEquals(_lastValues, values))
+        ? null
+        : _reuseOrder(
+            _lastSorted ?? (query.isEmpty ? _orderCache[groupName] : null),
+            proxies,
+          );
     if (pending == null && query.isNotEmpty) {
       return _lastSorted = sortProxies(proxies, sortType, delayOf: delayOf);
     }
@@ -504,10 +510,12 @@ class SortedGroupProxies extends _$SortedGroupProxies {
     order.then(
       (order) {
         if (!active) return;
+        _lastValues = values;
         state = _remember([for (final index in order) proxies[index]]);
       },
       onError: (Object _) {
         if (!active) return;
+        _lastValues = values;
         state = _remember(sortProxies(proxies, sortType, delayOf: delayOf));
       },
     );
