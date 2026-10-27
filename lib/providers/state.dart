@@ -416,8 +416,38 @@ GroupsState filterGroupsState(Ref ref, String query) {
 }
 
 @riverpod
-DelayMap delaySortSnapshot(Ref ref) {
-  return ref.watch(delayDataSourceProvider);
+class DelaySortSnapshot extends _$DelaySortSnapshot {
+  // Last settled delay per test url and proxy, kept across rebuilds.
+  final DelayMap _settled = {};
+
+  @override
+  DelayMap build() {
+    final source = ref.watch(delayDataSourceProvider);
+    final snapshot = <String, Map<String, int?>>{};
+    for (final url in source.keys) {
+      final delays = source[url];
+      if (delays == null) continue;
+      final settled = _settled.putIfAbsent(url, () => <String, int?>{});
+      final values = <String, int?>{};
+      for (final entry in delays.entries) {
+        final value = entry.value;
+        // A delay test in flight writes a 0 placeholder so the card can show its
+        // loading animation. Sorting must not read it as the fastest proxy, so a
+        // proxy keeps its last settled value until its own result lands.
+        if (value != null && value != 0) {
+          settled[entry.key] = value;
+        }
+        final last = settled[entry.key];
+        if (last != null) {
+          values[entry.key] = last;
+        }
+      }
+      if (values.isNotEmpty) {
+        snapshot[url] = values;
+      }
+    }
+    return snapshot;
+  }
 }
 
 @riverpod

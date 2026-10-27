@@ -698,12 +698,11 @@ final class FilterGroupsStateFamily extends $Family
   String toString() => r'filterGroupsStateProvider';
 }
 
-@ProviderFor(delaySortSnapshot)
+@ProviderFor(DelaySortSnapshot)
 final delaySortSnapshotProvider = DelaySortSnapshotProvider._();
 
 final class DelaySortSnapshotProvider
-    extends $FunctionalProvider<DelayMap, DelayMap, DelayMap>
-    with $Provider<DelayMap> {
+    extends $NotifierProvider<DelaySortSnapshot, DelayMap> {
   DelaySortSnapshotProvider._()
     : super(
         from: null,
@@ -720,13 +719,7 @@ final class DelaySortSnapshotProvider
 
   @$internal
   @override
-  $ProviderElement<DelayMap> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  DelayMap create(Ref ref) {
-    return delaySortSnapshot(ref);
-  }
+  DelaySortSnapshot create() => DelaySortSnapshot();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(DelayMap value) {
@@ -737,7 +730,25 @@ final class DelaySortSnapshotProvider
   }
 }
 
-String _$delaySortSnapshotHash() => r'9d41e048054a0374681a4882937835c8a2c297de';
+String _$delaySortSnapshotHash() => r'0255a281fb4904f7bd459d7ad027edf83c452f80';
+
+abstract class _$DelaySortSnapshot extends $Notifier<DelayMap> {
+  DelayMap build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<DelayMap, DelayMap>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<DelayMap, DelayMap>,
+              DelayMap,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
 
 @ProviderFor(SortedGroupProxies)
 final sortedGroupProxiesProvider = SortedGroupProxiesFamily._();
@@ -895,7 +906,7 @@ final class SortedGroupsStateProvider
   }
 }
 
-String _$sortedGroupsStateHash() => r'6f5bd90c6d11ff2d647b70127a76b7e6d5303d1e';
+String _$sortedGroupsStateHash() => r'de6cebd6b0fdd93c609f81567f6fa22adfdc3c8e';
 
 final class SortedGroupsStateFamily extends $Family
     with $FunctionalFamilyOverride<GroupsState, String> {

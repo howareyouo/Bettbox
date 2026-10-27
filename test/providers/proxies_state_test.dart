@@ -439,6 +439,78 @@ void main() {
     });
   });
 
+  group('测速期间排序', () {
+    ProviderContainer createDelayContainer(List<String> nodeNames) {
+      globalState.config = Config(
+        themeProps: defaultThemeProps,
+        appSetting: const AppSettingProps(testUrl: 'u'),
+        proxiesStyle: const ProxiesStyle(sortType: ProxiesSortType.delay),
+      );
+      final source = StateProvider<List<Group>>(
+        (_) => [
+          Group(
+            type: GroupType.Selector,
+            name: 'DELAY',
+            all: [for (final name in nodeNames) _proxy(name)],
+          ),
+        ],
+      );
+      final container = ProviderContainer(
+        overrides: [
+          currentGroupsStateProvider.overrideWith(
+            (ref) => GroupsState(value: ref.watch(source)),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(sortedGroupProxiesProvider('', 'DELAY'), (_, _) {});
+      return container;
+    }
+
+    List<String> names(ProviderContainer container) => [
+      for (final proxy
+          in container.read(sortedGroupProxiesProvider('', 'DELAY')))
+        proxy.name,
+    ];
+
+    test('已测速节点测速期间不插队，结果落地后按实际延迟定位', () async {
+      final container = createDelayContainer(['a', 'b', 'c']);
+      final delays = container.read(delayDataSourceProvider.notifier);
+      delays
+        ..setDelay(const Delay(url: 'u', name: 'a', value: 300))
+        ..setDelay(const Delay(url: 'u', name: 'b', value: 100))
+        ..setDelay(const Delay(url: 'u', name: 'c', value: 200))
+        ..flush();
+      expect(names(container), ['b', 'c', 'a']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'b', value: 0));
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(delayDataSourceProvider)['u']?['b'], 0);
+      expect(names(container), ['b', 'c', 'a']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'b', value: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      expect(names(container), ['c', 'b', 'a']);
+    });
+
+    test('未测速节点测速期间不插队，结果落地后按实际延迟定位', () async {
+      final container = createDelayContainer(['a', 'd']);
+      final delays = container.read(delayDataSourceProvider.notifier);
+      delays
+        ..setDelay(const Delay(url: 'u', name: 'a', value: 300))
+        ..flush();
+      expect(names(container), ['a', 'd']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'd', value: 0));
+      await Future<void>.delayed(Duration.zero);
+      expect(names(container), ['a', 'd']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'd', value: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      expect(names(container), ['d', 'a']);
+    });
+  });
+
   group('filterGroupsState 剥离 now', () {
     test('只有 now 变化时不通知，节点变化时通知', () {
       final source = StateProvider<List<Group>>(
