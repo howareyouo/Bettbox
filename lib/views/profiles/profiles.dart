@@ -48,18 +48,12 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
       try {
         await globalState.appController.updateProfile(profile);
       } on Object catch (e) {
-        messages.add('${profile.label ?? profile.id}: ${e.formatError}\n');
+        messages.add('${profile.label ?? profile.id}: ${e.formatError}');
       }
     });
     await Future.wait(updateProfiles);
     if (messages.isNotEmpty) {
-      globalState.showMessage(
-        title: appLocalizations.tip,
-        message: TextSpan(
-          children: [for (final message in messages) TextSpan(text: message)],
-        ),
-        cancelable: false,
-      );
+      globalState.showNotifier(messages.join('\n'));
     }
   }
 
@@ -256,12 +250,8 @@ class _ProfileItemState extends State<ProfileItem> {
     try {
       await globalState.appController.updateProfile(profile);
     } on Object catch (e) {
-      globalState.showMessage(
-        title: appLocalizations.tip,
-        message: TextSpan(
-          text: '${profile.label ?? profile.id}: ${e.formatError}',
-        ),
-        cancelable: false,
+      globalState.showNotifier(
+        '${profile.label ?? profile.id}: ${e.formatError}',
       );
     }
   }
