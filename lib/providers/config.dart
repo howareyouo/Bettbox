@@ -19,6 +19,7 @@ class AppSetting extends _$AppSetting with AutoDisposeNotifierMixin {
     globalState.config = globalState.config.copyWith(appSetting: value);
   }
 
+  @override
   void updateState(AppSettingProps Function(AppSettingProps state) builder) {
     state = builder(state).copyWith(minimizeOnExit: true);
   }
@@ -35,10 +36,6 @@ class WindowSetting extends _$WindowSetting with AutoDisposeNotifierMixin {
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(windowProps: value);
   }
-
-  void updateState(WindowProps Function(WindowProps state) builder) {
-    state = builder(state);
-  }
 }
 
 @riverpod
@@ -51,10 +48,6 @@ class VpnSetting extends _$VpnSetting with AutoDisposeNotifierMixin {
   @override
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(vpnProps: value);
-  }
-
-  void updateState(VpnProps Function(VpnProps state) builder) {
-    state = builder(state);
   }
 }
 
@@ -69,10 +62,6 @@ class NetworkSetting extends _$NetworkSetting with AutoDisposeNotifierMixin {
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(networkProps: value);
   }
-
-  void updateState(NetworkProps Function(NetworkProps state) builder) {
-    state = builder(state);
-  }
 }
 
 @riverpod
@@ -85,10 +74,6 @@ class ThemeSetting extends _$ThemeSetting with AutoDisposeNotifierMixin {
   @override
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(themeProps: value);
-  }
-
-  void updateState(ThemeProps Function(ThemeProps state) builder) {
-    state = builder(state);
   }
 }
 
@@ -175,10 +160,6 @@ class AppDAVSetting extends _$AppDAVSetting with AutoDisposeNotifierMixin {
   @override
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(dav: value);
-  }
-
-  void updateState(DAV? Function(DAV? state) builder) {
-    state = builder(state);
   }
 }
 
@@ -288,10 +269,6 @@ class ProxiesStyleSetting extends _$ProxiesStyleSetting
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(proxiesStyle: value);
   }
-
-  void updateState(ProxiesStyle Function(ProxiesStyle state) builder) {
-    state = builder(state);
-  }
 }
 
 @riverpod
@@ -363,6 +340,7 @@ class PatchClashConfig extends _$PatchClashConfig
     return globalState.config.patchClashConfig;
   }
 
+  @override
   void updateState(ClashConfig? Function(ClashConfig state) builder) {
     final newState = builder(state);
     if (newState == null) {
@@ -389,10 +367,6 @@ class NodeExcludeFilter extends _$NodeExcludeFilter
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(nodeExcludeFilter: value);
   }
-
-  void updateState(String Function(String state) builder) {
-    state = builder(state);
-  }
 }
 
 @riverpod
@@ -406,9 +380,5 @@ class HealthCheckTimeout extends _$HealthCheckTimeout
   @override
   onUpdate(value) {
     globalState.config = globalState.config.copyWith(healthCheckTimeout: value);
-  }
-
-  void updateState(int Function(int state) builder) {
-    state = builder(state);
   }
 }
