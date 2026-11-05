@@ -1,11 +1,12 @@
-name: windows-only sync & build
+name: desktop-only sync & build
 
 # 单一流水线，两种触发：push 到 main / 手动（Actions 页 Run workflow）
-#   sync job：对比 main HEAD 与 windows-only 分支记录的 .source-sha，
-#             有变化（或 push/手动强制）则从 main 重建 windows-only 分支
+#   sync job：对比 main HEAD 与 desktop-only 分支记录的 .source-sha，
+#             有变化（或 push/手动强制）则从 main 重建 desktop-only 分支
 #   build job：构建 Windows 安装包并发布 Release
-# windows-only = main 裁剪版（delete_manifest + 手工补丁），与上游同步发生在
-# 「rebase main」时，CI 不感知上游。
+#   build-macos job：构建 macOS arm64 dmg，并入同一 Release
+# desktop-only = main 裁剪版（delete_manifest + 手工补丁 + jni 依赖摘除），
+# 与上游同步发生在「rebase main」时，CI 不感知上游。
 on:
   push:
     branches: [main]
@@ -20,14 +21,14 @@ on:
 permissions:
   contents: write
 
-# 串行化，避免多个 run 并发 force-push windows-only 分支
+# 串行化，避免多个 run 并发 force-push desktop-only 分支
 concurrency:
-  group: windows-only-pipeline
+  group: desktop-only-pipeline
   cancel-in-progress: false
 
 jobs:
   sync:
-    name: Rebuild windows-only from main
+    name: Rebuild desktop-only from main
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
@@ -39,15 +40,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch windows-only branch
-        run: git fetch origin windows-only || true
+      - name: Fetch desktop-only branch
+        run: git fetch origin desktop-only || true
 
       - name: Check for main changes
         id: check
         run: |
           SOURCE_SHA=$(git rev-parse HEAD)
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
-          LAST_SHA=$(git show origin/windows-only:.source-sha 2>/dev/null || echo "none")
+          LAST_SHA=$(git show origin/desktop-only:.source-sha 2>/dev/null || echo "none")
           echo "last_sha=$LAST_SHA"
           if [ "$LAST_SHA" = "$SOURCE_SHA" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -78,12 +79,12 @@ jobs:
           echo "Flutter version: ${V}"
           echo "flutter_version=${V}" >> "$GITHUB_OUTPUT"
 
-      - name: Run windows-only rebuild script
+      - name: Run desktop-only rebuild script
         if: steps.check.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
         run: |
-          chmod +x windows_only/build_windows_only.sh
-          windows_only/build_windows_only.sh main windows-only-rebuild
-          git push --force origin windows-only-rebuild:windows-only
+          chmod +x desktop/build_desktop_only.sh
+          desktop/build_desktop_only.sh main desktop-only-rebuild
+          git push --force origin desktop-only-rebuild:desktop-only
 
   build:
     name: Build for Windows
@@ -94,10 +95,10 @@ jobs:
       SOURCE_SHA: ${{ needs.sync.outputs.source_sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout windows-only branch
+      - name: Checkout desktop-only branch
         uses: actions/checkout@v7
         with:
-          ref: windows-only
+          ref: desktop-only
           fetch-depth: 1
 
       - name: Setup Flutter
@@ -120,7 +121,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: services/helper
-          key: windows-only-helper
+          key: desktop-only-helper
 
       - name: Enable Git long paths (Windows)
         run: git config --global core.longpaths true
@@ -266,11 +267,76 @@ jobs:
 
       # 注意：不要给 zip 上传 actions artifact——GitHub 下载 artifact 时会再套一层
       # 同名 zip（双层 zip，Windows 下解压冲突），Release 即唯一分发渠道。
+      # mac job 与本 job 并发发布同一 Release：create 失败即说明对方已建，走 upload。
       - name: Create GitHub Release
         run: |
-          $tag = "windows-only-$env:SOURCE_SHA"
+          $tag = "desktop-$env:SOURCE_SHA"
           gh release create "$tag" "$env:ARTIFACT" `
-            --title "Bettbox Windows-only (main@$($env:SOURCE_SHA.Substring(0,8)))" `
-            --notes "Automatically rebuilt from fork main @ $env:SOURCE_SHA`nWindows-only build with mobile platform code removed." `
+            --title "Bettbox Desktop (main@$($env:SOURCE_SHA.Substring(0,8)))" `
+            --notes "Automatically built from fork main @ $env:SOURCE_SHA`nDesktop-only build (Windows x64 + macOS arm64); mobile/Linux platform code removed." `
             --repo "$env:GITHUB_REPOSITORY" || `
             gh release upload "$tag" "$env:ARTIFACT" --repo "$env:GITHUB_REPOSITORY" --clobber || true
+
+  build-macos:
+    name: Build for macOS (arm64)
+    needs: sync
+    if: needs.sync.outputs.changed == 'true' || github.event_name == 'push' || github.event.inputs.force_build == 'true'
+    runs-on: macos-26
+    env:
+      SOURCE_SHA: ${{ needs.sync.outputs.source_sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout desktop-only branch
+        uses: actions/checkout@v7
+        with:
+          ref: desktop-only
+          fetch-depth: 1
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ needs.sync.outputs.flutter_version }}
+          cache: true
+
+      # helper 仅 Windows 使用（setup.dart 对非 Windows 报 --out helper 不支持），
+      # mac 链路不需要 Rust。
+      - name: Setup Golang
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: core/go.sum
+
+      - name: Select Xcode (macOS)
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+
+      - name: Disable Swift Package Manager (macOS)
+        run: flutter config --no-enable-swift-package-manager
+
+      # 与上游 build.yaml 非 Windows 链路一致：pub get → build_runner →
+      # setup.dart 一条龙（Go core for darwin → pod install → flutter build → dmg）
+      - name: Build Bettbox (macOS)
+        shell: bash
+        run: |
+          flutter pub get
+          dart run build_runner build
+          dart setup.dart macos --arch arm64 --env stable
+
+      - name: Locate dmg
+        shell: bash
+        run: |
+          DMG=$(ls dist/*.dmg | head -n 1)
+          echo "ARTIFACT=$DMG" >> "$GITHUB_ENV"
+          echo "Artifact: $DMG"
+
+      # 与 Windows job 并发发布同一 Release：create 失败即说明对方已建，走 upload。
+      - name: Create GitHub Release
+        shell: bash
+        run: |
+          TAG="desktop-$SOURCE_SHA"
+          gh release create "$TAG" "$ARTIFACT" \
+            --title "Bettbox Desktop (main@${SOURCE_SHA:0:8})" \
+            --notes "Automatically built from fork main @ $SOURCE_SHA
+          Desktop-only build (Windows x64 + macOS arm64); mobile/Linux platform code removed." \
+            --repo "$GITHUB_REPOSITORY" || \
+          gh release upload "$TAG" "$ARTIFACT" --repo "$GITHUB_REPOSITORY" --clobber || true
