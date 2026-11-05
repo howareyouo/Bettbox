@@ -262,8 +262,17 @@ extension ProfileExtension on Profile {
     ).saveFile(response.data, validate: validate);
   }
 
-  Future<Profile> saveFile(Uint8List bytes, {bool validate = true}) async {
-    String content = utf8.decode(bytes);
+  Future<Profile> saveFile(Uint8List bytes, {bool validate = true}) =>
+      _saveValidated(utf8.decode(bytes), validate: validate);
+
+  Future<Profile> saveFileWithString(String value) =>
+      _saveValidated(value, validate: true);
+
+  /// Age 解密 → YAML 补丁 → 优先走 setup 通道落盘，否则独立校验后写入。
+  Future<Profile> _saveValidated(
+    String content, {
+    required bool validate,
+  }) async {
     final key = ageSecretKey;
     if (key != null && key.isNotEmpty) {
       try {
@@ -299,47 +308,6 @@ extension ProfileExtension on Profile {
         } else {
           throw message;
         }
-      }
-    }
-    await _writeFile(content);
-    return copyWith(lastUpdateDate: DateTime.now());
-  }
-
-  Future<Profile> saveFileWithString(String value) async {
-    String content = value;
-    final key = ageSecretKey;
-    if (key != null && key.isNotEmpty) {
-      try {
-        final decrypted = await clashCore.decryptAgeConfig(content, key);
-        if (decrypted.isNotEmpty) {
-          content = decrypted;
-        }
-      } catch (_) {}
-    }
-    content = utils.patchYamlConfig(content);
-    final setup = await globalState.buildValidateParams(this);
-    if (setup != null) {
-      await _writeFile(content, setup: setup);
-      return copyWith(lastUpdateDate: DateTime.now());
-    }
-    final message = await clashCore.validateConfig(
-      content,
-      ageSecretKey: ageSecretKey,
-    );
-    if (message.isNotEmpty) {
-      final patched = utils.patchValidateConfig(content);
-      if (patched != content) {
-        final patchedMessage = await clashCore.validateConfig(
-          patched,
-          ageSecretKey: ageSecretKey,
-        );
-        if (patchedMessage.isEmpty) {
-          content = patched;
-        } else {
-          throw message;
-        }
-      } else {
-        throw message;
       }
     }
     await _writeFile(content);

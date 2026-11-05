@@ -15,6 +15,17 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 import 'add_profile.dart';
 
+/// 同步单个订阅：file 类型天然跳过；失败返回「label: 原因」文案，成功返回 null。
+Future<String?> _syncProfile(Profile profile) async {
+  if (profile.type == ProfileType.file) return null;
+  try {
+    await globalState.appController.updateProfile(profile);
+    return null;
+  } on Object catch (e) {
+    return '${profile.label ?? profile.id}: ${e.formatError}';
+  }
+}
+
 class ProfilesView extends ConsumerStatefulWidget {
   const ProfilesView({super.key});
 
@@ -41,17 +52,9 @@ class _ProfilesViewState extends ConsumerState<ProfilesView> {
   }
 
   Future<void> _updateProfiles() async {
-    final profiles = globalState.config.profiles;
-    final messages = <String>[];
-    final updateProfiles = profiles.map<Future>((profile) async {
-      if (profile.type == ProfileType.file) return;
-      try {
-        await globalState.appController.updateProfile(profile);
-      } on Object catch (e) {
-        messages.add('${profile.label ?? profile.id}: ${e.formatError}');
-      }
-    });
-    await Future.wait(updateProfiles);
+    final messages = (await Future.wait(
+      globalState.config.profiles.map(_syncProfile),
+    )).nonNulls.toList();
     if (messages.isNotEmpty) {
       globalState.showNotifier(messages.join('\n'));
     }
@@ -251,13 +254,9 @@ class _ProfileItemState extends State<ProfileItem> {
   }
 
   Future updateProfile() async {
-    if (profile.type == ProfileType.file) return;
-    try {
-      await globalState.appController.updateProfile(profile);
-    } on Object catch (e) {
-      globalState.showNotifier(
-        '${profile.label ?? profile.id}: ${e.formatError}',
-      );
+    final message = await _syncProfile(profile);
+    if (message != null) {
+      globalState.showNotifier(message);
     }
   }
 
