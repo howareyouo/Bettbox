@@ -166,18 +166,22 @@ class _ProxyGroupsListState extends ConsumerState<_ProxyGroupsList>
       final rowCount = isExpand
           ? (group.all.length / widget.columns).ceil()
           : 0;
-      targetOffset += headerHeight + 8.0 + rowCount * (itemHeight + 8.0);
+      targetOffset += headerHeight + 8.0 + rowCount * gridRowStride(itemHeight);
     }
     final group = targetGroup;
     if (group == null) return;
 
     final proxyIndex = group.all.indexWhere((p) => p.name == selectedName);
     if (proxyIndex >= 0) {
-      final rowIndex = proxyIndex ~/ widget.columns;
       if (autoStickyHeader) {
-        targetOffset += rowIndex * (itemHeight + 8.0) - _pinnedInset;
+        targetOffset +=
+            gridRowOffset(proxyIndex, widget.columns, itemHeight) -
+            _pinnedInset;
       } else {
-        targetOffset += headerHeight + 8.0 + rowIndex * (itemHeight + 8.0);
+        targetOffset +=
+            headerHeight +
+            8.0 +
+            gridRowOffset(proxyIndex, widget.columns, itemHeight);
         if (_rise > 0) targetOffset -= _edgeFadeInset;
       }
     }
