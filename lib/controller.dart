@@ -1676,6 +1676,9 @@ class AppController {
     _ref.read(providersProvider.notifier).setProvider(provider);
   }
 
+  /// Non-widget entry for the tray menu. Reads the same in-flight-safe
+  /// snapshot as the UI path (SortedGroupProxies), so a delay test in
+  /// flight cannot make a proxy jump to the front of the tray either.
   List<Proxy> getSortProxies({
     required List<Proxy> proxies,
     required ProxiesSortType sortType,
@@ -1687,7 +1690,7 @@ class AppController {
     final delayOf = createDelayLookup(
       groups: _ref.read(groupsProvider),
       selectedMap: _ref.read(selectedMapProvider),
-      delayMap: _ref.read(delayDataSourceProvider),
+      delayMap: _ref.read(delaySortSnapshotProvider),
       overrideTestUrl: _ref.read(overrideTestUrlProvider),
       defaultTestUrl: _ref.read(appSettingProvider).testUrl,
     );
