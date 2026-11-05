@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -17,6 +16,7 @@ import 'package:intl/intl.dart' show Intl;
 import 'package:material_ui/material_ui.dart';
 
 import 'toolbox/common.dart';
+import 'speed_test_session.dart';
 export 'package:bett_box/widgets/outbound_picker.dart'
     show
         OutboundBatchScope,
@@ -188,78 +188,13 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
     return isStart ? _effectiveProxy(_groups()) : '';
   }
 
-  Future<String?> _resolveSystemDnsFallback() async {
-    try {
-      final addresses = await InternetAddress.lookup('mensura.cdn-apple.com');
-      for (final addr in addresses) {
-        if (utils.classifyIp(addr.address) == IpCategory.public) {
-          return addr.address;
-        }
-      }
-    } catch (_) {}
-    try {
-      final response = await request.getTextResponseForUrl(
-        'https://223.5.5.5/resolve?name=mensura.cdn-apple.com&type=A',
-      );
-      final body = response.data;
-      final json = body is Map
-          ? body as Map<String, dynamic>
-          : (body is String ? jsonDecode(body) as Map<String, dynamic> : null);
-      final answers = json?['Answer'];
-      if (answers is List) {
-        for (final item in answers) {
-          final data = item is Map ? item['data']?.toString() ?? '' : '';
-          if (utils.classifyIp(data) == IpCategory.public) {
-            return data;
-          }
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  Future<SpeedTestState?> _refineAppleServer(SpeedTestState? state) async {
-    if (state == null || state.provider != SpeedTestProvider.apple) {
-      return state;
-    }
-    final server = state.server;
-    if (server == null) return state;
-    final proxy = _requestProxy();
-    if (!_settings.useSystemDns && proxy.isNotEmpty && proxy != 'DIRECT') {
-      return state;
-    }
-
-    var ip = server.ip;
-    if ((ip.isEmpty || utils.classifyIp(ip) != IpCategory.public) &&
-        _settings.useSystemDns) {
-      final resolved = await _resolveSystemDnsFallback();
-      if (resolved != null && resolved.isNotEmpty) {
-        ip = resolved;
-      }
-    }
-    if (ip.isEmpty || utils.classifyIp(ip) != IpCategory.public) {
-      return state;
-    }
-
-    final res = await request.queryIpDetail(ip);
-    final ipInfo = res.data;
-    if (ipInfo == null) {
-      return state;
-    }
-
-    final country = ipInfo.countryCode;
-    final city = ipInfo.city?.isNotEmpty == true
-        ? ipInfo.city!
-        : (ipInfo.province ?? '');
-    return state.copyWith(
-      server: server.copyWith(
-        ip: ip,
-        country: country.isNotEmpty ? country : server.country,
-        city: city.isNotEmpty ? city : server.city,
-        colo: country == 'CN' ? '' : server.colo,
-      ),
-    );
-  }
+  late final _session = SpeedTestSession(
+    queryIpDetail: (ip) async => (await request.queryIpDetail(ip)).data,
+    resolveHost: (host) async => (await InternetAddress.lookup(
+      host,
+    )).map((addr) => addr.address).toList(),
+    fetchDoH: (url) async => (await request.getTextResponseForUrl(url)).data,
+  );
 
   Future<void> _runProbe() async {
     if (_testing) return;
@@ -273,7 +208,11 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
       proxy: _requestProxy(),
     );
     if (!mounted || serial != _probeSerial) return;
-    final refined = await _refineAppleServer(result);
+    final refined = await _session.refineAppleServer(
+      result,
+      useSystemDns: _settings.useSystemDns,
+      proxy: _requestProxy(),
+    );
     if (!mounted || serial != _probeSerial) return;
     setState(() {
       _probing = false;
@@ -291,13 +230,9 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
       );
       final point = (state.progress, state.speed);
       if (state.phase == SpeedTestPhase.download) {
-        if (_downloadPoints.isEmpty || _downloadPoints.last != point) {
-          _downloadPoints = [..._downloadPoints, point];
-        }
+        _downloadPoints = addSpeedSample(_downloadPoints, point);
       } else if (state.phase == SpeedTestPhase.upload) {
-        if (_uploadPoints.isEmpty || _uploadPoints.last != point) {
-          _uploadPoints = [..._uploadPoints, point];
-        }
+        _uploadPoints = addSpeedSample(_uploadPoints, point);
       }
     });
     _syncSpinner(state);
@@ -317,10 +252,7 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
   }
 
   void _updateSettings(SpeedTestSettings settings) {
-    final reprobe =
-        settings.provider != _settings.provider ||
-        settings.useSystemDns != _settings.useSystemDns ||
-        settings.server != _settings.server;
+    final reprobe = SpeedTestSession.shouldReprobe(_settings, settings);
     setState(() {
       _settings = settings;
       _state = null;
@@ -363,12 +295,18 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
       proxy: proxy,
     );
     if (!mounted) return;
-    final finalState = (result ?? (_state ?? initial)).copyWith(
-      error: result == null ? 'unavailable' : result.error,
-      exitInfo: exitInfo,
-      server: _probe?.server ?? result?.server,
+    final finalState = SpeedTestSession.mergeFinalState(
+      result: result,
+      lastStreamed: _state ?? initial,
+      probe: _probe,
     );
-    final refined = await _refineAppleServer(finalState) ?? finalState;
+    final refined =
+        await _session.refineAppleServer(
+          finalState,
+          useSystemDns: _settings.useSystemDns,
+          proxy: proxy,
+        ) ??
+        finalState;
     if (!mounted) return;
     setState(() {
       _testing = false;
