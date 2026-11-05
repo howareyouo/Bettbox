@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'builder.dart';
 import 'grid.dart';
+import 'reorder_policy.dart';
 
 typedef EditableGridWrapper = Widget Function(Widget child);
 
@@ -58,12 +59,12 @@ class EditableGrid<T extends Object> extends StatefulWidget {
 class _EditableGridState<T extends Object> extends State<EditableGrid<T>>
     with SingleTickerProviderStateMixin {
   final _gridKey = GlobalKey();
+  final _policy = ReorderPolicy();
   late final _shake = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 260),
     value: 0.5,
   );
-  DateTime _lastMove = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -90,9 +91,7 @@ class _EditableGridState<T extends Object> extends State<EditableGrid<T>>
   }
 
   void _move(T from, T to) {
-    final now = DateTime.now();
-    if (now.difference(_lastMove) < const Duration(milliseconds: 220)) return;
-    _lastMove = now;
+    if (!_policy.allow(DateTime.now())) return;
     widget.onMove?.call(from, to);
   }
 
@@ -150,71 +149,14 @@ class _EditableGridState<T extends Object> extends State<EditableGrid<T>>
                 widget.crossAxisCount,
               ),
               mainAxisCellCount: widget.mainAxisCellCountOf?.call(item),
-              child: _FlipTile(
+              child: FlipTile(
                 gridKey: _gridKey,
+                duration: const Duration(milliseconds: 360),
                 child: _buildTile(context, item, index),
               ),
             ),
         ],
       ),
-    );
-  }
-}
-
-class _FlipTile extends StatefulWidget {
-  final GlobalKey gridKey;
-  final Widget child;
-
-  const _FlipTile({required this.gridKey, required this.child});
-
-  @override
-  State<_FlipTile> createState() => _FlipTileState();
-}
-
-class _FlipTileState extends State<_FlipTile>
-    with SingleTickerProviderStateMixin {
-  late final _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 360),
-    value: 1,
-  );
-  late final _curve = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-  );
-  Offset? _last;
-  Offset _from = Offset.zero;
-
-  Offset get _offset =>
-      Offset.lerp(_from, Offset.zero, _curve.value) ?? Offset.zero;
-
-  @override
-  void dispose() {
-    _curve.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _check(Duration _) {
-    if (!mounted) return;
-    final box = context.findRenderObject();
-    final grid = widget.gridKey.currentContext?.findRenderObject();
-    if (box is! RenderBox || !box.hasSize || grid == null) return;
-    final position = box.localToGlobal(Offset.zero, ancestor: grid);
-    final last = _last;
-    _last = position;
-    if (last == null || (last - position).distance < 0.5) return;
-    _from = _offset + last - position;
-    _controller.forward(from: 0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback(_check);
-    return AnimatedBuilder(
-      animation: _curve,
-      builder: (_, child) => Transform.translate(offset: _offset, child: child),
-      child: widget.child,
     );
   }
 }
@@ -340,17 +282,11 @@ class _EditTile<T extends Object> extends StatelessWidget {
     final feedback = Builder(
       builder: (_) {
         final box = context.findRenderObject();
-        final size = box is RenderBox && box.hasSize ? box.size : null;
-        Widget lifted = Transform.scale(
-          scale: 1.04,
-          child: SizedBox(
-            width: size?.width,
-            height: size?.height,
-            child: AbsorbPointer(child: child),
-          ),
+        final lifted = buildDragFeedback(
+          box is RenderBox && box.hasSize ? box : null,
+          child,
         );
-        lifted = overlayWrapper?.call(lifted) ?? lifted;
-        return Material(type: MaterialType.transparency, child: lifted);
+        return overlayWrapper?.call(lifted) ?? lifted;
       },
     );
     final placeholder = Opacity(opacity: 0.3, child: content);

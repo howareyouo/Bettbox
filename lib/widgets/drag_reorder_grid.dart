@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'grid.dart';
+import 'reorder_policy.dart';
 
 /// Scroll behavior that removes mouse from drag devices, so mouse dragging
 /// moves [DragReorderGrid] items instead of scrolling the page.
@@ -50,14 +51,9 @@ class DragReorderGrid<T extends Object> extends StatefulWidget {
 
 class _DragReorderGridState<T extends Object>
     extends State<DragReorderGrid<T>> {
-  /// The dragged tile's center must penetrate this fraction of the target
-  /// tile from its near edge before a swap fires, so skimming tile borders
-  /// does not reorder.
-  static const double _swapHysteresis = 0.15;
-
   final _gridKey = GlobalKey();
   final _tileKeys = <Object, GlobalKey>{};
-  DateTime _lastMove = DateTime.fromMillisecondsSinceEpoch(0);
+  final _policy = ReorderPolicy();
 
   GlobalKey _tileKeyOf(T item) =>
       _tileKeys.putIfAbsent(widget.keyOf(item), GlobalKey.new);
@@ -65,36 +61,22 @@ class _DragReorderGridState<T extends Object>
   bool get _draggable => !globalState.isAndroidTV;
 
   void _move(T from, T to, Offset feedbackTopLeft) {
-    final now = DateTime.now();
-    if (now.difference(_lastMove) < const Duration(milliseconds: 220)) return;
-    if (!_penetratesHysteresis(from, to, feedbackTopLeft)) return;
-    _lastMove = now;
-    final items = [...widget.items];
-    final source = items.indexOf(from);
-    final target = items.indexOf(to);
-    if (source < 0 || target < 0 || source == target) return;
-    items.insert(target, items.removeAt(source));
-    widget.onReorder(items);
-  }
-
-  bool _penetratesHysteresis(T from, T to, Offset feedbackTopLeft) {
-    final target = _tileRect(to);
     final source = _tileRect(from);
-    if (target == null || source == null) return true;
-    final dx = target.left - source.left;
-    final dy = target.top - source.top;
-    if (dx == 0 && dy == 0) return true;
-    final dragCenter = feedbackTopLeft + source.size.center(Offset.zero);
-    if (dy.abs() > dx.abs()) {
-      final margin = target.height * _swapHysteresis;
-      return dy > 0
-          ? dragCenter.dy - target.top >= margin
-          : target.bottom - dragCenter.dy >= margin;
+    final target = _tileRect(to);
+    if (!_policy.shouldSwap(
+      source: source,
+      target: target,
+      dragCenter:
+          feedbackTopLeft + (source?.size.center(Offset.zero) ?? Offset.zero),
+    )) {
+      return;
     }
-    final margin = target.width * _swapHysteresis;
-    return dx > 0
-        ? dragCenter.dx - target.left >= margin
-        : target.right - dragCenter.dx >= margin;
+    final items = [...widget.items];
+    final sourceIndex = items.indexOf(from);
+    final targetIndex = items.indexOf(to);
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex) return;
+    items.insert(targetIndex, items.removeAt(sourceIndex));
+    widget.onReorder(items);
   }
 
   Rect? _tileRect(T item) {
@@ -121,17 +103,9 @@ class _DragReorderGridState<T extends Object>
     final feedback = Builder(
       builder: (_) {
         final box = tileKey.currentContext?.findRenderObject();
-        final size = box is RenderBox && box.hasSize ? box.size : null;
-        return Material(
-          type: MaterialType.transparency,
-          child: Transform.scale(
-            scale: 1.04,
-            child: SizedBox(
-              width: size?.width,
-              height: size?.height,
-              child: AbsorbPointer(child: child),
-            ),
-          ),
+        return buildDragFeedback(
+          box is RenderBox && box.hasSize ? box : null,
+          child,
         );
       },
     );
@@ -163,73 +137,15 @@ class _DragReorderGridState<T extends Object>
       crossAxisSpacing: widget.crossAxisSpacing,
       mainAxisSpacing: widget.mainAxisSpacing,
       children: [
-        for (final item in widget.items)
-          GridItem(
-            key: ValueKey(widget.keyOf(item)),
-            child: _FlipTile(
-              gridKey: _gridKey,
-              child: _buildTile(context, item),
+          for (final item in widget.items)
+            GridItem(
+              key: ValueKey(widget.keyOf(item)),
+              child: FlipTile(
+                gridKey: _gridKey,
+                child: _buildTile(context, item),
+              ),
             ),
-          ),
       ],
-    );
-  }
-}
-
-class _FlipTile extends StatefulWidget {
-  final GlobalKey gridKey;
-  final Widget child;
-
-  const _FlipTile({required this.gridKey, required this.child});
-
-  @override
-  State<_FlipTile> createState() => _FlipTileState();
-}
-
-class _FlipTileState extends State<_FlipTile>
-    with SingleTickerProviderStateMixin {
-  late final _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 500),
-    value: 1,
-  );
-  late final _curve = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-  );
-  Offset? _last;
-  Offset _from = Offset.zero;
-
-  Offset get _offset =>
-      Offset.lerp(_from, Offset.zero, _curve.value) ?? Offset.zero;
-
-  @override
-  void dispose() {
-    _curve.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _check(Duration _) {
-    if (!mounted) return;
-    final box = context.findRenderObject();
-    final grid = widget.gridKey.currentContext?.findRenderObject();
-    if (box is! RenderBox || !box.hasSize || grid == null) return;
-    final position = box.localToGlobal(Offset.zero, ancestor: grid);
-    final last = _last;
-    _last = position;
-    if (last == null || (last - position).distance < 0.5) return;
-    _from = _offset + last - position;
-    _controller.forward(from: 0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback(_check);
-    return AnimatedBuilder(
-      animation: _curve,
-      builder: (_, child) => Transform.translate(offset: _offset, child: child),
-      child: widget.child,
     );
   }
 }
