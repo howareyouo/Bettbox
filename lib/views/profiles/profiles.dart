@@ -198,6 +198,11 @@ class ProfileItem extends StatefulWidget {
 }
 
 class _ProfileItemState extends State<ProfileItem> {
+  // 卡片右上角 ⋮ 按钮的几何：36px 方钮、内缩 6px；菜单顶边落在其下方 4px。
+  static const _trailingSize = 36.0;
+  static const _trailingInset = 6.0;
+  static const _menuGap = 4.0;
+
   bool _hovered = false;
   PopupOpen? _menuOpen;
 
@@ -519,17 +524,23 @@ class _ProfileItemState extends State<ProfileItem> {
     );
   }
 
+  /// 菜单锚点 = ⋮ 按钮右下角下方 [_menuGap]：菜单右缘与按钮右缘对齐，
+  /// 不压住按钮。坐标相对卡片（CommonPopupBox 的锚定盒）。
   void _openMenuAtTrailingButton() {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
-    // 锚点取卡片内 36px 按钮（top/right 各 6）的右下角，菜单落在按钮正下方对齐
-    _menuOpen?.call(offset: Offset(box.size.width - 6, 6 + 36 + 4));
+    _menuOpen?.call(
+      offset: Offset(
+        box.size.width - _trailingInset,
+        _trailingInset + _trailingSize + _menuGap,
+      ),
+    );
   }
 
   Widget _buildTrailing(BuildContext context) {
     return SizedBox(
-      height: 36,
-      width: 36,
+      height: _trailingSize,
+      width: _trailingSize,
       child: FadeThroughBox(
         child: profile.isUpdating
             ? Padding(
@@ -559,7 +570,9 @@ class _ProfileItemState extends State<ProfileItem> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.only(right: showTrailing ? 36 : 0),
+            padding: EdgeInsets.only(
+              right: showTrailing ? _trailingSize : 0,
+            ),
             child: _buildTitleRow(context),
           ),
           _buildContentInfo(context),
@@ -623,8 +636,8 @@ class _ProfileItemState extends State<ProfileItem> {
               card,
               if (_hovered || profile.isUpdating)
                 Positioned(
-                  top: 6,
-                  right: 6,
+                  top: _trailingInset,
+                  right: _trailingInset,
                   child: _buildTrailing(context),
                 ),
             ],

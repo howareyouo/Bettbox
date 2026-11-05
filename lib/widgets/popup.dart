@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/models/common.dart';
 import 'package:material_ui/material_ui.dart';
@@ -239,13 +241,15 @@ class OverflowAwareLayoutDelegate extends SingleChildLayoutDelegate {
   @override
   Offset getPositionForChild(Size size, Size childSize) {
     final safeOffset = Offset(16, 16);
+    // 菜单可能比可用空间还大（极小窗口）：上限取 max(0, …)，
+    // 否则 clamp(0, 负数) 会抛 ArgumentError。
     double x = (offset.dx - childSize.width).clamp(
       0,
-      size.width - safeOffset.dx - childSize.width,
+      math.max(0, size.width - safeOffset.dx - childSize.width),
     );
     double y = (offset.dy).clamp(
       0,
-      size.height - safeOffset.dy - childSize.height,
+      math.max(0, size.height - safeOffset.dy - childSize.height),
     );
     return Offset(x, y);
   }
