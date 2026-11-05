@@ -73,11 +73,13 @@ dependencies:
 dependency_overrides:
   flutter_rust_bridge: 2.13.0
   # Fix compile failure: https://github.com/leanflutter/hotkey_manager/pull/66
+  # （原 ref: fix-build-failure 分支已被 gepbird 删除，pin 到 main HEAD 快照；
+  #   本地 pub cache 里残留的旧 checkout 掩盖过这个问题，冷解析才会暴露）
   hotkey_manager_linux:
     git:
       url: https://github.com/gepbird/hotkey_manager.git
       path: packages/hotkey_manager_linux
-      ref: fix-build-failure
+      ref: ddbb7bf7f6db9d40bcd0cd1c98d32f631b5ba2ed
 dev_dependencies:
   flutter_test:
     sdk: flutter
