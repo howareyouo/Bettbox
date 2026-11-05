@@ -371,7 +371,7 @@ class ApplicationState extends ConsumerState<Application>
                 ),
                 popupMenuTheme: const PopupMenuThemeData(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    borderRadius: surfaceBorderRadius,
                   ),
                 ),
                 dividerTheme: DividerThemeData(
@@ -396,7 +396,7 @@ class ApplicationState extends ConsumerState<Application>
                 ),
                 chipTheme: ChipThemeData(
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    borderRadius: surfaceBorderRadius,
                   ),
                   side: BorderSide(
                     color: _getAppColorScheme(
@@ -489,7 +489,7 @@ class ApplicationState extends ConsumerState<Application>
                 ),
                 popupMenuTheme: const PopupMenuThemeData(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    borderRadius: surfaceBorderRadius,
                   ),
                 ),
                 dividerTheme: DividerThemeData(
@@ -518,7 +518,7 @@ class ApplicationState extends ConsumerState<Application>
                 ),
                 chipTheme: ChipThemeData(
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    borderRadius: surfaceBorderRadius,
                   ),
                   side: BorderSide(
                     color:
@@ -579,7 +579,7 @@ class ApplicationState extends ConsumerState<Application>
 class _FieldInputBorder extends InputBorder {
   const _FieldInputBorder({super.borderSide = BorderSide.none});
 
-  static const _borderRadius = BorderRadius.all(Radius.circular(16));
+  static const _borderRadius = surfaceBorderRadius;
 
   @override
   bool get isOutline => false;

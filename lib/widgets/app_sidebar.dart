@@ -980,7 +980,7 @@ class _SidebarFlyoutState extends ConsumerState<_SidebarFlyout>
                   alpha: isLight ? 0.35 : 0.6,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: surfaceBorderRadius,
                   side: BorderSide(
                     color: colorScheme.outlineVariant.withValues(
                       alpha: isLight ? 0.6 : 0.5,

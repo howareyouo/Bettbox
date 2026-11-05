@@ -310,7 +310,7 @@ class _IconConfigView extends ConsumerWidget {
       valueLabel: appLocalizations.icon,
       titleBuilder: (item) => EmojiText(item.key),
       leadingBuilder: (item) => Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(borderRadius: surfaceBorderRadius),
         clipBehavior: Clip.antiAlias,
         child: CommonTargetIcon(src: item.value, size: 42),
       ),

@@ -192,7 +192,7 @@ class _CoreStatusDialogState extends State<CoreStatusDialog> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: context.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: surfaceBorderRadius,
       ),
       child: Row(
         children: [

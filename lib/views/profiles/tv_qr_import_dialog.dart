@@ -342,7 +342,7 @@ class _TvQrImportDialogState extends State<TvQrImportDialog> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: surfaceBorderRadius,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),

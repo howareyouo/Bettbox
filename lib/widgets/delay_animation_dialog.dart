@@ -299,7 +299,7 @@ class _DelayAnimationPickerDialogState
               color: context.colorScheme.surfaceContainerHighest.withValues(
                 alpha: 0.45,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: surfaceBorderRadius,
               border: Border.all(
                 color: context.colorScheme.outlineVariant.withValues(
                   alpha: 0.3,
