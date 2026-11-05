@@ -215,9 +215,10 @@ jobs:
         if: github.event.inputs.force_build != 'true'
         uses: actions/cache/restore@v4
         with:
-          path: |
-            .dart_tool
-            build/windows
+          # 只缓存 build/windows（CMake/MSVC 增量），绝不缓存 .dart_tool——
+          # .dart_tool 里的 package_config.json 是依赖解析状态，缓存会把旧的
+          # 依赖图带回来（曾致 generated_plugins.cmake 保留 jni → LNK1181）
+          path: build/windows
           key: flutter-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}
           # 前缀复用：同 Flutter 版本 + 同 core（CORE_SHA256 未变）时，
           # 用最近一次的 build/windows 做 CMake/MSVC 增量编译；
@@ -229,6 +230,10 @@ jobs:
         if: steps.fb.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          # 缓存恢复必须发生在 pub get 之后（build/windows 缓存晚于 core 构建），
+          # 所以这里再跑一次 pub get 确保 .dart_tool/generated_plugins.cmake
+          # 反映生成分支的真实依赖图（带 override，jni 已摘除）
+          flutter pub get
           dart run build_runner build
           flutter build windows --release \
             --dart-define=CORE_SHA256=${{ steps.corehash.outputs.core_hash }} \
@@ -252,9 +257,7 @@ jobs:
         if: success() && github.event.inputs.force_build != 'true' && steps.fb.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: |
-            .dart_tool
-            build/windows
+          path: build/windows
           key: flutter-${{ steps.flutter.outputs.VERSION }}-${{ steps.corehash.outputs.core_hash }}-${{ steps.keys.outputs.lib }}-${{ steps.keys.outputs.windows }}-${{ steps.keys.outputs.assets }}-${{ steps.keys.outputs.plugins }}-${{ steps.keys.outputs.arb }}-${{ steps.keys.outputs.lock }}-${{ steps.keys.outputs.pubspec }}-${{ steps.keys.outputs.buildyaml }}
 
       - name: Package zip

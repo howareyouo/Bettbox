@@ -141,7 +141,7 @@ worktree 内 `flutter pub get` 会按 override 重新解析依赖，顺带验证
 |---|---|
 | CI `sync` 正常但 `build` 失败 | 与裁剪无关，按普通 Flutter 报错排查 `build` job 日志 |
 | 补丁 apply 失败（`sync` 中止，日志指出哪个补丁） | 按 §6 的 `--3way` 流程重做 |
-| 构建缓存把过期的工具链绝对路径（如 JDK）带回来 | 删 `flutter-*` 构建缓存重跑（jni 已摘除后此坑概率大降） |
+| 构建缓存把旧依赖解析/过期工具链路径带回来（如 jni 的 `jvm.lib` LNK1181） | 删 `flutter-*` 构建缓存重跑；根治靠两条：缓存路径**只放 `build/windows`**（绝不缓存 `.dart_tool`），build 步骤先强制 `flutter pub get` 再 build |
 | `.worktrees/` 残留 | `git worktree remove --force .worktrees/<名> && git worktree prune`（脚本下次运行也会自动清理） |
 
 ## 8. 硬性规则
