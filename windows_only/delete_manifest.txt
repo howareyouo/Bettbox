@@ -1,25 +1,26 @@
-# Desktop-only 裁剪清单：每行一个要删除的路径（git rm 目标）
+# Windows-only 裁剪清单：每行一个要删除的路径（git rm 目标）
 # 支持 # 注释与空行；不存在的路径自动跳过（--ignore-unmatch）
 #
 # 设计原则（分层裁剪）：
-#   1. 目录级删除（这里）：非桌面平台的构建目录（macos/ 保留，参与构建）—— 删
+#   1. 目录级删除（这里）：非 Windows 平台的构建目录 —— 删
 #   2. 文件级删除（这里）：依赖移动端实现插件的页面 —— 删
 #   3. 行级修改（用补丁）：scan.dart 的引用可能被上游新代码引用（如 iperf 页），
-#      由手工补丁 strip_iperf_scan.patch 在 desktop-only 上摘除
+#      由手工补丁 strip_iperf_scan.patch 在 windows-only 上摘除
 #      （见根目录 AGENTS.md §2「手工补丁」与 §5 例外场景）
-#   4. 保留不动：Platform.is*/isAndroidTV 等运行时判断（桌面上恒为
+#   4. 保留不动：Platform.is*/isAndroidTV 等运行时判断（Windows 上恒为
 #      false，天然正确；删了反而增加与上游的冲突面）
 #
-# Android 专属依赖链（jni 等）不在此处理：由 build_desktop_only.sh 步骤 3.5
-# 往 pubspec.yaml 追加 dependency_overrides 摘除，桌面构建不再需要 JDK。
+# Android 专属依赖链（jni 等）不在此处理：由 build_windows_only.sh 步骤 3.5
+# 往 pubspec.yaml 追加 dependency_overrides 摘除，Windows 构建不再需要 JDK。
 
-# --- 非桌面平台构建目录 ---
+# --- 非 Windows 平台构建目录 ---
 android/
 ios/
 linux/
+macos/
 web/
 
-# --- 上游 CI workflow（desktop-only 是纯产物分支，不需要 workflow 文件；
+# --- 上游 CI workflow（windows-only 是纯产物分支，不需要 workflow 文件；
 #     分支上保留 .github/workflows/ 会让 GITHUB_TOKEN push 被拒） ---
 .github/workflows/
 

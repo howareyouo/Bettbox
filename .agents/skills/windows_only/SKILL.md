@@ -13,7 +13,9 @@ description: >
 本仓库是 fork（origin `howareyouo/Bettbox`，upstream `appshubcc/Bettbox`）。
 windows-only 分支**完全由 fork main 生成**：CI（`windows_only.yml`）在 main 变化时跑
 `build_windows_only.sh`，按 `delete_manifest.txt` 删除非 Windows 文件、应用
-`patches/*.patch` 手工裁剪补丁，然后构建发布 Release。
+`patches/*.patch` 手工裁剪补丁，然后构建发布 Release。脚本步骤 3.5 还会往
+生成分支的 pubspec 注入 `path_provider_android: 2.2.23` 覆盖（摘除 jni 依赖链，
+CI 不再依赖 JDK），上游 pubspec 变动无需手动处理。
 
 **没有功能清单**：main 上的全部代码都会进入 windows-only，不需要登记、导出或同步
 任何「自有功能」文件列表（旧的 own_files.txt 机制已移除）。
