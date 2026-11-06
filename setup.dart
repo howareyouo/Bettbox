@@ -133,13 +133,25 @@ class Build {
     return 'gcc';
   }
 
+  /// 桌面端没有任何 tailscale/zerotier/easytier 的配置入口（Dart 侧也无相关 UI），
+  /// 摘掉这三套 VPN 协议的编译可达性后 core 体积约减 20%；TUN 仍需要 gvisor 栈，
+  /// 故 with_gvisor 保留。Android 保持上游标签集不动。
+  static const _desktopTrimTags = [
+    'no_tailscale',
+    'no_zerotier',
+    'no_easytier',
+  ];
+
   static String getTags(BuildItem buildItem) {
-    final baseTags = 'with_gvisor';
-    if (buildItem.target == Target.android &&
-        buildItem.archName == 'armeabi-v7a') {
-      return '$baseTags,with_low_memory';
+    final tags = <String>['with_gvisor'];
+    if (buildItem.target == Target.android) {
+      if (buildItem.archName == 'armeabi-v7a') {
+        tags.add('with_low_memory');
+      }
+    } else {
+      tags.addAll(_desktopTrimTags);
     }
-    return baseTags;
+    return tags.join(',');
   }
 
   static Future<void> exec(
