@@ -138,6 +138,9 @@ jobs:
           echo "go=$(go version | awk '{print $3}')" >> "$GITHUB_OUTPUT"
           echo "rust=$(rustc --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
           echo "core=$(git rev-parse HEAD:core)" >> "$GITHUB_OUTPUT"
+          # setup.dart 决定 core 的 Go 构建标签（体积裁剪亦在此），必须进缓存 key，
+          # 否则只改打包脚本时 libclash 缓存命中，core 不会被重编
+          echo "setup=$(git rev-parse HEAD:setup.dart)" >> "$GITHUB_OUTPUT"
           echo "helper=$(git rev-parse HEAD:services/helper)" >> "$GITHUB_OUTPUT"
           echo "lib=$(git rev-parse HEAD:lib)" >> "$GITHUB_OUTPUT"
           echo "windows=$(git rev-parse HEAD:windows)" >> "$GITHUB_OUTPUT"
@@ -164,7 +167,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: libclash/windows
-          key: libclash-${{ steps.keys.outputs.core }}-${{ steps.keys.outputs.helper }}-${{ steps.keys.outputs.go }}-${{ steps.keys.outputs.rust }}
+          key: libclash-${{ steps.keys.outputs.core }}-${{ steps.keys.outputs.setup }}-${{ steps.keys.outputs.helper }}-${{ steps.keys.outputs.go }}-${{ steps.keys.outputs.rust }}
 
       - name: Prepare Flutter deps
         shell: bash
@@ -251,7 +254,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: libclash/windows
-          key: libclash-${{ steps.keys.outputs.core }}-${{ steps.keys.outputs.helper }}-${{ steps.keys.outputs.go }}-${{ steps.keys.outputs.rust }}
+          key: libclash-${{ steps.keys.outputs.core }}-${{ steps.keys.outputs.setup }}-${{ steps.keys.outputs.helper }}-${{ steps.keys.outputs.go }}-${{ steps.keys.outputs.rust }}
 
       - name: Save Flutter build cache
         if: success() && github.event.inputs.force_build != 'true' && steps.fb.outputs.cache-hit != 'true'
