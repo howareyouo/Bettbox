@@ -85,80 +85,120 @@ for p in "$PATCH_DIR"/*.patch; do
 done
 
 # --- 3.5 摘除 Android 专属 jni 依赖链（Windows 构建不需要，链接期不再要 JDK） ---
-# path_provider_android 2.3.0 起依赖 jni/jni_flutter（jnigen 直连方案），其
-# Windows 垫片在构建期链接 jvm.lib，而 Windows 端从不调用。锁定到最后一个无 jni
-# 依赖的版本 2.2.23（path_provider 的 ^2.2.5 约束内）。脚本侧追加而非补丁：
-# 上游 pubspec 变动不会弄断这里。若上游已自带 dependency_overrides，只警告
-# 不覆盖，避免产生重复 YAML 键。
-if grep -q 'path_provider_android:' pubspec.yaml; then
-  echo "    warn pubspec 已含 path_provider_android 覆盖，跳过注入" >&2
-elif grep -q '^dependency_overrides:' pubspec.yaml; then
-  # 已有 overrides 段（如上游的 flutter_rust_bridge）：把映射插到段头之后，
-  # 不能再追加一个 dependency_overrides 键（重复键是非法 YAML）
-  awk '
-    !done && /^dependency_overrides:/ { print; print "  path_provider_android: 2.2.23"; done=1; next }
-    { print }
-  ' pubspec.yaml > pubspec.yaml.tmp && mv pubspec.yaml.tmp pubspec.yaml
-  echo "    overr path_provider_android -> 2.2.23 (并入已有 dependency_overrides)"
-else
-  cat >> pubspec.yaml <<'EOF'
+# 已知会把 jni（jnigen 直连方案）拉进依赖图的 Android 实现包 → 最后一个无 jni
+# 依赖的版本，连同该版本在 pub 上的 sha256（lock 条目改写要用）。它们的 Windows
+# 垫片在构建期链接 jvm.lib（仅 JDK 提供），Windows 端却从不调用；压回旧版本即可
+# 整条摘除，CI 从此不需要 JDK。
+#
+# 新增条目的判据：pub 上某包某个版本起 `dependencies` 出现 jni。列在这里的包必须
+# 仍在父包约束内（否则 pub 解析直接失败，脚本会因 set -e 中止）。
+JNI_FREE_PINS='
+path_provider_android=2.2.23=149441ca6e4f38193b2e004c0ca6376a3d11f51fa5a77552d8bd4d2b0c0912ba
+shared_preferences_android=2.4.28=1e12aafe408aa50da80edfd679a2a6bf63ba7ab37c7fa98286da459a757b3399
+'
+resolve_override_pins() {
+  echo "$JNI_FREE_PINS" | sed '/^$/d'
+}
 
-# windows-only：path_provider_android>=2.3 引入 jni 依赖链（仅 Android 运行时
-# 需要），Windows 构建用不到其 jvm.lib 垫片，摘除后 CI 不再依赖 JDK。
-dependency_overrides:
-  path_provider_android: 2.2.23
-EOF
-  echo "    overr path_provider_android -> 2.2.23 (jni 链摘除)"
-fi
+# 往 pubspec.yaml 注入 dependency_overrides（脚本侧追加而非补丁：上游 pubspec
+# 变动不会弄断）。已存在的 override 键跳过并警告，避免产生重复 YAML 键。
+inject_overrides() {
+  local pins yaml_block=""
+  pins=$(resolve_override_pins)
+  while IFS='=' read -r pkg ver _hash; do
+    [ -n "$pkg" ] || continue
+    if grep -q "^  $pkg:" pubspec.yaml; then
+      echo "    warn pubspec 已含 $pkg 覆盖，跳过注入" >&2
+      continue
+    fi
+    yaml_block="${yaml_block}  ${pkg}: ${ver}
+"
+    echo "    overr $pkg -> $ver"
+  done <<< "$pins"
 
-# --- 3.6 同步 pubspec.lock，与 3.5 的 override 保持一致 ---
-# 只改 pubspec.yaml 不够：lock 仍是 main 的解析结果（path_provider_android 2.3.1
-# + jni），提交上去与本分支的 override 自相矛盾。CI 的 flutter pub get 会在临时
-# 工作区里纠正它，但纠正结果不会回到分支上，于是每次重建都带着旧 lock 重新开始，
-# 一旦缓存状态不同就退回链接 jvm.lib → LNK1181。
+  [ -n "$yaml_block" ] || return 0
+  export OVR_BLOCK="$yaml_block"
+  if grep -q '^dependency_overrides:' pubspec.yaml; then
+    # 已有 overrides 段（如上游的 flutter_rust_bridge）：插到段头之后，
+    # 不能再追加一个 dependency_overrides 键（重复键是非法 YAML）
+    awk '
+      !done && /^dependency_overrides:/ { print; printf "%s", ENVIRON["OVR_BLOCK"]; done=1; next }
+      { print }
+    ' pubspec.yaml > pubspec.yaml.tmp && mv pubspec.yaml.tmp pubspec.yaml
+  else
+    {
+      printf '\n# windows-only：以下包 >=某版本 起引入 jni 依赖链（仅 Android 运行时\n'
+      printf '# 需要），Windows 构建用不到其 jvm.lib 垫片，摘除后 CI 不再依赖 JDK。\n'
+      printf 'dependency_overrides:\n%s' "$yaml_block"
+    } >> pubspec.yaml
+  fi
+}
+
+echo "==> 摘除 jni 依赖链（dependency_overrides）"
+inject_overrides
+
+# --- 3.6 同步 pubspec.lock，与 3.5 注入的 override 保持一致 ---
+# 只改 pubspec.yaml 不够：lock 仍是 main 的解析结果（含 jni 与被压版本的上游），
+# 提交上去与本分支的 override 自相矛盾。CI 的 flutter pub get 会在临时工作区里
+# 纠正它，但纠正结果不会回到分支上，于是每次重建都带着旧 lock 重新开始，一旦
+# 缓存状态不同就退回链接 jvm.lib → LNK1181。
 #
 # 这里用文本替换而非 `flutter pub get`：sync job 跑在 ubuntu-latest 上，没有装
-# Flutter。改写是安全的——path_provider_android 2.2.23 只依赖
-# path_provider_platform_interface，jni/jni_flutter/jni_util 在 lock 里全是
-# transitive，唯一上游就是 2.3.1，删掉即可。
-LOCK_ENTRY='  path_provider_android:
-    dependency: "direct overridden"
-    description:
-      name: path_provider_android
-      sha256: "149441ca6e4f38193b2e004c0ca6376a3d11f51fa5a77552d8bd4d2b0c0912ba"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.2.23"'
-echo "==> 同步 pubspec.lock（摘除 jni 条目，path_provider_android -> 2.2.23）"
-# entry 里带换行，awk 的 -v 会还原 \n，故用 ENVIRON 传递原样文本
-export LOCK_ENTRY
+# Flutter。改写是安全的——每个 pin 的版本与 sha256 都写在 JNI_FREE_PINS 里，只需
+# 替换 version / sha256 与 dependency 标记；jni 三兄弟在 lock 里全是 transitive，
+# 上游就是被压的包，整条删掉即可。
+echo "==> 同步 pubspec.lock（摘除 jni 条目，套用 override 版本）"
+# pins 通过 ENVIRON 传（带换行，awk -v 会转义）；每条 "包=版本=sha256"
+export PIN_LINES="$(resolve_override_pins)"
 awk '
-  # 整段替换 path_provider_android 条目（2.2.23 的 sha256 与 dependency 字段都不同）
-  /^  path_provider_android:$/ { print ENVIRON["LOCK_ENTRY"]; skip=1; next }
-  skip && /^  [^ ]/ { skip=0 }
-  skip { next }
-  # 丢弃 jni 依赖链的三个条目
-  /^  jni(_flutter|_util)?:$/ { drop=1; next }
-  drop && /^  [^ ]/ { drop=0 }
-  drop { next }
+  BEGIN {
+    n = split(ENVIRON["PIN_LINES"], arr, "\n")
+    for (i = 1; i <= n; i++) {
+      if (arr[i] == "") continue
+      split(arr[i], f, "=")
+      pin_ver[f[1]] = f[2]
+      pin_sha[f[1]] = f[3]
+    }
+  }
+  # 条目起始行：先判 jni（整条丢弃），否则记录当前包名供下面改写
+  /^  [a-z0-9_]+:$/ {
+    pkg = $0
+    sub(/^  /, "", pkg); sub(/:$/, "", pkg)
+    cur = pkg
+    if (pkg ~ /^jni(_flutter|_util)?$/) { in_jni = 1; next }
+    in_jni = 0
+    print
+    next
+  }
+  # 条目内的行：jni 块整体丢弃
+  in_jni { next }
+  # pins 内的条目：改 dependency 标记、sha256 与 version
+  cur in pin_ver && /^    dependency:/ { print "    dependency: \"direct overridden\""; next }
+  cur in pin_ver && /^      sha256:/   { print "      sha256: \"" pin_sha[cur] "\""; next }
+  cur in pin_ver && /^    version:/    { print "    version: \"" pin_ver[cur] "\""; next }
   { print }
 ' pubspec.lock > pubspec.lock.tmp && mv pubspec.lock.tmp pubspec.lock
 
-# 断言：lock 里不能再有 jni，且 path_provider_android 已落到 2.2.23
+# 断言：lock 里不能有任何 jni 条目，且每个 pin 的版本与 sha256 都已落到目标值
 if grep -q '^  jni' pubspec.lock; then
   echo "ERROR: pubspec.lock 仍含 jni 条目，jvm.lib 链接问题会复现" >&2
-  grep -A3 '^  jni' pubspec.lock >&2
+  grep -A4 '^  jni' pubspec.lock >&2
   echo "现场保留在 $WT_DIR" >&2
   exit 2
 fi
-LOCK_PPA=$(sed -n '/^  path_provider_android:/,/^  [^ ]/p' pubspec.lock \
-  | sed -n 's/.*version: "\(.*\)"/\1/p')
-if [ "$LOCK_PPA" != "2.2.23" ]; then
-  echo "ERROR: pubspec.lock 的 path_provider_android 为 '$LOCK_PPA'，期望 2.2.23" >&2
-  echo "现场保留在 $WT_DIR" >&2
-  exit 2
-fi
-echo "    lock path_provider_android=$LOCK_PPA, jni 已摘除"
+while IFS='=' read -r pkg want want_sha; do
+  [ -n "$pkg" ] || continue
+  entry=$(sed -n "/^  ${pkg}:/,/^  [^ ]/p" pubspec.lock)
+  got=$(echo "$entry" | sed -n 's/.*version: "\(.*\)"/\1/p')
+  got_sha=$(echo "$entry" | sed -n 's/.*sha256: "\(.*\)"/\1/p')
+  if [ "$got" != "$want" ] || [ "$got_sha" != "$want_sha" ]; then
+    echo "ERROR: pubspec.lock 的 $pkg 为 $got/$got_sha，期望 $want/$want_sha" >&2
+    echo "现场保留在 $WT_DIR" >&2
+    exit 2
+  fi
+  echo "    lock $pkg=$got"
+done <<< "$PIN_LINES"
+echo "    lock 已无 jni 条目"
 
 # --- 4. 记录源 SHA 并提交 ---
 echo "$SOURCE_SHA" > .source-sha

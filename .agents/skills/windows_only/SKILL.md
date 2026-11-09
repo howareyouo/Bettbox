@@ -13,12 +13,18 @@ description: >
 本仓库是 fork（origin `howareyouo/Bettbox`，upstream `appshubcc/Bettbox`）。
 windows-only 分支**完全由 fork main 生成**：CI（`windows_only.yml`）在 main 变化时跑
 `build_windows_only.sh`，按 `delete_manifest.txt` 删除非 Windows 文件、应用
-`patches/*.patch` 手工裁剪补丁，然后构建发布 Release。脚本步骤 3.5 还会往
-生成分支的 pubspec 注入 `path_provider_android: 2.2.23` 覆盖（摘除 jni 依赖链，
-CI 不再依赖 JDK）；步骤 3.6 随即用文本替换把同一改动同步进 `pubspec.lock`
-（删 `jni` 等条目）并断言，两段是一体的——只改 pubspec 会让 lock 与本分支
-自相矛盾，下次缓存状态一变就复现 `jvm.lib` 的 LNK1181。上游 pubspec 变动无需
-手动处理，但若上游升级 `path_provider_android` 本身，需同步更新 3.6 的条目模板。
+`patches/*.patch` 手工裁剪补丁，然后构建发布 Release。
+
+脚本步骤 3.5 还会往生成分支的 pubspec 注入 `dependency_overrides`，把带 jni 依赖链
+的 Android 实现包钉回最后一个干净版本（`path_provider_android: 2.2.23`、
+`shared_preferences_android: 2.4.28`），CI 才不需要 JDK 的 `jvm.lib`；步骤 3.6 随即
+按同一张表用文本替换改写 `pubspec.lock`（改 `dependency`/`version`/`sha256`，
+整条删掉 `jni`/`jni_flutter`/`jni_util`）并断言，两段是一体的——只改 pubspec 会让
+lock 与本分支自相矛盾，下次缓存状态一变就复现 `jvm.lib` 的 LNK1181。
+
+维护入口是脚本顶部的 `JNI_FREE_PINS` 表，每行 `包=版本=sha256`。**两个来源缺一不可**：
+只钉住一个，另一个照样把整条 jni 链拉回来。新增来源往表里加一行即可，3.5 和 3.6
+都自动跟进。
 
 **没有功能清单**：main 上的全部代码都会进入 windows-only，不需要登记、导出或同步
 任何「自有功能」文件列表（旧的 own_files.txt 机制已移除）。
@@ -33,6 +39,8 @@ CI 不再依赖 JDK）；步骤 3.6 随即用文本替换把同一改动同步�
 3. **改动了补丁的目标文件**（如上游重构 iperf 页）：确认对应补丁仍能应用，
    不能则按新代码重做补丁（见下「验证」）。
 4. **调整裁剪/构建/CI 脚本**：直接改，改完本地验证。
+5. **CI 依赖解析日志出现 `+ jni`**：`JNI_FREE_PINS` 漏了来源，按下面「验证」里的
+   二分法找版本并加行。
 
 ## 硬性规则
 
@@ -48,7 +56,16 @@ CI 不再依赖 JDK）；步骤 3.6 随即用文本替换把同一改动同步�
 
 ```bash
 bash windows_only/build_windows_only.sh main windows-only-rebuild
-# 通过后可选：cd .worktrees/windows-only-rebuild && flutter analyze
+# 通过后：cd .worktrees/windows-only-rebuild && flutter analyze   # 零问题即安全
+#            grep -c '^  jni' pubspec.lock                       # 必须为 0
+```
+
+改了 `JNI_FREE_PINS` 或 3.6 的改写逻辑，还要校验脚本产出与真实解析逐字节一致
+（CI 上没 Flutter，只能靠本机守这道门）：
+
+```bash
+cd .worktrees/windows-only-rebuild && cp pubspec.lock /tmp/textlock.txt \
+  && flutter pub get >/dev/null && diff /tmp/textlock.txt pubspec.lock && echo 一致
 ```
 
 补丁无法应用 → 现场保留在 `.worktrees/windows-only-rebuild`，
