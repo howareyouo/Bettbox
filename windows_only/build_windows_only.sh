@@ -7,6 +7,7 @@
 #   2. 按 windows_only/delete_manifest.txt 删除非 Windows 平台目录/文件
 #   3. 应用 windows_only/patches/*.patch（手工裁剪补丁，如引用摘除）
 #   3.5 pubspec 追加 dependency_overrides 摘除 Android 专属 jni 依赖链
+#   3.6 flutter pub get 重写 pubspec.lock 并断言无 jni（3.5 必须配套 3.6）
 #   4. 提交并记录源 SHA（.source-sha），供 CI 对比自上次构建以来 main 是否变化
 #   5. 新分支保存在 worktree 仓库中，CI 负责 push 到 windows-only
 #
@@ -109,6 +110,22 @@ dependency_overrides:
 EOF
   echo "    overr path_provider_android -> 2.2.23 (jni 链摘除)"
 fi
+
+# --- 3.6 重解析依赖，把 override 真正落到 pubspec.lock ---
+# 只改 pubspec.yaml 不够：lock 仍是 main 的解析结果（path_provider_android 2.3.1
+# + jni），提交上去与本分支的 override 自相矛盾。CI 的 flutter pub get 会在临时
+# 工作区里纠正它，但纠正结果不会回到分支上，于是每次重建都带着旧 lock 重新开始，
+# 一旦缓存状态不同就退回链接 jvm.lib → LNK1181。这里直接重解析并断言。
+echo "==> 重解析依赖（写入 override 后的 pubspec.lock）"
+flutter pub get > /dev/null
+if grep -q '^  jni:' pubspec.lock; then
+  echo "ERROR: 重解析后 pubspec.lock 仍含 jni，jvm.lib 链接问题会复现" >&2
+  grep -A3 '^  jni:' pubspec.lock >&2
+  echo "现场保留在 $WT_DIR" >&2
+  exit 2
+fi
+LOCK_PPA=$(grep -A8 '^  path_provider_android:' pubspec.lock | sed -n 's/.*version: "\(.*\)"/\1/p')
+echo "    lock path_provider_android=$LOCK_PPA, jni 已摘除"
 
 # --- 4. 记录源 SHA 并提交 ---
 echo "$SOURCE_SHA" > .source-sha

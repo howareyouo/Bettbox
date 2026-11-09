@@ -55,7 +55,7 @@ CI 全程不感知 upstream。
 Flutter 版本由 CI 从 main 的 `.github/workflows/build.yaml` pin 解析（兜底读 pubspec），
 rebase 上游时自动跟进，无需手动指定。
 
-### jni 依赖摘除（步骤 3.5）
+### jni 依赖摘除（步骤 3.5 + 3.6）
 
 `path_provider_android` ≥2.3 依赖 `jni`/`jni_flutter`（jnigen 直连方案），其
 Windows 垫片在构建期链接 `jvm.lib`（仅 JDK 提供），而 Windows 端从不调用。
@@ -63,6 +63,13 @@ Windows 垫片在构建期链接 `jvm.lib`（仅 JDK 提供），而 Windows 端
 （最后一个无 jni 依赖的版本，path_provider `^2.2.5` 约束内），CI 从此
 不需要 JDK。**脚本侧追加而非补丁文件**：上游 pubspec 变动不会弄断；若上游
 自带 `dependency_overrides`，脚本只警告不覆盖。
+
+**步骤 3.6 必须一起存在**：只改 pubspec 不够，`pubspec.lock` 仍是 main 的解析
+结果（`path_provider_android 2.3.1` + `jni`），提交上去与 override 自相矛盾。
+CI 的 `flutter pub get` 会在临时工作区纠正它，但纠正结果不会回到分支，于是每次
+重建都带着旧 lock 重新开始——缓存状态一变就退回链接 `jvm.lib`（LNK1181）。
+故 3.6 在注入 override 后跑 `flutter pub get` 重写 lock 并断言其中无 `jni`，
+不成立则 `exit 2` 保留现场，不让矛盾走到链接阶段才炸。
 
 ### delete_manifest 分层原则
 
@@ -116,7 +123,7 @@ git push origin main                          # 触发 §3 的自动发布
 | main/上游代码引用了被 delete_manifest 删除的文件（如 `scan.dart`） | 优先在 main 内优雅解决（运行时判断、条件导入）；确需摘除 → 新增手工补丁 |
 | 改动了补丁目标文件（`iperf.dart`） | main 保持不改它；上游重构逼改 → 按新代码重做 `strip_iperf_scan.patch` |
 | 删除/重命名了 delete_manifest 里的路径 | fork 永久移除 → 删清单行；只是移动 → 改行内路径 |
-| 上游 pubspec 引入新的「Android 专属且带 Windows 垫片」依赖 | 比照 jni 先例在脚本步骤 3.5 扩 override |
+| 上游 pubspec 引入新的「Android 专属且带 Windows 垫片」依赖 | 比照 jni 先例在脚本步骤 3.5 扩 override，3.6 的 lock 断言同步覆盖该包 |
 | 调整裁剪/构建/CI 脚本 | 直接改，改完按 §6 验证 |
 
 ## 6. 验证（改动涉及裁剪时必做）
@@ -125,11 +132,12 @@ git push origin main                          # 触发 §3 的自动发布
 bash windows_only/build_windows_only.sh main windows-only-rebuild
 # 通过后：
 cd .worktrees/windows-only-rebuild && flutter analyze    # 零问题即安全
+grep -c '^  jni:' pubspec.lock                           # 必须为 0
 ```
 
-worktree 内 `flutter pub get` 会按 override 重新解析依赖，顺带验证摘除后
-依赖图完整。Windows 的实际编译只能靠 CI 验证（本机可跑 `flutter build windows`
-但耗时，通常 CI 兜底即可）。
+脚本步骤 3.6 已内置 `flutter pub get` + `jni` 断言，所以第一条命令通过就意味着
+override 已落进 lock、依赖图不含 jni。`grep` 是可选的二次确认。Windows 的实际
+编译只能靠 CI 验证（本机可跑 `flutter build windows` 但耗时，通常 CI 兜底即可）。
 
 补丁无法应用 → 现场保留在 `.worktrees/windows-only-rebuild`：
 `git apply --3way ../windows_only/patches/xxx.patch` 辅助重做 → 更新补丁 →
@@ -142,6 +150,7 @@ worktree 内 `flutter pub get` 会按 override 重新解析依赖，顺带验证
 | CI `sync` 正常但 `build` 失败 | 与裁剪无关，按普通 Flutter 报错排查 `build` job 日志 |
 | 补丁 apply 失败（`sync` 中止，日志指出哪个补丁） | 按 §6 的 `--3way` 流程重做 |
 | 构建缓存把旧依赖解析/过期工具链路径带回来（如 jni 的 `jvm.lib` LNK1181） | 删 `flutter-*` 构建缓存重跑；根治靠两条：缓存路径**只放 `build/windows`**（绝不缓存 `.dart_tool`），build 步骤先强制 `flutter pub get` 再 build |
+| `LNK1181` / `jvm.lib` 反复出现，且 `sync` 日志说 lock 里仍有 `jni` | 分支上的 `pubspec.lock` 没跟上 override —— 确认脚本步骤 3.6 存在且未被绕过（它负责重写 lock 并断言无 `jni`）；若是手工改分支导致，重跑 `build_windows_only.sh` 即可恢复正常 |
 | `.worktrees/` 残留 | `git worktree remove --force .worktrees/<名> && git worktree prune`（脚本下次运行也会自动清理） |
 
 ## 8. 硬性规则
