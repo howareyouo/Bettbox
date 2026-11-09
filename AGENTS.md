@@ -55,7 +55,7 @@ CI 全程不感知 upstream。
 Flutter 版本由 CI 从 main 的 `.github/workflows/build.yaml` pin 解析（兜底读 pubspec），
 rebase 上游时自动跟进，无需手动指定。
 
-### jni 依赖摘除（步骤 3.5 + 3.6）
+### jni 依赖摘除（步骤 3.5 + 3.6 + 3.7）
 
 以下 Android 实现包从某版本起依赖 `jni`/`jni_flutter`（jnigen 直连方案），其
 Windows 垫片在构建期链接 `jvm.lib`（仅 JDK 提供），而 Windows 端从不调用：
@@ -94,6 +94,11 @@ sha256 都对，不成立则 `exit 2` 保留现场，不让矛盾走到链接阶
 不装 Flutter（版本解析只为传给 build job）。三个 jni 包在 lock 里全是
 `transitive`，唯一上游就是被压的包。验证方式：脚本产出 vs 真跑
 `flutter pub get` 后 `diff`，必须逐字节一致。
+
+**步骤 3.7** 顺手把 `windows/flutter/generated_plugin*` 里残留的 `  jni` 行删掉：
+这些文件是按 main 的 lock 生成的，被原样带进本分支就与 override 自相矛盾。CI 的
+`flutter pub get` 会重写它们，但不该依赖下游兜底——留着的文件会让「分支上的依赖图」
+说谎，排查时误导人。
 
 **排障**：CI `Prepare Flutter deps` 日志里出现任何 `jni` 字样（`+ jni`、
 `* xxx_android 2.5.x (was 2.4.28)`）就说明 table 漏了一个来源。

@@ -24,7 +24,8 @@ lock 与本分支自相矛盾，下次缓存状态一变就复现 `jvm.lib` 的 
 
 维护入口是脚本顶部的 `JNI_FREE_PINS` 表，每行 `包=版本=sha256`。**两个来源缺一不可**：
 只钉住一个，另一个照样把整条 jni 链拉回来。新增来源往表里加一行即可，3.5 和 3.6
-都自动跟进。
+都自动跟进。步骤 3.7 再删掉 `windows/flutter/generated_plugin*` 里残留的 `jni`
+行（那是 main 的生成结果，CI 虽会重写，但分支上不该留着自相矛盾的文件）。
 
 **没有功能清单**：main 上的全部代码都会进入 windows-only，不需要登记、导出或同步
 任何「自有功能」文件列表（旧的 own_files.txt 机制已移除）。
@@ -58,6 +59,7 @@ lock 与本分支自相矛盾，下次缓存状态一变就复现 `jvm.lib` 的 
 bash windows_only/build_windows_only.sh main windows-only-rebuild
 # 通过后：cd .worktrees/windows-only-rebuild && flutter analyze   # 零问题即安全
 #            grep -c '^  jni' pubspec.lock                       # 必须为 0
+#            grep -c '^  jni$' windows/flutter/generated_plugins.cmake  # 必须为 0
 ```
 
 改了 `JNI_FREE_PINS` 或 3.6 的改写逻辑，还要校验脚本产出与真实解析逐字节一致

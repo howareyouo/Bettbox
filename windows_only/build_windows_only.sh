@@ -8,6 +8,7 @@
 #   3. 应用 windows_only/patches/*.patch（手工裁剪补丁，如引用摘除）
 #   3.5 pubspec 追加 dependency_overrides 摘除 Android 专属 jni 依赖链
 #   3.6 同步 pubspec.lock（摘除 jni 条目，3.5 必须配套 3.6）
+#   3.7 摘除生成文件（generated_plugin*）里的 jni 插件行
 #   4. 提交并记录源 SHA（.source-sha），供 CI 对比自上次构建以来 main 是否变化
 #   5. 新分支保存在 worktree 仓库中，CI 负责 push 到 windows-only
 #
@@ -199,6 +200,21 @@ while IFS='=' read -r pkg want want_sha; do
   echo "    lock $pkg=$got"
 done <<< "$PIN_LINES"
 echo "    lock 已无 jni 条目"
+
+# --- 3.7 摘除生成文件里的 jni FFI 插件 ---
+# main 的 windows/flutter/generated_plugins.cmake 是按 main 的 lock（含 jni）
+# 生成的，被原样带进本分支就与 override 自相矛盾。CI 的 pub get 会重写它，但
+# 不该依赖下游兜底：留着的文件会让 "分支上的依赖图" 说谎，排查时误导人。
+# cpp/c/h 是同一批生成物，一并扫。
+GEN_FILES=$(git ls-files 'windows/flutter/generated_plugin*')
+if [ -n "$GEN_FILES" ]; then
+  # shellcheck disable=SC2086
+  sed -i '/^  jni$/d' $GEN_FILES
+  changed=$(git diff --name-only -- windows/flutter)
+  if [ -n "$changed" ]; then
+    echo "==> 生成文件摘除 jni 插件: $(echo "$changed" | tr '\n' ' ')"
+  fi
+fi
 
 # --- 4. 记录源 SHA 并提交 ---
 echo "$SOURCE_SHA" > .source-sha
