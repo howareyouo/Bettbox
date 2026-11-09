@@ -68,8 +68,16 @@ Windows 垫片在构建期链接 `jvm.lib`（仅 JDK 提供），而 Windows 端
 结果（`path_provider_android 2.3.1` + `jni`），提交上去与 override 自相矛盾。
 CI 的 `flutter pub get` 会在临时工作区纠正它，但纠正结果不会回到分支，于是每次
 重建都带着旧 lock 重新开始——缓存状态一变就退回链接 `jvm.lib`（LNK1181）。
-故 3.6 在注入 override 后跑 `flutter pub get` 重写 lock 并断言其中无 `jni`，
-不成立则 `exit 2` 保留现场，不让矛盾走到链接阶段才炸。
+故 3.6 在注入 override 后用文本替换同步 lock：整段换成 2.2.23 的条目（sha256 与
+`dependency: "direct overridden"` 一并写准），删掉 `jni`/`jni_flutter`/`jni_util`，
+再断言 lock 中无 `jni` 且 `path_provider_android` 为 2.2.23，不成立则 `exit 2`
+保留现场，不让矛盾走到链接阶段才炸。
+
+**为什么用文本替换而不是 `flutter pub get`**：sync job 跑在 `ubuntu-latest` 上，
+不装 Flutter（版本解析只为传给 build job）。改写是安全的——2.2.23 只依赖
+`path_provider_platform_interface`，三个 jni 包在 lock 里全是 `transitive`，
+唯一上游就是 2.3.1。已用「脚本产出 vs 真跑 `flutter pub get`」做 `diff`
+校验过逐字节一致；上游升级 `path_provider_android` 时需同步更新这段条目模板。
 
 ### delete_manifest 分层原则
 
@@ -135,9 +143,17 @@ cd .worktrees/windows-only-rebuild && flutter analyze    # 零问题即安全
 grep -c '^  jni:' pubspec.lock                           # 必须为 0
 ```
 
-脚本步骤 3.6 已内置 `flutter pub get` + `jni` 断言，所以第一条命令通过就意味着
+脚本步骤 3.6 已内置 lock 文本同步 + `jni` 断言，所以第一条命令通过就意味着
 override 已落进 lock、依赖图不含 jni。`grep` 是可选的二次确认。Windows 的实际
 编译只能靠 CI 验证（本机可跑 `flutter build windows` 但耗时，通常 CI 兜底即可）。
+
+改动 3.6 的条目模板后，务必用下面的方式校验改写结果与真实解析一致（CI 上没 Flutter，
+只能靠本机守这道门）：
+
+```bash
+cd .worktrees/windows-only-rebuild && cp pubspec.lock /tmp/textlock.txt \
+  && flutter pub get >/dev/null && diff /tmp/textlock.txt pubspec.lock && echo 一致
+```
 
 补丁无法应用 → 现场保留在 `.worktrees/windows-only-rebuild`：
 `git apply --3way ../windows_only/patches/xxx.patch` 辅助重做 → 更新补丁 →
