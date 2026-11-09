@@ -8,7 +8,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-typedef OnSelected = void Function(int index);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

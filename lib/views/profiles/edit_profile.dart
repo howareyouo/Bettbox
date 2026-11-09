@@ -530,11 +530,7 @@ class _AgeKeyGeneratorDialogState extends State<_AgeKeyGeneratorDialog> {
   }
 
   Future<void> _copyToClipboard(String text) async {
-    if (text.isEmpty) return;
-    await Clipboard.setData(ClipboardData(text: text));
-    if (mounted) {
-      context.showNotifier(appLocalizations.copySuccess);
-    }
+    context.copyToClipboard(text);
   }
 
   @override

@@ -2,7 +2,6 @@ import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart' hide Mode;
 import 'package:bett_box/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:re_highlight/re_highlight.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
@@ -37,9 +36,7 @@ class _ViewerPageState extends State<ViewerPage> {
   }
 
   Future<void> _handleCopyAll() async {
-    await Clipboard.setData(ClipboardData(text: widget.content));
-    if (!mounted) return;
-    context.showNotifier(appLocalizations.copySuccess);
+    context.copyToClipboard(widget.content);
   }
 
   TextSpan? _buildSpan(Brightness brightness, TextStyle base) {

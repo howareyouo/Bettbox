@@ -147,9 +147,6 @@ class CommonCard extends StatelessWidget {
   final double? radius;
   final Clip clipBehavior;
 
-  // final WidgetStateProperty<Color?>? backgroundColor;
-  // final WidgetStateProperty<BorderSide?>? borderSide;
-
   BorderSide getBorderSide(BuildContext context, Set<WidgetState> states) {
     final colorScheme = context.colorScheme;
     final hoverColor = isSelected

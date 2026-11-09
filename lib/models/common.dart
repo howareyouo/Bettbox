@@ -1087,8 +1087,6 @@ abstract class Field with _$Field {
   }) = _Field;
 }
 
-enum PopupMenuItemType { primary, danger }
-
 class PopupMenuItemData {
   const PopupMenuItemData({
     this.icon,

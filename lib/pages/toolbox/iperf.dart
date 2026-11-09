@@ -8,7 +8,6 @@ import 'package:bett_box/pages/scan.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -436,8 +435,7 @@ class _IperfPageState extends ConsumerState<IperfPage>
   }
 
   void _copy(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    context.showNotifier(appLocalizations.copySuccess);
+    context.copyToClipboard(text);
   }
 
   @override

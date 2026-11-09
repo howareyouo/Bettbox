@@ -7,7 +7,6 @@ import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
@@ -645,9 +644,7 @@ class _LogsConsoleState extends ConsumerState<LogsConsole> {
   }
 
   Future<void> _copy(Log log) async {
-    await Clipboard.setData(ClipboardData(text: log.raw));
-    if (!mounted) return;
-    context.showNotifier(appLocalizations.copySuccess);
+    context.copyToClipboard(log.raw);
   }
 
   void _search(Log log) {

@@ -6,7 +6,6 @@ import 'package:bett_box/state.dart';
 import 'package:bett_box/views/config/general.dart';
 import 'package:bett_box/widgets/widgets.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'tile.dart';
@@ -578,10 +577,7 @@ class _IntranetIpInfoDialogState extends ConsumerState<_IntranetIpInfoDialog> {
                   icon: Icons.copy_rounded,
                   tooltip: appLocalizations.copy,
                   onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: sharedAddress));
-                    if (context.mounted) {
-                      context.showNotifier(appLocalizations.copySuccess);
-                    }
+                    await context.copyToClipboard(sharedAddress);
                   },
                 ),
               ),
