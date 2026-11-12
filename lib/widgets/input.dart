@@ -34,7 +34,7 @@ class OptionsDialog<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonDialog(
       title: title,
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -74,10 +74,6 @@ class OptionItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
         color: selected ? colorScheme.secondaryContainer : Colors.transparent,
-        shape: const RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
-        ),
-        clipBehavior: Clip.antiAlias,
         child: InkWell(
           focusColor: colorScheme.primary.withValues(alpha: 0.18),
           onTap: onTap,
