@@ -67,6 +67,23 @@ class ReorderPolicy {
   }
 }
 
+/// [fromId] 定位到的元素挪到 [toId] 所在的下标，其余元素顺序不变。
+///
+/// 任一方不在列表里、或指向同一元素时返回 null，调用方据此不写回配置。
+List<T>? moveItemTo<T>(
+  List<T> items,
+  String Function(T item) idOf,
+  String fromId,
+  String toId,
+) {
+  final from = items.indexWhere((item) => idOf(item) == fromId);
+  final to = items.indexWhere((item) => idOf(item) == toId);
+  if (from < 0 || to < 0 || from == to) return null;
+  final moved = [...items];
+  moved.insert(to, moved.removeAt(from));
+  return moved;
+}
+
 /// Drag feedback shared by the reorder grids: the tile at its own size,
 /// slightly scaled up and inert to pointers.
 Widget buildDragFeedback(RenderBox? box, Widget child) {
