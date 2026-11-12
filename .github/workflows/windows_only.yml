@@ -173,6 +173,17 @@ jobs:
         shell: bash
         run: flutter pub get
 
+      # assets/data 下的 GeoSite.dat / geoip.metadb / ASN.mmdb / zash.zip /
+      # BundleMRS.7z 都在 .gitignore 里,干净 checkout 中不存在该目录;它们只在
+      # setup.dart 的 ensureAssets() 里下载,而它挂在 Setup Dart 的 core 构建上。
+      # Core 缓存命中 → Build Core 被跳过 → 目录从未创建 → flutter build windows
+      # 报 "unable to find directory entry in pubspec.yaml: assets/data"。
+      # 这里无条件补跑一次 assets 子命令(文件齐全且未超 48 小时则秒退,只有缺失/
+      # 过期才真的下载 ~15MB),与缓存命中与否解耦。
+      - name: Ensure downloaded assets
+        shell: bash
+        run: dart setup.dart assets
+
       - name: Patch sing-tun for Windows
         if: steps.clash.outputs.cache-hit != 'true'
         shell: bash
