@@ -263,7 +263,9 @@ void main() {
     });
 
     test('9000 节点下逐个解析不再随节点数平方增长', () {
-      final nodes = [for (var i = 0; i < 9000; i++) _proxy('node-$i')];
+      final nodes = [
+        for (var i = 0; i < 9000; i++) _proxy('node-$i'),
+      ];
       final groups = [
         for (var i = 0; i < 12; i++)
           Group(type: GroupType.Selector, name: 'G$i', all: nodes),
@@ -297,7 +299,11 @@ void main() {
         themeProps: defaultThemeProps,
         currentProfileId: 'p',
         profiles: [
-          Profile(id: 'p', autoUpdateDuration: Duration.zero, unfoldSet: {'A'}),
+          Profile(
+            id: 'p',
+            autoUpdateDuration: Duration.zero,
+            unfoldSet: {'A'},
+          ),
         ],
         proxiesStyle: const ProxiesStyle(sortType: ProxiesSortType.name),
       );
@@ -339,11 +345,9 @@ void main() {
       expect(names('B'), ['z', 'y']);
       final sortedA = container.read(sortedGroupProxiesProvider('', 'A'));
 
-      container
-          .read(profilesProvider.notifier)
-          .setProfile(
-            globalState.config.profiles.single.copyWith(unfoldSet: {'A', 'B'}),
-          );
+      container.read(profilesProvider.notifier).setProfile(
+        globalState.config.profiles.single.copyWith(unfoldSet: {'A', 'B'}),
+      );
       expect(names('B'), ['y', 'z']);
       expect(
         identical(container.read(sortedGroupProxiesProvider('', 'A')), sortedA),
@@ -352,7 +356,7 @@ void main() {
     });
   });
 
-  group('后台排序', () {
+  group('分组排序', () {
     List<Proxy> nodes(int count) => [
       for (var i = count - 1; i >= 0; i--)
         _proxy('${String.fromCharCode(97 + i % 26)}$i'),
@@ -374,27 +378,8 @@ void main() {
       return container;
     }
 
-    Future<List<Proxy>> settled(
-      ProviderContainer container,
-      String query,
-      String group,
-    ) async {
-      final provider = sortedGroupProxiesProvider(query, group);
-      for (var i = 0; i < 200; i++) {
-        final value = container.read(provider);
-        if (value != null &&
-            value.isNotEmpty &&
-            value.first.name.startsWith('a') &&
-            value.last.name.startsWith('z')) {
-          return value;
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
-      fail('sort did not settle');
-    }
-
-    test('大分组首次排序在后台完成，结果与同步排序一致', () async {
-      final all = nodes(backgroundSortThreshold + 200);
+    test('大分组首次排序即可拿到结果', () {
+      final all = nodes(1200);
       final source = StateProvider<List<Group>>(
         (_) => [Group(type: GroupType.Selector, name: 'BG1', all: all)],
       );
@@ -402,66 +387,183 @@ void main() {
       final provider = sortedGroupProxiesProvider('', 'BG1');
       container.listen(provider, (_, _) {});
 
-      expect(container.read(provider), isNull);
-      final sorted = await settled(container, '', 'BG1');
-      expect(sorted, sortProxies(all, ProxiesSortType.name));
+      expect(container.read(provider), sortProxies(all, ProxiesSortType.name));
     });
 
-    test('分组刷新后先沿用上次顺序，不出现空白', () async {
+    test('分组刷新后立即返回新顺序', () {
       final source = StateProvider<List<Group>>(
         (_) => [
           Group(
             type: GroupType.Selector,
             name: 'BG2',
-            all: nodes(backgroundSortThreshold + 200),
+            all: nodes(1200),
           ),
         ],
       );
       final container = createContainer(source);
       final provider = sortedGroupProxiesProvider('', 'BG2');
       container.listen(provider, (_, _) {});
-      container.read(provider);
-      final first = await settled(container, '', 'BG2');
+      expect(container.read(provider).first.name, startsWith('a'));
 
       final refreshed = [
-        for (final proxy in nodes(backgroundSortThreshold + 200))
-          proxy.copyWith(type: 'Vmess'),
+        for (final proxy in nodes(1200)) proxy.copyWith(type: 'Vmess'),
       ];
       container.read(source.notifier).state = [
         Group(type: GroupType.Selector, name: 'BG2', all: refreshed),
       ];
-      final pending = container.read(provider);
-      expect(pending, isNotNull);
-      expect(
-        [for (final proxy in pending!) proxy.name],
-        [for (final proxy in first) proxy.name],
-      );
-      expect(pending.first.type, 'Vmess');
-
-      final other = createContainer(source);
-      expect(other.read(sortedGroupProxiesProvider('', 'BG2')), isNotNull);
+      final sorted = container.read(provider);
+      expect(sorted.first.type, 'Vmess');
+      expect(sorted, sortProxies(refreshed, ProxiesSortType.name));
     });
 
-    test('搜索结果同步排序，小分组同步排序', () {
+    test('搜索结果与大分组同步排序一致', () {
       final source = StateProvider<List<Group>>(
         (_) => [
           Group(
             type: GroupType.Selector,
             name: 'BG3',
-            all: nodes(backgroundSortThreshold * 3),
+            all: nodes(3000),
           ),
           Group(type: GroupType.Selector, name: 'SMALL', all: nodes(50)),
         ],
       );
       final container = createContainer(source);
       final searched = container.read(sortedGroupProxiesProvider('1', 'BG3'));
-      expect(searched, isNotNull);
-      expect(searched!.length, greaterThanOrEqualTo(backgroundSortThreshold));
+      expect(searched.length, greaterThanOrEqualTo(1000));
       expect(searched.first.name, startsWith('a'));
       expect(searched.last.name, startsWith('z'));
       final small = container.read(sortedGroupProxiesProvider('', 'SMALL'));
-      expect(small!.first.name, startsWith('a'));
+      expect(small.first.name, startsWith('a'));
       expect(small.last.name, startsWith('z'));
+    });
+  });
+
+  group('测速期间排序', () {
+    ProviderContainer createDelayContainer(List<String> nodeNames) {
+      globalState.config = Config(
+        themeProps: defaultThemeProps,
+        appSetting: const AppSettingProps(testUrl: 'u'),
+        proxiesStyle: const ProxiesStyle(sortType: ProxiesSortType.delay),
+      );
+      final source = StateProvider<List<Group>>(
+        (_) => [
+          Group(
+            type: GroupType.Selector,
+            name: 'DELAY',
+            all: [for (final name in nodeNames) _proxy(name)],
+          ),
+        ],
+      );
+      final container = ProviderContainer(
+        overrides: [
+          currentGroupsStateProvider.overrideWith(
+            (ref) => GroupsState(value: ref.watch(source)),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(sortedGroupProxiesProvider('', 'DELAY'), (_, _) {});
+      return container;
+    }
+
+    List<String> names(ProviderContainer container) => [
+      for (final proxy
+          in container.read(sortedGroupProxiesProvider('', 'DELAY')))
+        proxy.name,
+    ];
+
+    test('已测速节点测速期间不插队，结果落地后按实际延迟定位', () async {
+      final container = createDelayContainer(['a', 'b', 'c']);
+      final delays = container.read(delayDataSourceProvider.notifier);
+      delays
+        ..setDelay(const Delay(url: 'u', name: 'a', value: 300))
+        ..setDelay(const Delay(url: 'u', name: 'b', value: 100))
+        ..setDelay(const Delay(url: 'u', name: 'c', value: 200))
+        ..flush();
+      expect(names(container), ['b', 'c', 'a']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'b', value: 0));
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(delayDataSourceProvider)['u']?['b'], 0);
+      expect(names(container), ['b', 'c', 'a']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'b', value: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      expect(names(container), ['c', 'b', 'a']);
+    });
+
+    test('未测速节点测速期间不插队，结果落地后按实际延迟定位', () async {
+      final container = createDelayContainer(['a', 'd']);
+      final delays = container.read(delayDataSourceProvider.notifier);
+      delays
+        ..setDelay(const Delay(url: 'u', name: 'a', value: 300))
+        ..flush();
+      expect(names(container), ['a', 'd']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'd', value: 0));
+      await Future<void>.delayed(Duration.zero);
+      expect(names(container), ['a', 'd']);
+
+      delays.setDelay(const Delay(url: 'u', name: 'd', value: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      expect(names(container), ['d', 'a']);
+    });
+  });
+
+  group('filterGroupsState 剥离 now', () {
+    test('只有 now 变化时不通知，节点变化时通知', () {
+      final source = StateProvider<List<Group>>(
+        (_) => [
+          Group(
+            type: GroupType.Selector,
+            name: 'g',
+            now: 'a',
+            all: [
+              _proxy('a'),
+              _proxy('b', now: 'x'),
+            ],
+          ),
+        ],
+      );
+      final container = ProviderContainer(
+        overrides: [
+          currentGroupsStateProvider.overrideWith(
+            (ref) => GroupsState(value: ref.watch(source)),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      var notifyCount = 0;
+      container.listen(filterGroupsStateProvider(''), (_, _) => notifyCount++);
+      expect(
+        container.read(filterGroupsStateProvider('')).value.single.now,
+        isNull,
+      );
+
+      container.read(source.notifier).state = [
+        Group(
+          type: GroupType.Selector,
+          name: 'g',
+          now: 'b',
+          all: [
+            _proxy('a'),
+            _proxy('b', now: 'y'),
+          ],
+        ),
+      ];
+      container.read(filterGroupsStateProvider(''));
+      expect(notifyCount, 0);
+
+      container.read(source.notifier).state = [
+        Group(
+          type: GroupType.Selector,
+          name: 'g',
+          now: 'b',
+          all: [_proxy('a'), _proxy('b'), _proxy('c')],
+        ),
+      ];
+      container.read(filterGroupsStateProvider(''));
+      expect(notifyCount, 1);
     });
   });
 
@@ -524,93 +626,6 @@ void main() {
         ).getGroup('H')!.all.map((proxy) => proxy.name).toList(),
         ['a', 'b'],
       );
-    });
-  });
-
-  group('filterGroupsState 剥离 now', () {
-    test('只有 now 变化时不通知，节点变化时通知', () {
-      final source = StateProvider<List<Group>>(
-        (_) => [
-          Group(
-            type: GroupType.Selector,
-            name: 'g',
-            now: 'a',
-            all: [
-              _proxy('a'),
-              _proxy('b', now: 'x'),
-            ],
-          ),
-        ],
-      );
-      final container = ProviderContainer(
-        overrides: [
-          currentGroupsStateProvider.overrideWith(
-            (ref) => GroupsState(value: ref.watch(source)),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-      var notifyCount = 0;
-      container.listen(filterGroupsStateProvider(''), (_, _) => notifyCount++);
-      expect(
-        container.read(filterGroupsStateProvider('')).value.single.now,
-        isNull,
-      );
-
-      container.read(source.notifier).state = [
-        Group(
-          type: GroupType.Selector,
-          name: 'g',
-          now: 'b',
-          all: [
-            _proxy('a'),
-            _proxy('b', now: 'y'),
-          ],
-        ),
-      ];
-      container.read(filterGroupsStateProvider(''));
-      expect(notifyCount, 0);
-
-      container.read(source.notifier).state = [
-        Group(
-          type: GroupType.Selector,
-          name: 'g',
-          now: 'b',
-          all: [_proxy('a'), _proxy('b'), _proxy('c')],
-        ),
-      ];
-      container.read(filterGroupsStateProvider(''));
-      expect(notifyCount, 1);
-    });
-  });
-
-  group('DelayDataSource', () {
-    test('clear 丢弃已有和待合并的延迟', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final notifier = container.read(delayDataSourceProvider.notifier);
-      notifier.value = {
-        'u': {'A': 10},
-      };
-      notifier.setDelay(const Delay(name: 'B', url: 'u', value: 20));
-      notifier.clear();
-      notifier.flush();
-      expect(container.read(delayDataSourceProvider), isEmpty);
-    });
-
-    test('dropTesting 只移除测速中的节点', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final notifier = container.read(delayDataSourceProvider.notifier);
-      notifier.value = {
-        'u': {'A': 10, 'B': 0},
-        'v': {'C': 0},
-      };
-      notifier.setDelay(const Delay(name: 'D', url: 'u', value: 0));
-      notifier.dropTesting();
-      expect(container.read(delayDataSourceProvider), {
-        'u': {'A': 10},
-      });
     });
   });
 }

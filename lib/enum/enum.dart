@@ -753,7 +753,7 @@ enum Language { yaml, javaScript }
 
 enum NodeRole { landing, regular }
 
-enum ImportOption { code, url, file }
+enum ImportOption { url, file }
 
 enum ScrollPositionCacheKeys { tools, profiles, proxiesList, proxiesTabList }
 

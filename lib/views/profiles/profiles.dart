@@ -5,7 +5,7 @@ import 'dart:ui';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/edit_profile.dart';
@@ -239,7 +239,8 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
       try {
         await globalState.appController.updateProfile(profile);
       } on Object catch (e) {
-        messages.add('${profile.label ?? profile.id}: ${e.formatError}\n');
+        messages.add('${profile.label ?? profile.id}: ${e.formatError}
+');
         globalState.appController.setProfile(
           profile.copyWith(isUpdating: false),
         );
@@ -276,23 +277,6 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
       child: AppIcon(
         _showNodes ? Icons.description_outlined : Icons.hive_outlined,
       ),
-    );
-  }
-
-  void _handleSort() {
-    final profiles = globalState.config.profiles;
-    showSheet(
-      context: context,
-      builder: (_, type) {
-        return _ReorderableSheet<Profile>(
-          type: type,
-          title: appLocalizations.profilesSort,
-          items: profiles,
-          keyOf: (profile) => profile.id,
-          labelOf: (profile) => profile.label ?? profile.id,
-          onSave: globalState.appController.setProfiles,
-        );
-      },
     );
   }
 
@@ -356,11 +340,6 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
                 icon: Icons.sync,
                 label: appLocalizations.syncAll,
                 onPressed: _updateProfiles,
-              ),
-              PopupMenuItemData(
-                icon: Icons.sort,
-                label: appLocalizations.sort,
-                onPressed: _handleSort,
               ),
             ],
           ),
@@ -517,7 +496,7 @@ class _ProfileFold extends StatelessWidget {
   }
 }
 
-class ProfileItem extends StatelessWidget {
+class ProfileItem extends StatefulWidget {
   final Profile profile;
   final String? groupValue;
   final String? mergedInto;
@@ -536,6 +515,33 @@ class ProfileItem extends StatelessWidget {
     this.expanded,
     this.onToggleExpanded,
   });
+
+  @override
+  State<ProfileItem> createState() => _ProfileItemState();
+}
+
+class _ProfileItemState extends State<ProfileItem> {
+  // 卡片右上角 ⋮ 按钮的几何：36px 方钮、内缩 6px；菜单顶边落在其下方 4px。
+  static const _trailingSize = 36.0;
+  static const _trailingInset = 6.0;
+  static const _menuGap = 4.0;
+
+  bool _hovered = false;
+  PopupOpen? _menuOpen;
+
+  Profile get profile => widget.profile;
+
+  String? get groupValue => widget.groupValue;
+
+  void Function(String? value) get onChanged => widget.onChanged;
+
+  String? get mergedInto => widget.mergedInto;
+
+  bool get nested => widget.nested;
+
+  bool? get expanded => widget.expanded;
+
+  VoidCallback? get onToggleExpanded => widget.onToggleExpanded;
 
   Future<void> _handleDeleteProfile(BuildContext context) async {
     final bundleLabel = mergedInto;
@@ -565,11 +571,11 @@ class ProfileItem extends StatelessWidget {
           return;
         }
 
-        final previewPage = EditorPage(
+        final previewPage = ViewerPage(
           title:
               '${appLocalizations.runtimeConfig} - ${profile.label ?? profile.id}',
           content: content,
-          readOnly: true,
+          highlightMode: editorYamlMode,
         );
         unawaited(
           BaseNavigator.push<String>(
@@ -1209,17 +1215,6 @@ class ProfileItem extends StatelessWidget {
     return '$useShow / $totalShow';
   }
 
-  // _handleCopyLink(BuildContext context) async {
-  //   await Clipboard.setData(
-  //     ClipboardData(
-  //       text: profile.url,
-  //     ),
-  //   );
-  //   if (context.mounted) {
-  //     context.showNotifier(appLocalizations.copySuccess);
-  //   }
-  // }
-
   Future<void> _handleChangeUsageStyle() async {
     final value = await globalState.showAdaptiveSheet<ProfileUsageStyle>(
       child: OptionsDialog<ProfileUsageStyle>(
@@ -1236,6 +1231,30 @@ class ProfileItem extends StatelessWidget {
         .getProfile(profile.id);
     if (latest == null || latest.usageStyle == value) return;
     appController.setProfile(latest.copyWith(usageStyle: value));
+  }
+
+  Future<void> _handleExportFile(BuildContext context) async {
+    final res = await globalState.appController.safeRun<bool>(
+      () async {
+        final file = await profile.getFile();
+        final rawName = (profile.label ?? profile.id).trim();
+        final fileName = (rawName.endsWith('.yaml') || rawName.endsWith('.yml'))
+            ? rawName
+            : '$rawName.yaml';
+        final value = await picker.saveFile(
+          fileName,
+          await file.readAsBytes(),
+          allowedExtensions: ['yaml', 'yml'],
+        );
+        if (value == null) return false;
+        return true;
+      },
+      needLoading: true,
+      title: appLocalizations.tip,
+    );
+    if (res == true && context.mounted) {
+      context.showNotifier(appLocalizations.exportSuccess);
+    }
   }
 
   void _handlePushGenProfilePage(BuildContext context, String id) {
@@ -1275,6 +1294,13 @@ class ProfileItem extends StatelessWidget {
           onPressed: _handleChangeUsageStyle,
         ),
       PopupMenuItemData(
+        icon: Icons.file_copy_outlined,
+        label: appLocalizations.exportFile,
+        onPressed: () {
+          _handleExportFile(context);
+        },
+      ),
+      PopupMenuItemData(
         icon: Icons.delete_outlined,
         label: appLocalizations.delete,
         onPressed: () {
@@ -1310,10 +1336,23 @@ class ProfileItem extends StatelessWidget {
     );
   }
 
-  Widget _buildNormalLayout(BuildContext context) {
-    final trailingWidget = SizedBox(
-      height: 36,
-      width: 36,
+  /// 菜单锚点 = ⋮ 按钮右下角下方 [_menuGap]：菜单右缘与按钮右缘对齐，
+  /// 不压住按钮。坐标相对卡片（CommonPopupBox 的锚定盒）。
+  void _openMenuAtTrailingButton() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    _menuOpen?.call(
+      offset: Offset(
+        box.size.width - _trailingInset,
+        _trailingInset + _trailingSize + _menuGap,
+      ),
+    );
+  }
+
+  Widget _buildTrailing(BuildContext context) {
+    return SizedBox(
+      height: _trailingSize,
+      width: _trailingSize,
       child: FadeThroughBox(
         child: profile.isUpdating
             ? Padding(
@@ -1326,48 +1365,31 @@ class ProfileItem extends StatelessWidget {
                   ),
                 ),
               )
-            : CommonPopupBox(
-                popup: CommonPopupMenu(items: _buildMenuItems(context)),
-                targetBuilder: (open) {
-                  return IconButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      open();
-                    },
-                    tooltip: appLocalizations.more,
-                    icon: Icon(context.resolveIcon(Icons.more_vert), size: 20),
-                  );
-                },
+            : IconButton(
+                padding: EdgeInsets.zero,
+                onPressed: _openMenuAtTrailingButton,
+                icon: const Icon(Icons.more_vert, size: 20),
               ),
       ),
     );
-    return Stack(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 36),
-                child: _buildTitleRow(context),
-              ),
-              _buildContentInfo(context),
-            ],
-          ),
-        ),
-        Positioned(top: 6, right: 6, child: trailingWidget),
-        if (onToggleExpanded != null)
-          Positioned(
-            right: 6,
-            bottom: 4,
-            child: SizedBox.square(
-              dimension: 36,
-              child: _buildExpandButton(context),
+  }
+
+  Widget _buildContent(BuildContext context, {required bool showTrailing}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              right: showTrailing ? _trailingSize : 0,
             ),
+            child: _buildTitleRow(context),
           ),
-      ],
+          _buildContentInfo(context),
+        ],
+      ),
     );
   }
 
@@ -1403,18 +1425,47 @@ class ProfileItem extends StatelessWidget {
       isSelected: profile.id == groupValue,
       onPressed: isTV ? null : () => onChanged(profile.id),
       onLongPress: isTV ? null : () => _handlePreviewRuntimeConfig(context),
-      child: isTV ? _buildTVLayout(context) : _buildNormalLayout(context),
+      child: isTV
+          ? _buildTVLayout(context)
+          : _buildContent(
+              context,
+              showTrailing: _hovered || profile.isUpdating,
+            ),
     );
     if (isTV) return card;
-    return GestureDetector(
-      onSecondaryTapUp: profile.isUpdating
-          ? null
-          : (details) => showContextMenu(
-              context,
-              position: details.globalPosition,
-              items: _buildMenuItems(context),
-            ),
-      child: card,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: CommonPopupBox(
+        popup: CommonPopupMenu(
+          items: _buildMenuItems(context),
+          minItemVerticalPadding: 10,
+        ),
+        targetBuilder: (open) {
+          _menuOpen = open;
+          return Stack(
+            children: [
+              card,
+              if (_hovered || profile.isUpdating)
+                Positioned(
+                  top: _trailingInset,
+                  right: _trailingInset,
+                  child: _buildTrailing(context),
+                ),
+              if (onToggleExpanded != null)
+                Positioned(
+                  right: _trailingInset,
+                  bottom: 4,
+                  child: SizedBox.square(
+                    dimension: 28,
+                    child: _buildExpandButton(),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

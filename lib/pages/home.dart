@@ -9,7 +9,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-typedef OnSelected = void Function(int index);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,7 +19,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final Map<int, FocusNode> _navFocusNodes = {};
+  final Map<PageLabel, GlobalKey<NavigatorState>> _navigatorKeys = {};
   int _currentNavIndex = 0;
+
+  GlobalKey<NavigatorState> _getNavigatorKey(PageLabel label) {
+    final key = _navigatorKeys.putIfAbsent(label, () => GlobalKey());
+    pageNavigationController.register(label, key);
+    return key;
+  }
 
   FocusNode _getNavFocusNode(int index) {
     return _navFocusNodes.putIfAbsent(index, () => FocusNode());
@@ -45,6 +51,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    pageNavigationController.seed(globalState.appState.pageLabel);
     if (globalState.isAndroidTV) {
       _requestNavFocus(0);
     }
@@ -54,6 +61,9 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     for (final node in _navFocusNodes.values) {
       node.dispose();
+    }
+    for (final label in _navigatorKeys.keys) {
+      pageNavigationController.unregister(label);
     }
     super.dispose();
   }
@@ -194,6 +204,7 @@ class _HomePageState extends State<HomePage> {
                   item: navigationItem,
                   isMobile: isMobile,
                   keep: navigationItem.keep || keepAll,
+                  navigatorKey: _getNavigatorKey(navigationItem.label),
                 );
               },
             );
@@ -274,7 +285,7 @@ class _HomePageState extends State<HomePage> {
                     final isFocused = focusNode.hasFocus;
                     return InkWell(
                       focusNode: focusNode,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: surfaceBorderRadius,
                       onTap: () {
                         if (isSelected) {
                           globalState.appController.reselectPage(item.label);
@@ -298,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                                       : 0.26,
                                 )
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: surfaceBorderRadius,
                           border: isFocused
                               ? Border.all(
                                   color: context.colorScheme.primary,
@@ -349,12 +360,14 @@ class _NavigationPage extends ConsumerStatefulWidget {
   final NavigationItem item;
   final bool isMobile;
   final bool keep;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   const _NavigationPage({
     super.key,
     required this.item,
     required this.isMobile,
     required this.keep,
+    required this.navigatorKey,
   });
 
   @override
@@ -407,7 +420,7 @@ class _NavigationPageState extends ConsumerState<_NavigationPage>
             child: widget.isMobile
                 ? view
                 : Navigator(
-                    key: ValueKey('${widget.item.label.name}_navigator'),
+                    key: widget.navigatorKey,
                     pages: [MaterialPage(child: view)],
                     onDidRemovePage: (_) {},
                   ),

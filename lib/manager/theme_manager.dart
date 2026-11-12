@@ -67,22 +67,6 @@ class _ThemeManagerState extends ConsumerState<ThemeManager> {
     );
   }
 
-  // _buildScrollbar(Widget child) {
-  //   return Consumer(
-  //     builder: (_, ref, child) {
-  //       final isMobileView = ref.read(isMobileViewProvider);
-  //       if (isMobileView) {
-  //         return ScrollConfiguration(
-  //           behavior: HiddenBarScrollBehavior(),
-  //           child: child!,
-  //         );
-  //       }
-  //       return child!;
-  //     },
-  //     child: child,
-  //   );
-  // }
-
   @override
   Widget build(BuildContext context) {
     final textScale = ref.read(

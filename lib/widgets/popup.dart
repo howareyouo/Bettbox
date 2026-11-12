@@ -48,9 +48,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
           return Align(
             alignment: Alignment.topRight,
             child: CustomSingleChildLayout(
-              delegate: OverflowAwareLayoutDelegate(
-                offset: value.translate(48, -8),
-              ),
+              delegate: OverflowAwareLayoutDelegate(offset: value),
               child: child,
             ),
           );
@@ -247,9 +245,6 @@ class _CascadeMenuState extends State<_CascadeMenu> {
   Widget _buildBackHeader(PopupMenuItemData item) {
     final colorScheme = context.colorScheme;
     return InkWell(
-      customBorder: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
       onTap: () => _handleSubmenu(null, null),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 10, 22, 10),
@@ -515,7 +510,7 @@ class PopupController extends ValueNotifier<bool> {
   }
 }
 
-typedef PopupOpen = Future<void> Function({Offset offset});
+typedef PopupOpen = Future<void> Function({Offset? offset});
 
 class CommonPopupBox extends StatefulWidget {
   final Widget Function(PopupOpen open) targetBuilder;
@@ -534,10 +529,10 @@ class CommonPopupBox extends StatefulWidget {
 class _CommonPopupBoxState extends State<CommonPopupBox> {
   bool _isOpen = false;
   final _targetOffsetValueNotifier = ValueNotifier<Offset>(Offset.zero);
-  Offset _offset = Offset.zero;
+  Offset? _offset;
   CommonPopupRoute<dynamic>? _route;
 
-  Future<void> _open({Offset offset = Offset.zero}) {
+  Future<void> _open({Offset? offset}) {
     _offset = offset;
     _updateOffset();
     _isOpen = true;
@@ -569,12 +564,25 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     if (renderBox == null) {
       return;
     }
-    final viewPadding = MediaQuery.viewPaddingOf(context);
-    _targetOffsetValueNotifier.value = renderBox
-        .localToGlobal(
-          Offset.zero.translate(viewPadding.right, viewPadding.top),
-        )
-        .translate(_offset.dx, _offset.dy);
+    // 默认锚在目标右下角下方留 4 间距：菜单右边缘与按钮右边缘对齐，
+    // 顶边落在按钮之外，不再压住触发按钮。
+    final localAnchor =
+        _offset ?? Offset(renderBox.size.width, renderBox.size.height + 4);
+    // 锚点须相对路由实际落入的 overlay 表达：桌面视图下路由推入
+    // home 的嵌套 Navigator，其 overlay 原点 ≠ 窗口原点（侧边栏宽 +
+    // header 高），用窗口坐标会在 overlay 里整体平移。
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final Offset anchor;
+    if (overlayBox != null && overlayBox.hasSize) {
+      anchor = renderBox.localToGlobal(localAnchor, ancestor: overlayBox);
+    } else {
+      final viewPadding = MediaQuery.viewPaddingOf(context);
+      anchor = renderBox.localToGlobal(
+        localAnchor.translate(-viewPadding.left, -viewPadding.top),
+      );
+    }
+    _targetOffsetValueNotifier.value = anchor;
   }
 
   @override
@@ -598,20 +606,17 @@ class OverflowAwareLayoutDelegate extends SingleChildLayoutDelegate {
   OverflowAwareLayoutDelegate({required this.offset});
 
   @override
-  Size getSize(BoxConstraints constraints) {
-    return Size(constraints.maxWidth, constraints.maxHeight);
-  }
-
-  @override
   Offset getPositionForChild(Size size, Size childSize) {
     final safeOffset = Offset(16, 16);
+    // 菜单可能比可用空间还大（极小窗口）：上限取 max(0, …)，
+    // 否则 clamp(0, 负数) 会抛 ArgumentError。
     double x = (offset.dx - childSize.width).clamp(
       0,
-      size.width - safeOffset.dx - childSize.width,
+      math.max(0, size.width - safeOffset.dx - childSize.width),
     );
     double y = (offset.dy).clamp(
       0,
-      size.height - safeOffset.dy - childSize.height,
+      math.max(0, size.height - safeOffset.dy - childSize.height),
     );
     return Offset(x, y);
   }
@@ -660,11 +665,7 @@ class CommonPopupMenu extends StatelessWidget {
     route.completed.then((_) => onPressed());
   }
 
-  Widget _popupMenuItem(
-    BuildContext context, {
-    required PopupMenuItemData item,
-    required int index,
-  }) {
+  Widget _popupMenuItem(BuildContext context, PopupMenuItemData item) {
     final colorScheme = context.colorScheme;
     final isLight = colorScheme.brightness == Brightness.light;
     final onPressed = item.onPressed;
@@ -702,9 +703,6 @@ class CommonPopupMenu extends StatelessWidget {
         }
 
         return InkWell(
-          customBorder: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
           onHover: onSubmenu == null || !hoverSubmenu
               ? null
               : (hovering) {
@@ -723,14 +721,7 @@ class CommonPopupMenu extends StatelessWidget {
               : null,
           child: Container(
             constraints: BoxConstraints(minWidth: minWidth),
-            decoration: active
-                ? ShapeDecoration(
-                    color: highlight,
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  )
-                : null,
+            decoration: active ? BoxDecoration(color: highlight) : null,
             padding: EdgeInsets.only(
               left: 14,
               right: submenu || trailing != null ? 10 : 22,
@@ -797,28 +788,20 @@ class CommonPopupMenu extends StatelessWidget {
       children: [
         if (header != null) ...[
           header,
-          const Divider(height: 9, indent: 8, endIndent: 8),
+          const Divider(height: 9),
         ],
-        for (final item in items.asMap().entries) ...[
-          _popupMenuItem(context, item: item.value, index: item.key),
-          if (item.value != items.last) const SizedBox(height: 2),
+        for (var i = 0; i < items.length; i++) ...[
+          _popupMenuItem(context, items[i]),
+          if (i < items.length - 1) const SizedBox(height: 2),
         ],
         if (footer != null) ...[
-          const Divider(height: 9, indent: 8, endIndent: 8),
+          const Divider(height: 9),
           footer,
         ],
       ],
     );
-    final body = scrollable
-        ? SingleChildScrollView(
-            padding: const EdgeInsets.all(6),
-            child: content,
-          )
-        : Padding(padding: const EdgeInsets.all(6), child: content);
-    if (bare) return IntrinsicWidth(child: body);
-    final menu = IntrinsicWidth(child: surface(context, body));
-    if (scrollable) return menu;
-    return IntrinsicHeight(child: menu);
+    final body = scrollable ? SingleChildScrollView(child: content) : content;
+    return IntrinsicWidth(child: bare ? body : surface(context, body));
   }
 
   static Widget surface(BuildContext context, Widget child, {Key? key}) {
@@ -832,8 +815,8 @@ class CommonPopupMenu extends StatelessWidget {
           ? colorScheme.surfaceContainerLowest
           : colorScheme.surfaceContainerHighest,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(26),
+      shape: RoundedRectangleBorder(
+        borderRadius: surfaceBorderRadius,
         side: BorderSide(
           color: colorScheme.outlineVariant.withValues(
             alpha: isLight ? 0.45 : 0.25,

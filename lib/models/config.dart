@@ -140,6 +140,13 @@ const List<MediaPlatform> defaultPinnedMediaPlatforms = [
   MediaPlatform.cloudflare,
 ];
 
+const _renamedMediaPlatforms = {
+  'chatgpt': MediaPlatform.openai,
+  'qqnews': MediaPlatform.tencent,
+  'alidnsprobe': MediaPlatform.alibaba,
+  'bytedance': MediaPlatform.douyin,
+};
+
 List<MediaPlatform> pinnedMediaPlatformsSafeFromJson(
   List<dynamic>? pinnedMediaPlatforms,
 ) {
@@ -148,20 +155,9 @@ List<MediaPlatform> pinnedMediaPlatformsSafeFromJson(
     final list = <MediaPlatform>[];
     for (final e in pinnedMediaPlatforms) {
       final str = e.toString();
-      if (str == 'chatgpt') {
-        list.add(MediaPlatform.openai);
-        continue;
-      }
-      if (str == 'qqnews') {
-        list.add(MediaPlatform.tencent);
-        continue;
-      }
-      if (str == 'alidnsprobe') {
-        list.add(MediaPlatform.alibaba);
-        continue;
-      }
-      if (str == 'bytedance') {
-        list.add(MediaPlatform.douyin);
+      final renamed = _renamedMediaPlatforms[str];
+      if (renamed != null) {
+        list.add(renamed);
         continue;
       }
       final p = MediaPlatform.values.where((v) => v.name == str).firstOrNull;
@@ -240,6 +236,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(defaultAndroidDashboardSizes)
     Map<String, String> mobileDashboardSizes,
     @Default(<String, String>{}) Map<String, String> desktopDashboardSizes,
+    @Default('') String externalEditor,
   }) = _AppSettingProps;
 
   factory AppSettingProps.fromJson(Map<String, Object?> json) =>

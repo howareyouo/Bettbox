@@ -2,7 +2,6 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:bett_box/common/common.dart';
-import 'package:bett_box/widgets/scroll.dart';
 import 'package:material_ui/material_ui.dart';
 
 class BaseScrollBehavior extends MaterialScrollBehavior {
@@ -25,21 +24,6 @@ class HiddenBarScrollBehavior extends BaseScrollBehavior {
     ScrollableDetails details,
   ) {
     return child;
-  }
-}
-
-class ShowBarScrollBehavior extends BaseScrollBehavior {
-  @override
-  Widget buildScrollbar(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) {
-    return CommonScrollBar(
-      controller: details.controller,
-      axis: axisDirectionToAxis(details.direction),
-      child: child,
-    );
   }
 }
 

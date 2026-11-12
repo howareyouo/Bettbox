@@ -125,13 +125,6 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
     return null;
   }
 
-  // @override
-  // Future<bool> stopTun() {
-  //   return invoke<bool>(
-  //     method: ActionMethod.stopTun,
-  //   );
-  // }
-
   @override
   Future<AndroidVpnOptions?> getAndroidVpnOptions() async {
     final res = await invoke<String>(method: ActionMethod.getAndroidVpnOptions);

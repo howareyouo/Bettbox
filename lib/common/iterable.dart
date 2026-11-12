@@ -10,36 +10,6 @@ extension IterableExt<T> on Iterable<T> {
       yield iterator.current;
     }
   }
-
-  Iterable<List<T>> chunks(int size) sync* {
-    if (length == 0) return;
-    var iterator = this.iterator;
-    while (iterator.moveNext()) {
-      var chunk = [iterator.current];
-      for (var i = 1; i < size && iterator.moveNext(); i++) {
-        chunk.add(iterator.current);
-      }
-      yield chunk;
-    }
-  }
-
-  Iterable<T> fill(int length, {required T Function(int count) filler}) sync* {
-    int count = 0;
-    for (var item in this) {
-      yield item;
-      count++;
-      if (count >= length) return;
-    }
-    while (count < length) {
-      yield filler(count);
-      count++;
-    }
-  }
-
-  Iterable<T> takeLast({int count = 50}) {
-    if (count <= 0) return Iterable.empty();
-    return count >= length ? this : toList().skip(length - count);
-  }
 }
 
 extension ListExt<T> on List<T> {
@@ -50,63 +20,6 @@ extension ListExt<T> on List<T> {
     if (length > maxLength) {
       removeRange(0, length - maxLength);
     }
-  }
-
-  List<T> intersection(List<T> list) {
-    return where((item) => list.contains(item)).toList();
-  }
-
-  List<List<T>> batch(int maxConcurrent) {
-    final batches = (length / maxConcurrent).ceil();
-    final List<List<T>> res = [];
-    for (int i = 0; i < batches; i++) {
-      if (i != batches - 1) {
-        res.add(sublist(i * maxConcurrent, maxConcurrent * (i + 1)));
-      } else {
-        res.add(sublist(i * maxConcurrent, length));
-      }
-    }
-    return res;
-  }
-
-  List<T> safeSublist(int start, [int? end]) {
-    if (start <= 0) return this;
-    if (start > length) return [];
-    if (end != null) {
-      return sublist(start, end.clamp(start, length));
-    }
-    return sublist(start);
-  }
-
-  T safeGet(int index) {
-    if (length > index) return this[index];
-    return last;
-  }
-}
-
-extension DoubleListExt on List<double> {
-  int findInterval(num target) {
-    if (isEmpty) return -1;
-    if (target < first) return -1;
-    if (target >= last) return length - 1;
-
-    int left = 0;
-    int right = length - 1;
-
-    while (left <= right) {
-      int mid = left + (right - left) ~/ 2;
-
-      if (mid == length - 1 ||
-          (this[mid] <= target && target < this[mid + 1])) {
-        return mid;
-      } else if (target < this[mid]) {
-        right = mid - 1;
-      } else {
-        left = mid + 1;
-      }
-    }
-
-    return -1;
   }
 }
 
