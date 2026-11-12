@@ -37,7 +37,7 @@ class _NetworkDetectionState extends ConsumerState<NetworkDetection> {
     return CommonPopupBox(
       targetBuilder: (open) => IconButton(
         padding: EdgeInsets.zero,
-        onPressed: () => open(offset: const Offset(0, 20)),
+        onPressed: () => open(),
         icon: Icon(
           size: 16.ap,
           Icons.settings_outlined,
@@ -203,9 +203,7 @@ class _NetworkDetectionState extends ConsumerState<NetworkDetection> {
                     style: context.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       height: 1.2,
-                      fontFeatures: const [
-                        FontFeature.tabularFigures(),
-                      ],
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

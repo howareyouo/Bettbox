@@ -48,9 +48,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
           return Align(
             alignment: Alignment.topRight,
             child: CustomSingleChildLayout(
-              delegate: OverflowAwareLayoutDelegate(
-                offset: value.translate(48, -8),
-              ),
+              delegate: OverflowAwareLayoutDelegate(offset: value),
               child: child,
             ),
           );

@@ -11,6 +11,7 @@ import 'package:bett_box/views/profiles/edit_profile.dart';
 import 'package:bett_box/views/profiles/merge_profile.dart';
 import 'package:bett_box/views/profiles/override_profile.dart';
 import 'package:bett_box/views/profiles/scripts.dart';
+import 'package:bett_box/widgets/reorder_policy.dart';
 import 'package:bett_box/widgets/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -60,6 +61,92 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
     value: 1,
   );
   String? _expandingId;
+
+  final _gridKey = GlobalKey();
+  final _tileKeys = <String, GlobalKey>{};
+  final _policy = ReorderPolicy();
+
+  bool get _draggable => !globalState.isAndroidTV;
+
+  GlobalKey _tileKeyOf(String id) => _tileKeys.putIfAbsent(id, GlobalKey.new);
+
+  Rect? _tileRect(String id) {
+    final box = _tileKeys[id]?.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// 卡片拖动换位：拖动中的卡片中心须越过目标卡片 [ReorderPolicy] 的
+  /// 迟滞阈值才换，避免贴着边框掠过时误排；换位直接落到配置里，
+  /// 折叠成员行跟着它们的 bundle 一起移动（成员行本身不可拖）。
+  void _moveProfile(Profile from, Profile to, Offset feedbackTopLeft) {
+    final source = _tileRect(from.id);
+    final target = _tileRect(to.id);
+    if (!_policy.shouldSwap(
+      source: source,
+      target: target,
+      dragCenter:
+          feedbackTopLeft + (source?.size.center(Offset.zero) ?? Offset.zero),
+    )) {
+      return;
+    }
+    final moved = moveItemTo(
+      globalState.config.profiles,
+      (profile) => profile.id,
+      from.id,
+      to.id,
+    );
+    if (moved == null) return;
+    globalState.appController.setProfiles(moved);
+  }
+
+  /// 桌面按下滑动即拖，触屏长按 300ms 起拖；拖动中原位留半透明占位，
+  /// 松手后由 [FlipTile] 把换位过程补成 FLIP 动画。
+  Widget _buildDraggable(Profile profile, Widget child) {
+    if (!_draggable) return child;
+    final tileKey = _tileKeyOf(profile.id);
+    final target = DragTarget<Profile>(
+      // onWillAccept fires only on target entry; the penetration threshold
+      // needs re-checking on every pointer update, which only onMove gives.
+      onMove: (details) {
+        if (details.data.id != profile.id) {
+          _moveProfile(details.data, profile, details.offset);
+        }
+      },
+      onWillAcceptWithDetails: (_) => false,
+      builder: (_, _, _) => child,
+    );
+    final feedback = Builder(
+      builder: (_) {
+        final box = tileKey.currentContext?.findRenderObject();
+        return buildDragFeedback(
+          box is RenderBox && box.hasSize ? box : null,
+          child,
+        );
+      },
+    );
+    final placeholder = Opacity(opacity: 0.3, child: child);
+    final draggable = system.isDesktop
+        ? Draggable<Profile>(
+            data: profile,
+            feedback: feedback,
+            childWhenDragging: placeholder,
+            onDragStarted: HapticFeedback.selectionClick,
+            child: target,
+          )
+        : LongPressDraggable<Profile>(
+            data: profile,
+            delay: const Duration(milliseconds: 300),
+            feedback: feedback,
+            childWhenDragging: placeholder,
+            onDragStarted: HapticFeedback.mediumImpact,
+            child: target,
+          );
+    return FlipTile(
+      gridKey: _gridKey,
+      child: KeyedSubtree(key: tileKey, child: draggable),
+    );
+  }
 
   void _toggleExpanded(String id) {
     if (system.isAndroid &&
@@ -137,7 +224,10 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
         items.add(
           GridItem(
             key: ValueKey(profile.id),
-            child: _buildProfileItem(profile, profiles, currentProfileId),
+            child: _buildDraggable(
+              profile,
+              _buildProfileItem(profile, profiles, currentProfileId),
+            ),
           ),
         );
         continue;
@@ -146,11 +236,14 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
       items.add(
         GridItem(
           key: ValueKey(profile.id),
-          child: _buildProfileItem(
+          child: _buildDraggable(
             profile,
-            profiles,
-            currentProfileId,
-            expanded: expanded,
+            _buildProfileItem(
+              profile,
+              profiles,
+              currentProfileId,
+              expanded: expanded,
+            ),
           ),
         ),
       );
@@ -317,43 +410,51 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
             columns,
             folded,
           );
-          return ScrollEdgeRise(
-            builder: (context, rise) {
-              final padding = EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16 + rise,
-                bottom:
-                    (topLevel % columns == 0 ? 88 : 16) +
-                    (isMobileView
-                        ? getFloatingBottomBarReserveHeight(context)
-                        : 0),
-              );
-              return Align(
-                alignment: Alignment.topCenter,
-                child: columns == 1
-                    ? ListView.separated(
-                        key: profilesStoreKey,
-                        padding: padding,
-                        itemCount: items.length,
-                        itemBuilder: (_, index) => KeyedSubtree(
-                          key: items[index].key,
-                          child: items[index].child,
-                        ),
-                        separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      )
-                    : SingleChildScrollView(
-                        key: profilesStoreKey,
-                        padding: padding,
-                        child: Grid(
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          crossAxisCount: columns,
-                          children: items,
-                        ),
-                      ),
-              );
-            },
+          return ScrollConfiguration(
+            // 桌面默认把鼠标算作滚动手势：不摘掉它，按下拖卡片只会滚动整页。
+            behavior: NoMouseDragScrollBehavior(),
+            child: ScrollEdgeRise(
+              builder: (context, rise) {
+                final padding = EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16 + rise,
+                  bottom:
+                      (topLevel % columns == 0 ? 88 : 16) +
+                      (isMobileView
+                          ? getFloatingBottomBarReserveHeight(context)
+                          : 0),
+                );
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: KeyedSubtree(
+                    key: _gridKey,
+                    child: columns == 1
+                        ? ListView.separated(
+                            key: profilesStoreKey,
+                            padding: padding,
+                            itemCount: items.length,
+                            itemBuilder: (_, index) => KeyedSubtree(
+                              key: items[index].key,
+                              child: items[index].child,
+                            ),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 14),
+                          )
+                        : SingleChildScrollView(
+                            key: profilesStoreKey,
+                            padding: padding,
+                            child: Grid(
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 14,
+                              crossAxisCount: columns,
+                              children: items,
+                            ),
+                          ),
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
@@ -1182,9 +1283,7 @@ class _ProfileItemState extends State<ProfileItem> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.only(
-              right: showTrailing ? _trailingSize : 0,
-            ),
+            padding: EdgeInsets.only(right: showTrailing ? _trailingSize : 0),
             child: _buildTitleRow(context),
           ),
           _buildContentInfo(context),
@@ -1269,7 +1368,6 @@ class _ProfileItemState extends State<ProfileItem> {
     );
   }
 }
-
 
 class ReorderableProfilesSheet extends StatefulWidget {
   final List<Profile> profiles;
