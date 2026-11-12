@@ -784,24 +784,19 @@ class CommonPopupMenu extends StatelessWidget {
       children: [
         if (header != null) ...[
           header,
-          const Divider(height: 9, indent: 8, endIndent: 8),
+          const Divider(height: 9),
         ],
         for (final item in items.asMap().entries) ...[
           _popupMenuItem(context, item: item.value, index: item.key),
           if (item.value != items.last) const SizedBox(height: 2),
         ],
         if (footer != null) ...[
-          const Divider(height: 9, indent: 8, endIndent: 8),
+          const Divider(height: 9),
           footer,
         ],
       ],
     );
-    final body = scrollable
-        ? SingleChildScrollView(
-            padding: const EdgeInsets.all(6),
-            child: content,
-          )
-        : Padding(padding: const EdgeInsets.all(6), child: content);
+    final body = scrollable ? SingleChildScrollView(child: content) : content;
     if (bare) return IntrinsicWidth(child: body);
     final menu = IntrinsicWidth(child: surface(context, body));
     if (scrollable) return menu;
