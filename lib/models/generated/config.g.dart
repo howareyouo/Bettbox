@@ -118,6 +118,7 @@ _AppSettingProps _$AppSettingPropsFromJson(
         (k, e) => MapEntry(k, e as String),
       ) ??
       const <String, String>{},
+  externalEditor: json['externalEditor'] as String? ?? '',
 );
 
 Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
@@ -185,6 +186,7 @@ Map<String, dynamic> _$AppSettingPropsToJson(_AppSettingProps instance) =>
       'localPingOptions': instance.localPingOptions,
       'mobileDashboardSizes': instance.mobileDashboardSizes,
       'desktopDashboardSizes': instance.desktopDashboardSizes,
+      'externalEditor': instance.externalEditor,
     };
 
 const _$StartSwitchStyleEnumMap = {

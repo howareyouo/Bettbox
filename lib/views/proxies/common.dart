@@ -115,6 +115,16 @@ double getItemHeight(ProxyCardType proxyCardType) {
   };
 }
 
+/// 代理卡片网格的统一行高与行顶偏移（行间距 8px）。
+/// 各代理视图的“定位到选中节点”滚动计算共用这一个公式。
+const _gridGap = 8.0;
+
+double gridRowStride(double itemHeight) => itemHeight + _gridGap;
+
+/// 第 [rowIndex] 行（第 [index] 个卡片所在行）顶部的纵向偏移。
+double gridRowOffset(int index, int columns, double itemHeight) =>
+    (index ~/ columns) * gridRowStride(itemHeight);
+
 Future<void> proxyDelayTest(Proxy proxy, [String? testUrl]) async {
   if (_isNonTestableProxy(proxy)) return;
   final appController = globalState.appController;
@@ -282,6 +292,7 @@ double getScrollToSelectedOffset({
     (proxy) => proxy.name == selectedProxyName,
   );
   final selectedIndex = findSelectedIndex != -1 ? findSelectedIndex : 0;
-  final rows = (selectedIndex / columns).floor();
-  return rows * getItemHeight(proxyCardType) + (rows - 1) * 8;
+  // 与旧行为一致：落在目标行上方一个行距处，避免卡片贴住列表顶端。
+  return gridRowOffset(selectedIndex, columns, getItemHeight(proxyCardType)) -
+      _gridGap;
 }

@@ -128,6 +128,7 @@ class GlobalState {
 
   set appController(AppController appController) {
     _appController = appController;
+    clashService?.onCoreLostRestart = appController.restartCore;
     isInit = true;
   }
 
@@ -759,9 +760,9 @@ class GlobalState {
   Future<String> validatePatchedConfig({
     required ClashConfig patchConfig,
   }) async {
-    return await clashCore.validateConfig(
+    return clashCore.validateConfig(
       '',
-      setup: await buildSetupParams(patchConfig: patchConfig),
+      setup: await getSetupParams(pathConfig: patchConfig),
     );
   }
 
@@ -1996,3 +1997,4 @@ class MediaUnlockStateNotifier {
 }
 
 final mediaUnlockState = MediaUnlockStateNotifier();
+

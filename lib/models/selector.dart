@@ -97,19 +97,6 @@ abstract class ProxiesTabState with _$ProxiesTabState {
 }
 
 @freezed
-abstract class ProxyGroupSelectorState with _$ProxyGroupSelectorState {
-  const factory ProxyGroupSelectorState({
-    required String? testUrl,
-    required ProxiesSortType proxiesSortType,
-    required ProxyCardType proxyCardType,
-    required num sortNum,
-    required GroupType groupType,
-    required List<Proxy> proxies,
-    required int columns,
-  }) = _ProxyGroupSelectorState;
-}
-
-@freezed
 abstract class MoreToolsSelectorState with _$MoreToolsSelectorState {
   const factory MoreToolsSelectorState({
     required List<NavigationItem> navigationItems,
@@ -187,15 +174,6 @@ extension PackageListSelectorStateExt on PackageListSelectorState {
 
     return combined..sort(comparePackages);
   }
-}
-
-@freezed
-abstract class ProxiesActionsState with _$ProxiesActionsState {
-  const factory ProxiesActionsState({
-    required PageLabel pageLabel,
-    required ProxiesType type,
-    required bool hasProviders,
-  }) = _ProxiesActionsState;
 }
 
 @freezed

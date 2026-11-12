@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
+import 'package:bett_box/views/profiles/external_editor.dart';
 import 'package:bett_box/views/profiles/managed_options.dart';
 import 'package:bett_box/widgets/card.dart';
 import 'package:bett_box/widgets/dialog.dart';
@@ -22,7 +24,6 @@ import 'package:bett_box/widgets/scroll.dart';
 import 'package:bett_box/widgets/sheet.dart';
 import 'package:bett_box/widgets/text.dart';
 import 'package:bett_box/widgets/delay_animation_dialog.dart';
-import 'package:code_forge/code_forge.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
@@ -146,11 +147,22 @@ class ScriptsView extends ConsumerStatefulWidget {
 
 class _ScriptsViewState extends ConsumerState<ScriptsView> {
   final _managedMenuOpen = ValueNotifier(false);
+  final ExternalScriptEditorWatcher _editorWatcher =
+      ExternalScriptEditorWatcher();
+  StreamSubscription<FileSystemEvent>? _managedEditSub;
+  Timer? _managedEditDebounce;
 
   @override
   void dispose() {
     _managedMenuOpen.dispose();
+    _editorWatcher.dispose();
+    _managedEditSub?.cancel();
+    _managedEditDebounce?.cancel();
     super.dispose();
+  }
+
+  void _handleShowExternalEditorSetting() {
+    showDialog(context: context, builder: (_) => const ExternalEditorDialog());
   }
 
   Future<void> _handleDelScript(String label) async {
@@ -262,24 +274,17 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
   Future<void> _handleViewManaged() async {
     final script = await _loadManaged();
     if (script == null || !mounted) return;
-    unawaited(
-      BaseNavigator.push(
-        context,
-        EditorPage(
-          title: appLocalizations.managedMode,
-          content: script.content,
-          languages: const [Language.javaScript],
-          readOnly: true,
-        ),
-        maintainState: false,
+    BaseNavigator.push(
+      context,
+      ViewerPage(
+        title: appLocalizations.managedMode,
+        content: script.content,
       ),
+      maintainState: false,
     );
   }
 
-  Future<bool> _handleManagedEditorSave(
-    BuildContext editorContext,
-    String content,
-  ) async {
+  Future<bool> _applyManagedContent(String content) async {
     final props = ref.read(managedSettingProvider);
     final res = await globalState.appController
         .safeRun<({String? syncedVersion})>(
@@ -295,83 +300,54 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     globalState.appController.updateManagedSetting(
       (state) => state.copyWith(syncedVersion: res.syncedVersion),
     );
-    if (editorContext.mounted) {
-      Navigator.of(editorContext).pop();
-    }
     return true;
   }
 
+  /// 托管脚本走外部编辑器：编辑期间监听临时文件，保存即校验并落库。
   Future<void> _handleEditManaged() async {
     final props = ref.read(managedSettingProvider);
-    final data = await globalState.appController
-        .safeRun<({String raw, String bundled})>(
-          () async {
-            final (raw, bundled) = await (
-              ManagedScript.read(props),
-              ManagedScript.readBundled(),
-            ).wait;
-            return (raw: raw, bundled: bundled);
-          },
-          needLoading: true,
-          title: appLocalizations.tip,
-        );
+    final data = await globalState.appController.safeRun<String>(
+      () => ManagedScript.read(props),
+      needLoading: true,
+      title: appLocalizations.tip,
+    );
     if (data == null || !mounted) return;
-    var savedContent = CodeForgeController.normalizeLineBreaks(data.raw);
-    final bundledContent = CodeForgeController.normalizeLineBreaks(
-      data.bundled,
+    _managedEditSub?.cancel();
+    final file = File(
+      '${await appPath.relayPath}${Platform.pathSeparator}'
+      'managed-${DateTime.now().microsecondsSinceEpoch}.js',
     );
-    unawaited(
-      BaseNavigator.push(
-        context,
-        EditorPage(
-          title: appLocalizations.managedMode,
-          content: savedContent,
-          defaultContent: bundledContent,
-          languages: const [Language.javaScript],
-          onReset: (_) async {
-            final res = await globalState.showMessage(
-              title: appLocalizations.restoreBundled,
-              message: TextSpan(text: appLocalizations.resetTip),
-            );
-            if (res != true || !mounted) return false;
-            final restored = await globalState.appController.safeRun<bool>(
-              () async {
-                await ManagedScript.restore();
-                return true;
-              },
-              silence: false,
-            );
-            if (restored != true || !mounted) return false;
-            savedContent = bundledContent;
-            if (ref.read(managedSettingProvider).syncedVersion != null) {
-              globalState.appController.updateManagedSetting(
-                (state) => state.copyWith(syncedVersion: null),
-              );
-            }
-            globalState.showNotifier(appLocalizations.success);
-            return true;
-          },
-          onSave: (editorContext, _, content) {
-            _handleManagedEditorSave(editorContext, content);
-          },
-          onPop: (editorContext, _, content) async {
-            if (content == savedContent) {
-              return true;
-            }
-            final res = await globalState.showMessage(
-              message: TextSpan(text: appLocalizations.saveChanges),
-            );
-            if (res == true && editorContext.mounted) {
-              await _handleManagedEditorSave(editorContext, content);
-            } else {
-              return true;
-            }
-            return false;
-          },
-        ),
-        maintainState: false,
-      ),
-    );
+    await file.parent.create(recursive: true);
+    await file.writeAsString(data, flush: true);
+    final editor = ref.read(appSettingProvider).externalEditor;
+    final launched = await launchExternalEditor(file.path, editor);
+    if (!launched) {
+      await _deleteQuietly(file);
+      if (!mounted) return;
+      globalState.showMessage(
+        message: TextSpan(text: appLocalizations.externalEditorLaunchFailed(editor)),
+        cancelable: false,
+      );
+      return;
+    }
+    globalState.showNotifier(appLocalizations.externalEditorTip);
+    _managedEditSub = file
+        .watch(events: FileSystemEvent.modify | FileSystemEvent.create)
+        .listen((_) {
+          _managedEditDebounce?.cancel();
+          _managedEditDebounce = Timer(const Duration(milliseconds: 600), () async {
+            if (!mounted) return;
+            final content = await file.readAsString();
+            if (content == data) return;
+            await _applyManagedContent(content);
+          });
+        }, onError: (_) {});
+  }
+
+  Future<void> _deleteQuietly(File file) async {
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
   }
 
   Widget _buildManagedCard({required bool inUse}) {
@@ -445,7 +421,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                   _managedMenuOpen.value = false;
                 },
                 tooltip: appLocalizations.more,
-                color: context.colorScheme.onSurfaceVariant,
                 icon: ValueListenableBuilder<bool>(
                   valueListenable: _managedMenuOpen,
                   builder: (_, isOpen, _) => MenuDotsIcon(isOpen: isOpen),
@@ -495,8 +470,9 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
           builder: (_, rise) => CommonScrollBar(
             controller: null,
             child: ListView.separated(
-              padding: const EdgeInsets.all(16)
-                  .copyWith(top: 16 + rise, bottom: 16 + 64),
+              padding: const EdgeInsets.all(
+                16,
+              ).copyWith(top: 16 + rise, bottom: 16 + 64),
               itemCount: scripts.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
@@ -590,10 +566,10 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                           popup: CommonPopupMenu(
                             items: [
                               PopupMenuItemData(
-                                icon: Icons.edit,
+                                icon: Icons.edit_note,
                                 label: appLocalizations.edit,
                                 onPressed: () {
-                                  _handleToEditor(script: script);
+                                  _handleExternalEdit(script: script);
                                 },
                               ),
                               if (script.compatible)
@@ -641,134 +617,30 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     );
   }
 
-  Future<void> _handleEditorSave(
-    BuildContext _,
-    String title,
-    String content, {
-    Script? script,
-    String? url,
-  }) async {
-    var finalLabel = title.trim();
-    if (finalLabel.isEmpty) {
-      finalLabel = ref
-          .read(scriptStateProvider.notifier)
-          .getAvailableLabel(appLocalizations.unnamed);
-    }
-    final draft =
-        script?.copyWith(label: finalLabel, url: url) ??
-        Script.create(label: finalLabel, url: url);
-    if (draft.label != script?.label) {
-      final isExits = ref
-          .read(scriptStateProvider.notifier)
-          .isExits(draft.label);
-      if (isExits) {
-        unawaited(
-          globalState.showMessage(
-            message: TextSpan(
-              text: appLocalizations.existsTip(appLocalizations.name),
-            ),
-            cancelable: false,
-          ),
-        );
-        return;
-      }
-    }
-    final newScript = await globalState.appController.safeRun(
-      needLoading: true,
-      silence: false,
-      () async {
-        await globalState.validateScript(
-          draft.copyWith(
-            content: content,
-            digest: content.toMd5(),
-            volatile: volatileScriptPattern.hasMatch(content),
-          ),
-          managed: false,
-        );
-        return draft.writeContent(content);
-      },
-    );
-    if (newScript == null || !mounted) return;
-    ref.read(scriptStateProvider.notifier).setScript(newScript);
-    Navigator.of(context).pop();
-  }
-
-  Future<bool> _handleEditorPop(
-    BuildContext _,
-    String title,
-    String content,
-    String raw, {
-    Script? script,
-  }) async {
-    if (content == raw) {
-      return true;
-    }
-    final res = await globalState.showMessage(
-      message: TextSpan(text: appLocalizations.saveChanges),
-    );
-    if (res == true && mounted) {
-      unawaited(
-        _handleEditorSave(
-          context,
-          title,
-          content,
-          script: script,
-          url: script?.url,
-        ),
-      );
-    } else {
-      return true;
-    }
-    return false;
-  }
-
-  Future<void> _handleToEditor({
+  Future<void> _handleExternalEdit({
     Script? script,
     String? initialContent,
     String? url,
-    bool delayedFocus = false,
   }) async {
-    final title = script?.label ?? '';
-    final raw = initialContent ?? await script?.readContent() ?? scriptTemplate;
-    if (!mounted) return;
-    String? importedUrl = url ?? script?.url;
-    unawaited(
-      BaseNavigator.push(
-        context,
-        EditorPage(
-          titleEditable: true,
-          title: title,
-          supportRemoteDownload: true,
-          delayedFocus: delayedFocus,
-          onUrlImport: (downloadedUrl) {
-            importedUrl = downloadedUrl;
-          },
-          onSave: (context, title, content) {
-            final scriptToSave = script != null
-                ? script.copyWith(url: importedUrl)
-                : null;
-            _handleEditorSave(
-              context,
-              title,
-              content,
-              script: scriptToSave,
-              url: importedUrl,
-            );
-          },
-          onPop: (context, title, content) {
-            return _handleEditorPop(
-              context,
-              title,
-              content,
-              raw,
-              script: script,
-            );
-          },
-          languages: const [Language.javaScript],
-          content: raw,
-        ),
-      ),
+    await _editorWatcher.open(
+      ref: ref,
+      script: script,
+      initialContent: initialContent,
+      url: url,
     );
+  }
+
+  Future<void> _handleSaveImported(String content, {String? url}) async {
+    final label = ref
+        .read(scriptStateProvider.notifier)
+        .getAvailableLabel(appLocalizations.unnamed);
+    final draft = Script.create(label: label, url: url);
+    final newScript = await globalState.appController.safeRun(
+      silence: false,
+      () => draft.writeContent(content),
+    );
+    if (newScript == null || !mounted) return;
+    ref.read(scriptStateProvider.notifier).setScript(newScript);
   }
 
   Future<void> _handleImport() async {
@@ -780,8 +652,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     }
 
     switch (option) {
-      case ImportOption.code:
-        unawaited(_handleToEditor(delayedFocus: true));
       case ImportOption.url:
         await _handleUrlImport();
       case ImportOption.file:
@@ -814,16 +684,12 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     try {
       final res = await request.getTextResponseForUrl(url);
       if (mounted) {
-        unawaited(
-          _handleToEditor(initialContent: res.data as String?, url: url),
-        );
+        await _handleSaveImported(res.data, url: url);
       }
     } catch (e) {
-      unawaited(
-        globalState.showMessage(
-          message: TextSpan(text: '${appLocalizations.importFailed}: $e'),
-          cancelable: false,
-        ),
+      globalState.showMessage(
+        message: TextSpan(text: '${appLocalizations.importFailed}: $e'),
+        cancelable: false,
       );
     }
   }
@@ -839,7 +705,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     }
     final content = utf8.decode(bytes);
     if (mounted) {
-      unawaited(_handleToEditor(initialContent: content));
+      await _handleSaveImported(content);
     }
   }
 
@@ -853,6 +719,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
         child: AppIcon(Icons.add),
       ),
       actions: [
+        IconButton(
+          onPressed: _handleShowExternalEditorSetting,
+          tooltip: appLocalizations.setEditor,
+          icon: const AppIcon(Icons.credit_card),
+        ),
         IconButton(
           onPressed: _handleShowScriptSettings,
           tooltip: appLocalizations.settings,
@@ -972,13 +843,6 @@ class _ScriptImportOptionsDialog extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Wrap(
         children: [
-          ListItem(
-            onTap: () {
-              Navigator.of(context).pop(ImportOption.code);
-            },
-            leading: const AppIcon(Icons.code),
-            title: Text(appLocalizations.importFromCode),
-          ),
           ListItem(
             onTap: () {
               Navigator.of(context).pop(ImportOption.url);
@@ -1163,7 +1027,7 @@ class __ScriptCustomOptionsSheetState
           actions: [
             IconButton(
               onPressed: (_dirty && !_isSaving) ? _handleSave : null,
-              icon: const AppIcon(Icons.save),
+              icon: const Icon(Icons.save),
               tooltip: appLocalizations.save,
             ),
           ],
@@ -1291,7 +1155,7 @@ class _ScriptOtherOptionsSheetState extends State<_ScriptOtherOptionsSheet> {
           actions: [
             IconButton(
               onPressed: (_dirty && !_isSaving) ? _handleSave : null,
-              icon: const AppIcon(Icons.save),
+              icon: const Icon(Icons.save),
               tooltip: appLocalizations.save,
             ),
           ],
@@ -1362,9 +1226,7 @@ class _ScriptOptionTile extends StatelessWidget {
           contentPadding: const EdgeInsets.only(left: 16, right: 16),
           leading: _isValidIconUrl(iconUrl)
               ? CommonTargetIcon(src: iconUrl!, size: 24)
-              : Icon(
-                  context.resolveIcon(_optionIcons[label] ?? Icons.alt_route),
-                ),
+              : Icon(_optionIcons[label] ?? Icons.alt_route),
           title: EmojiText(label),
           trailing: Switch(value: value, onChanged: onChanged),
         ),
@@ -1402,7 +1264,7 @@ class _ScriptNavTile extends StatelessWidget {
             ),
           ),
           title: Text(label),
-          trailing: const AppIcon(Icons.chevron_right),
+          trailing: const Icon(Icons.chevron_right),
           onTap: onTap,
         ),
       ),
@@ -1649,7 +1511,7 @@ class _GroupSwitchOptionsSheetState
           actions: [
             IconButton(
               onPressed: (_dirty && !_isSaving) ? _handleSave : null,
-              icon: const AppIcon(Icons.save),
+              icon: const Icon(Icons.save),
               tooltip: appLocalizations.save,
             ),
           ],
@@ -1695,7 +1557,7 @@ class _GroupSwitchOptionsSheetState
                                         left: 16,
                                         right: 16,
                                       ),
-                                      leading: const AppIcon(Icons.alt_route),
+                                      leading: const Icon(Icons.alt_route),
                                       title: EmojiText(key),
                                       trailing: Switch(
                                         value: val,

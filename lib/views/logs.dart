@@ -8,7 +8,6 @@ import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
@@ -374,7 +373,7 @@ class _LogsViewState extends ConsumerState<LogsView>
           targetBuilder: (open) {
             return IconButton(
               onPressed: () {
-                open(offset: const Offset(0, 20));
+                open();
               },
               tooltip: appLocalizations.more,
               icon: const AppIcon(Icons.more_vert),

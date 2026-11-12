@@ -1,6 +1,8 @@
+import 'package:bett_box/common/app_localizations.dart';
 import 'package:bett_box/manager/message_manager.dart';
 import 'package:bett_box/widgets/scaffold.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 
 extension BuildContextExtension on BuildContext {
   CommonScaffoldState? get commonScaffoldState {
@@ -43,6 +45,13 @@ extension BuildContextExtension on BuildContext {
       actionLabel: actionLabel,
       showCountdown: showCountdown,
     );
+  }
+
+  Future<void> copyToClipboard(String text) async {
+    if (text.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    showNotifier(appLocalizations.copySuccess);
   }
 
   void showSnackBar(String message, {SnackBarAction? action}) {
