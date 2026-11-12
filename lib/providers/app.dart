@@ -338,11 +338,6 @@ bool isMobileView(Ref ref) {
 }
 
 @riverpod
-double viewHeight(Ref ref) {
-  return ref.watch(viewSizeProvider).height;
-}
-
-@riverpod
 class Init extends _$Init with AutoDisposeNotifierMixin {
   @override
   bool build() {

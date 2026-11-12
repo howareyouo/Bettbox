@@ -2,15 +2,37 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:code_forge/script.dart';
+// ignore: depend_on_referenced_packages
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show ExternalLibrary;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support.dart';
+const _libraryStem = 'code_forge';
+
+String get _libraryFile {
+  if (Platform.isWindows) return '$_libraryStem.dll';
+  if (Platform.isMacOS) return 'lib$_libraryStem.dylib';
+  return 'lib$_libraryStem.so';
+}
+
+Future<void> _initNative() async {
+  final path = 'plugins/code_forge/rust/target/release/$_libraryFile';
+  if (!File(path).existsSync()) {
+    throw StateError(
+      'Native library not found at $path; build it with '
+      '`cargo build --release` in plugins/code_forge/rust.',
+    );
+  }
+  await RustLib.init(
+    externalLibrary: ExternalLibrary.open(File(path).absolute.path),
+  );
+}
 
 void main() {
   late Directory directory;
 
   setUpAll(() async {
-    await initEditorNative();
+    await _initNative();
     directory = await Directory.systemTemp.createTemp('script_test');
   });
 

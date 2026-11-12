@@ -2,7 +2,6 @@ import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/state.dart';
-import 'package:flutter/foundation.dart';
 import 'package:material_color_utilities/material_color_utilities.dart'
     show DynamicScheme, Variant;
 import 'package:material_ui/material_ui.dart';
@@ -291,22 +290,6 @@ DashboardState dashboardState(Ref ref) {
 }
 
 @riverpod
-ProxiesActionsState proxiesActionsState(Ref ref) {
-  final pageLabel = ref.watch(currentPageLabelProvider);
-  final hasProviders = ref.watch(
-    providersProvider.select((state) => state.isNotEmpty),
-  );
-  final type = ref.watch(
-    proxiesStyleSettingProvider.select((state) => state.type),
-  );
-  return ProxiesActionsState(
-    pageLabel: pageLabel,
-    hasProviders: hasProviders,
-    type: type,
-  );
-}
-
-@riverpod
 StartButtonSelectorState startButtonSelectorState(Ref ref) {
   final isInit = ref.watch(initProvider);
   final hasProfile = ref.watch(
@@ -341,8 +324,6 @@ Group _withoutSelection(Group group) {
 
 bool _hasSelection(Proxy proxy) => proxy.now != null;
 
-const backgroundSortThreshold = 1000;
-
 List<int> _sortOrder(int length, int Function(int a, int b) compare) {
   return List.generate(length, (index) => index)..sort((a, b) {
     final result = compare(a, b);
@@ -350,11 +331,11 @@ List<int> _sortOrder(int length, int Function(int a, int b) compare) {
   });
 }
 
-List<int> sortOrderByName(List<String> keys) {
+List<int> _sortOrderByName(List<String> keys) {
   return _sortOrder(keys.length, (a, b) => utils.sortByChar(keys[a], keys[b]));
 }
 
-List<int> sortOrderByDelay(List<int> values) {
+List<int> _sortOrderByDelay(List<int> values) {
   return _sortOrder(values.length, (a, b) => values[a].compareTo(values[b]));
 }
 
@@ -378,8 +359,8 @@ List<Proxy> sortProxies(
 }) {
   final order = switch (sortType) {
     ProxiesSortType.none => null,
-    ProxiesSortType.name => sortOrderByName(_nameSortKeys(proxies)),
-    ProxiesSortType.delay => sortOrderByDelay(
+    ProxiesSortType.name => _sortOrderByName(_nameSortKeys(proxies)),
+    ProxiesSortType.delay => _sortOrderByDelay(
       _delaySortValues(proxies, delayOf),
     ),
   };
@@ -389,19 +370,6 @@ List<Proxy> sortProxies(
 
 int _delaySortValue(int? delay) =>
     (delay == null || delay == -1) ? 1 << 30 : delay;
-
-List<Proxy>? _reuseOrder(List<Proxy>? previous, List<Proxy> proxies) {
-  if (previous == null || previous.length != proxies.length) return null;
-  final byName = {for (final proxy in proxies) proxy.name: proxy};
-  if (byName.length != proxies.length) return null;
-  final result = <Proxy>[];
-  for (final proxy in previous) {
-    final current = byName[proxy.name];
-    if (current == null) return null;
-    result.add(current);
-  }
-  return result;
-}
 
 const _unprobeableProxyTypes = {
   'Reject',
@@ -522,51 +490,55 @@ GroupsState filterGroupsState(Ref ref, String query) {
 }
 
 @riverpod
-DelayMap delaySortSnapshot(Ref ref) {
-  ref.watch(sortNumProvider);
-  ref.listen(delayDataSourceProvider.select((state) => state.isEmpty), (
-    _,
-    isEmpty,
-  ) {
-    if (isEmpty) ref.invalidateSelf();
-  });
-  return {
-    for (final entry in ref.read(delayDataSourceProvider).entries)
-      entry.key: Map.of(entry.value),
-  };
+class DelaySortSnapshot extends _$DelaySortSnapshot {
+  // Last settled delay per test url and proxy, kept across rebuilds.
+  final DelayMap _settled = {};
+
+  @override
+  DelayMap build() {
+    final source = ref.watch(delayDataSourceProvider);
+    final snapshot = <String, Map<String, int?>>{};
+    for (final url in source.keys) {
+      final delays = source[url];
+      if (delays == null) continue;
+      final settled = _settled.putIfAbsent(url, () => <String, int?>{});
+      final values = <String, int?>{};
+      for (final entry in delays.entries) {
+        final value = entry.value;
+        // A delay test in flight writes a 0 placeholder so the card can show its
+        // loading animation. Sorting must not read it as the fastest proxy, so a
+        // proxy keeps its last settled value until its own result lands.
+        if (value != null && value != 0) {
+          settled[entry.key] = value;
+        }
+        final last = settled[entry.key];
+        if (last != null) {
+          values[entry.key] = last;
+        }
+      }
+      if (values.isNotEmpty) {
+        snapshot[url] = values;
+      }
+    }
+    return snapshot;
+  }
 }
 
 @riverpod
 class SortedGroupProxies extends _$SortedGroupProxies {
-  static final Map<String, List<Proxy>> _orderCache = {};
-
-  List<Proxy>? _lastSorted;
-
-  List<Proxy> _remember(List<Proxy> sorted) {
-    _lastSorted = sorted;
-    if (query.isEmpty) {
-      _orderCache.remove(groupName);
-      _orderCache[groupName] = sorted;
-      if (_orderCache.length > 16) {
-        _orderCache.remove(_orderCache.keys.first);
-      }
-    }
-    return sorted;
-  }
-
   @override
-  List<Proxy>? build(String query, String groupName) {
+  List<Proxy> build(String query, String groupName) {
     final group = ref.watch(
       filterGroupsStateProvider(
         query,
       ).select((state) => state.value.getGroup(groupName)),
     );
-    if (group == null) return _lastSorted = const [];
+    if (group == null) return const [];
     final proxies = group.all;
     final sortType = ref.watch(
       proxiesStyleSettingProvider.select((state) => state.sortType),
     );
-    if (sortType == ProxiesSortType.none) return _lastSorted = proxies;
+    if (sortType == ProxiesSortType.none) return proxies;
 
     int? Function(String proxyName)? delayOf;
     if (sortType == ProxiesSortType.delay) {
@@ -580,33 +552,7 @@ class SortedGroupProxies extends _$SortedGroupProxies {
       );
       delayOf = (proxyName) => lookup(proxyName, group.testUrl);
     }
-    if (proxies.length < backgroundSortThreshold) {
-      return _lastSorted = sortProxies(proxies, sortType, delayOf: delayOf);
-    }
-    final pending = _reuseOrder(
-      _lastSorted ?? (query.isEmpty ? _orderCache[groupName] : null),
-      proxies,
-    );
-    if (pending == null && query.isNotEmpty) {
-      return _lastSorted = sortProxies(proxies, sortType, delayOf: delayOf);
-    }
-
-    var active = true;
-    ref.onDispose(() => active = false);
-    final order = sortType == ProxiesSortType.name
-        ? compute(sortOrderByName, _nameSortKeys(proxies))
-        : compute(sortOrderByDelay, _delaySortValues(proxies, delayOf));
-    order.then(
-      (order) {
-        if (!active) return;
-        state = _remember([for (final index in order) proxies[index]]);
-      },
-      onError: (Object _) {
-        if (!active) return;
-        state = _remember(sortProxies(proxies, sortType, delayOf: delayOf));
-      },
-    );
-    return _lastSorted = pending;
+    return sortProxies(proxies, sortType, delayOf: delayOf);
   }
 }
 
@@ -625,9 +571,9 @@ GroupsState sortedGroupsState(Ref ref, String query) {
       for (final group in groupsState.value)
         unfoldSet.contains(group.name)
             ? group.copyWith(
-                all:
-                    ref.watch(sortedGroupProxiesProvider(query, group.name)) ??
-                    const [],
+                all: ref.watch(
+                  sortedGroupProxiesProvider(query, group.name),
+                ),
               )
             : group,
     ],
@@ -688,37 +634,6 @@ VM2<List<String>, String?> proxiesTabControllerState(Ref ref) {
 }
 
 @riverpod
-ProxyGroupSelectorState proxyGroupSelectorState(
-  Ref ref,
-  String groupName,
-  String query,
-) {
-  final proxiesStyle = ref.watch(proxiesStyleSettingProvider);
-  final group = ref.watch(
-    currentGroupsStateProvider.select(
-      (state) => state.value.getGroup(groupName),
-    ),
-  );
-  final sortNum = ref.watch(sortNumProvider);
-  final columns = ref.watch(getProxiesColumnsProvider);
-  final lowQuery = query.toLowerCase();
-  final proxies =
-      group?.all.where((item) {
-        return item.name.toLowerCase().contains(lowQuery);
-      }).toList() ??
-      [];
-  return ProxyGroupSelectorState(
-    testUrl: group?.testUrl,
-    proxiesSortType: proxiesStyle.sortType,
-    proxyCardType: proxiesStyle.cardType,
-    sortNum: sortNum,
-    groupType: group?.type ?? GroupType.Selector,
-    proxies: proxies,
-    columns: columns,
-  );
-}
-
-@riverpod
 PackageListSelectorState packageListSelectorState(Ref ref) {
   final packages = ref.watch(packagesProvider);
   final accessControl = ref.watch(
@@ -753,23 +668,6 @@ MoreToolsSelectorState moreToolsSelectorState(Ref ref) {
   );
 
   return MoreToolsSelectorState(navigationItems: navigationItems);
-}
-
-@riverpod
-bool isCurrentPage(
-  Ref ref,
-  PageLabel pageLabel, {
-  bool Function(PageLabel pageLabel, ViewMode viewMode)? handler,
-}) {
-  final currentPageLabel = ref.watch(currentPageLabelProvider);
-  if (pageLabel == currentPageLabel) {
-    return true;
-  }
-  if (handler != null) {
-    final viewMode = ref.watch(viewModeProvider);
-    return handler(currentPageLabel, viewMode);
-  }
-  return false;
 }
 
 @riverpod
@@ -921,20 +819,6 @@ String? getSelectedProxyName(Ref ref, String groupName) {
     groupsProvider.select((state) => state.getGroup(groupName)),
   );
   return group?.getCurrentSelectedName(proxyName ?? '');
-}
-
-@riverpod
-String getProxyDesc(Ref ref, Proxy proxy) {
-  final groupTypeNamesList = GroupType.values.map((e) => e.name).toList();
-  if (!groupTypeNamesList.contains(proxy.type)) {
-    return proxy.type;
-  } else {
-    final groups = ref.watch(groupsProvider);
-    final index = groups.indexWhere((element) => element.name == proxy.name);
-    if (index == -1) return proxy.type;
-    final state = ref.watch(getProxyCardStateProvider(proxy.name));
-    return "${proxy.type}(${state.proxyName.isNotEmpty ? state.proxyName : '*'})";
-  }
 }
 
 @riverpod

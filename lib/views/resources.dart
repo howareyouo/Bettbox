@@ -189,7 +189,7 @@ class _ResourcesViewState extends ConsumerState<ResourcesView> {
                 targetBuilder: (open) {
                   return IconButton(
                     onPressed: () {
-                      open(offset: const Offset(0, 20));
+                      open();
                     },
                     tooltip: appLocalizations.more,
                     icon: isUpdating

@@ -1,7 +1,6 @@
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/scan.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
@@ -10,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'edit_profile.dart';
 import 'merge_profile.dart';
-import 'tv_qr_import_dialog.dart';
 
 class AddProfileView extends StatelessWidget {
   final BuildContext context;
@@ -84,26 +82,6 @@ class AddProfileView extends StatelessWidget {
     }
   }
 
-  Future<void> _toScan() async {
-    if (system.isDesktop) {
-      globalState.appController.addProfileFormQrCode();
-      return;
-    }
-    if (globalState.isAndroidTV) {
-      await showDialog(
-        context: context,
-        builder: (_) => const TvQrImportDialog(),
-      );
-      return;
-    }
-    final url = await BaseNavigator.push(context, const ScanPage());
-    if (url != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleAddProfileFormURL(url);
-      });
-    }
-  }
-
   Future<void> _toAdd() async {
     _handleAddProfileFormURL('');
   }
@@ -161,23 +139,6 @@ class AddProfileView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ListItem(
-                  leading: const Icon(Icons.qr_code_sharp),
-                  title: Text(appLocalizations.qrcode),
-                  subtitle: Text(appLocalizations.qrcodeDesc),
-                  onTap: _toScan,
-                ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: context.colorScheme.outlineVariant.withValues(
-                    alpha: context.colorScheme.brightness == Brightness.light
-                        ? 0.6
-                        : 0.45,
-                  ),
-                  indent: 16,
-                  endIndent: 16,
-                ),
                 ListItem(
                   leading: const Icon(Icons.content_paste),
                   title: Text(appLocalizations.clipboard),

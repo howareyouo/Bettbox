@@ -41,7 +41,7 @@ export 'ip_detail_dialog.dart';
 export 'ip_risk.dart';
 export 'qr_code.dart';
 export 'delay_animation_dialog.dart';
-export 'code_editor.dart';
+export 'editor_modes.dart';
 export 'ring_chart.dart';
 export 'site_icon.dart';
 export 'group_tab_bar.dart';

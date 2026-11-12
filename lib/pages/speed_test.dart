@@ -20,14 +20,6 @@ import 'toolbox/common.dart';
 const _gaugeMarks = [0.0, 5.0, 10.0, 50.0, 100.0, 250.0, 500.0, 750.0, 1000.0];
 const _durations = [5, 10, 15, 20];
 
-String formatSpeedValue(double bps) {
-  final mbps = bps / 1e6;
-  if (mbps >= 1000) return (mbps / 1000).toStringAsFixed(2);
-  return mbps.toStringAsFixed(1);
-}
-
-String formatSpeedUnit(double bps) => bps / 1e6 >= 1000 ? 'Gbps' : 'Mbps';
-
 String _formatMs(double value) => value.round().toString();
 
 String _providerName(SpeedTestProvider provider) => switch (provider) {

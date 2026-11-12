@@ -8,7 +8,6 @@ import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -590,8 +589,7 @@ class _IpCardState extends State<_IpCard> {
                 IconButton(
                   tooltip: appLocalizations.copy,
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: entry.ip));
-                    context.showNotifier(appLocalizations.copySuccess);
+                    context.copyToClipboard(entry.ip);
                   },
                   icon: const Icon(Icons.copy_rounded, size: 18),
                 )

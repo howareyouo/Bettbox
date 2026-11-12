@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:bett_box/state.dart';
-import 'package:bett_box/widgets/keep_scope.dart';
 import 'package:material_ui/material_ui.dart';
 
 bool dismissTvInputFocus() {
@@ -29,8 +28,7 @@ class CommonPopScope extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTv = globalState.isAndroidTV;
-    final intercept =
-        (onPop != null || isTv) && PageActivityScope.isActiveOf(context);
+    final intercept = onPop != null || isTv;
     return PopScope(
       canPop: !intercept,
       onPopInvokedWithResult: !intercept
@@ -64,7 +62,6 @@ class SystemBackBlock extends StatefulWidget {
 
 class _SystemBackBlockState extends State<SystemBackBlock> {
   static int _count = 0;
-  bool _counted = false;
 
   static void _sync() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,23 +73,18 @@ class _SystemBackBlockState extends State<SystemBackBlock> {
     });
   }
 
-  void _setCounted(bool counted) {
-    if (_counted == counted) return;
-    _counted = counted;
-    _count += counted ? 1 : -1;
-    _sync();
-  }
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _setCounted(PageActivityScope.isActiveOf(context));
+  void initState() {
+    super.initState();
+    _count++;
+    _sync();
   }
 
   @override
   void dispose() {
     super.dispose();
-    _setCounted(false);
+    _count--;
+    _sync();
   }
 
   @override

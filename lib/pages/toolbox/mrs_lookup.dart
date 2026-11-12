@@ -1,8 +1,9 @@
+import 'dart:io';
+
 import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
@@ -282,21 +283,22 @@ class _MatchList extends ConsumerWidget {
 
   const _MatchList({required this.matches});
 
-  Future<void> _viewRules(BuildContext context, MrsMatch match) async {
+  Future<void> _viewRules(
+    BuildContext context,
+    WidgetRef ref,
+    MrsMatch match,
+  ) async {
     await globalState.appController.safeRun(() async {
       final content = await clashCore.mrsDump(match.file);
       if (content.isEmpty) throw appLocalizations.mrsPrepareFailed;
-      if (!context.mounted) return;
-      BaseNavigator.push(
-        context,
-        EditorPage(
-          title: '${match.kind.toUpperCase()},${match.name}',
-          content: content,
-          readOnly: true,
-          simple: true,
-        ),
-        maintainState: false,
-      );
+      final editor = ref.read(appSettingProvider).externalEditor;
+      final file = File('${await appPath.tempPath}/mrs_${match.name}.yaml');
+      await file.parent.create(recursive: true);
+      await file.writeAsString(content, flush: true);
+      final launched = await launchExternalEditor(file.path, editor);
+      if (!launched) {
+        throw appLocalizations.externalEditorLaunchFailed(editor);
+      }
     }, needLoading: true);
   }
 
@@ -327,7 +329,7 @@ class _MatchList extends ConsumerWidget {
             InkWell(
               focusColor: toolFocusColor(context),
               onTap: () => switch (tapAction) {
-                MrsTapAction.viewRules => _viewRules(context, match),
+                MrsTapAction.viewRules => _viewRules(context, ref, match),
                 MrsTapAction.copyUrl => _copyUrl(context, match),
               },
               child: Padding(

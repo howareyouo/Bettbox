@@ -506,7 +506,7 @@ class PopupController extends ValueNotifier<bool> {
   }
 }
 
-typedef PopupOpen = Future<void> Function({Offset offset});
+typedef PopupOpen = Future<void> Function({Offset? offset});
 
 class CommonPopupBox extends StatefulWidget {
   final Widget Function(PopupOpen open) targetBuilder;
@@ -525,10 +525,10 @@ class CommonPopupBox extends StatefulWidget {
 class _CommonPopupBoxState extends State<CommonPopupBox> {
   bool _isOpen = false;
   final _targetOffsetValueNotifier = ValueNotifier<Offset>(Offset.zero);
-  Offset _offset = Offset.zero;
+  Offset? _offset;
   CommonPopupRoute? _route;
 
-  Future<void> _open({Offset offset = Offset.zero}) {
+  Future<void> _open({Offset? offset}) {
     _offset = offset;
     _updateOffset();
     _isOpen = true;
@@ -560,12 +560,25 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     if (renderBox == null) {
       return;
     }
-    final viewPadding = MediaQuery.viewPaddingOf(context);
-    _targetOffsetValueNotifier.value = renderBox
-        .localToGlobal(
-          Offset.zero.translate(viewPadding.right, viewPadding.top),
-        )
-        .translate(_offset.dx, _offset.dy);
+    // 默认锚在目标右下角下方留 4 间距：菜单右边缘与按钮右边缘对齐，
+    // 顶边落在按钮之外，不再压住触发按钮。
+    final localAnchor =
+        _offset ?? Offset(renderBox.size.width, renderBox.size.height + 4);
+    // 锚点须相对路由实际落入的 overlay 表达：桌面视图下路由推入
+    // home 的嵌套 Navigator，其 overlay 原点 ≠ 窗口原点（侧边栏宽 +
+    // header 高），用窗口坐标会在 overlay 里整体平移。
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final Offset anchor;
+    if (overlayBox != null && overlayBox.hasSize) {
+      anchor = renderBox.localToGlobal(localAnchor, ancestor: overlayBox);
+    } else {
+      final viewPadding = MediaQuery.viewPaddingOf(context);
+      anchor = renderBox.localToGlobal(
+        localAnchor.translate(-viewPadding.left, -viewPadding.top),
+      );
+    }
+    _targetOffsetValueNotifier.value = anchor;
   }
 
   @override
@@ -596,13 +609,15 @@ class OverflowAwareLayoutDelegate extends SingleChildLayoutDelegate {
   @override
   Offset getPositionForChild(Size size, Size childSize) {
     final safeOffset = Offset(16, 16);
+    // 菜单可能比可用空间还大（极小窗口）：上限取 max(0, …)，
+    // 否则 clamp(0, 负数) 会抛 ArgumentError。
     double x = (offset.dx - childSize.width).clamp(
       0,
-      size.width - safeOffset.dx - childSize.width,
+      math.max(0, size.width - safeOffset.dx - childSize.width),
     );
     double y = (offset.dy).clamp(
       0,
-      size.height - safeOffset.dy - childSize.height,
+      math.max(0, size.height - safeOffset.dy - childSize.height),
     );
     return Offset(x, y);
   }

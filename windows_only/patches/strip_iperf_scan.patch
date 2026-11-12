@@ -1,0 +1,51 @@
+diff --git a/lib/pages/toolbox/iperf.dart b/lib/pages/toolbox/iperf.dart
+--- a/lib/pages/toolbox/iperf.dart
++++ b/lib/pages/toolbox/iperf.dart
+@@ -4,7 +4,6 @@ import 'package:bett_box/clash/clash.dart';
+ import 'package:bett_box/common/common.dart';
+ import 'package:bett_box/enum/enum.dart';
+ import 'package:bett_box/models/models.dart';
+-import 'package:bett_box/pages/scan.dart';
+ import 'package:bett_box/providers/providers.dart';
+ import 'package:bett_box/state.dart';
+ import 'package:bett_box/widgets/widgets.dart';
+@@ -203,8 +202,6 @@ class _IperfPageState extends ConsumerState<IperfPage>
+   final _sessionUpload = <(double, double)>[];
+   final _sessionDownload = <(double, double)>[];
+ 
+-  bool get _canScan => system.isAndroid && !globalState.isAndroidTV;
+-
+   @override
+   void initState() {
+     super.initState();
+@@ -279,21 +276,6 @@ class _IperfPageState extends ConsumerState<IperfPage>
+     _address.text = _scannedText;
+   }
+ 
+-  Future<void> _scan() async {
+-    final value = await BaseNavigator.push<String>(
+-      context,
+-      ScanPage(accept: (_) => true),
+-    );
+-    if (!mounted || value == null) return;
+-    final target = parseIperfLink(value);
+-    if (target == null) {
+-      context.showNotifier(appLocalizations.iperfScanInvalid);
+-      return;
+-    }
+-    setState(() => _applyTarget(target));
+-    await _start();
+-  }
+-
+   Future<void> _start() async {
+     if (_testing) return;
+     final link = parseIperfLink(_address.text);
+@@ -525,7 +507,7 @@ class _IperfPageState extends ConsumerState<IperfPage>
+         controller: _address,
+         enabled: !_testing,
+         onSubmitted: _start,
+-        onScan: _canScan && !_testing ? _scan : null,
++        onScan: null,
+       ),
+       ValueListenableBuilder(
+         valueListenable: _address,

@@ -1,7 +1,6 @@
-<h4 align="right">
-  <strong>简体中文</strong> | <a href="readme/README_en.md">English</a> | <a href="readme/README_ru.md">Русский</a> | <a href="readme/README_fa.md">فارسی</a> | <a href="readme/README_ja.md">日本語</a> | <a href="readme/README_ko.md">한국어</a>
-</h4>
+<h1 align="center">⚡ Bettbox · Windows</h1>
 
+<<<<<<< HEAD
 <h1 align="center">⚡ Bettbox</h1>
 <p align="center">
   <strong>Another Better Network Toolbox</strong>
@@ -10,21 +9,40 @@
 **Bettbox 是基于 Mihomo 内核的多平台网络分流与 DNS 调试工具。更专注于极致的用户体验，为长期稳定运行而生，轻量省资源，且不收集任何数据。**
 
 Bettbox 取自 Better Network Toolbox。项目已通过 SignPath 开源基金会的人工审核安全溯源，Windows 版使用 OV 代码签名证书。
+=======
+这是 [Bettbox](https://github.com/appshubcc/Bettbox) 的 Windows 定向 fork，基于上游持续更新。此仓库主要增加 Windows 专属交互与构建发布流程；Windows-only 发布版由 CI 从本 fork 的 `main` 自动裁剪生成，裁去非 Windows 平台文件。上游项目本身仍是多平台项目。
 
-[![Latest Release](https://img.shields.io/github/v/release/appshubcc/Bettbox?style=for-the-badge&logo=github&color=238636&label=Release)](https://github.com/appshubcc/Bettbox/releases/latest) [![Core](https://img.shields.io/github/v/release/MetaCubeX/mihomo?style=for-the-badge&logo=go&logoColor=white&color=8A2BE2&label=Mihomo)](https://github.com/MetaCubeX/mihomo/releases/latest)
+## Fork 改动
 
+- **Windows-only 发布**：CI 从 fork `main` 干净重建（删除非 Windows 平台文件、应用少量手工裁剪补丁），并自动构建发布。
+- **外部编辑器**：可使用外部编辑器修改配置或脚本。
+- **配置查看**：提供配置/订阅内容的只读查看页面。
+- **资料卡交互**：增加拖拽排序与悬停预览。
+- **桌面操作与样式**：支持鼠标侧键进行页面前进/后退，并调整部分 Windows 界面样式。
+>>>>>>> 19b2fd1 (fork: Bettbox Windows-only fork customizations)
+
+## 平台精简
+
+<<<<<<< HEAD
 <p align="center">
   <img src="snapshots/home.jpg" alt="Bettbox" />
 </p>
+=======
+Windows-only 构建会删除 Android、iOS、Linux、macOS、Web 平台目录及移动端扫码页面，因此该生成版本面向 Windows；本 fork 的 `main` 开发分支仍以完整上游代码为基础。
+>>>>>>> 19b2fd1 (fork: Bettbox Windows-only fork customizations)
 
----
-### ✈️ Telegram 社区交流
+## 下载与构建
 
+<<<<<<< HEAD
 [![Telegram Group](https://img.shields.io/badge/Bettbox-Chat-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/bettbox_chat) [![Telegram Channel](https://img.shields.io/badge/Bettbox-Channel-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/appshub_channel)
+=======
+- Windows-only 自动构建产物：查看本仓库的 [Releases](https://github.com/howareyouo/Bettbox/releases) 和 [`windows-only` 分支](https://github.com/howareyouo/Bettbox/tree/windows-only)。
+- 构建流程说明与 AI 协作指南：[`AGENTS.md`](AGENTS.md)。流水线从 fork `main` 干净重建：按裁剪清单删除非 Windows 文件、应用手工补丁，再构建发布。
+>>>>>>> 19b2fd1 (fork: Bettbox Windows-only fork customizations)
 
----
-## 🚀 核心特性
+## 上游与许可
 
+<<<<<<< HEAD
 * **开箱即用**：权限引导、TUN 与托管分流模式均已预置，安装后即可使用。
 * **轻量畅快**：移动端低功耗，桌面端后台占用低，界面动画流畅。
 * **安全可信**：内核跟随 Mihomo 主线，各平台只申请最小权限。
@@ -164,3 +182,6 @@ const Compatible_With_Bettbox = {
 ## 📄 开源协议
 
 本项目采用 [GPL-3.0 License](LICENSE) 开源协议。
+=======
+本 fork 基于 [appshubcc/Bettbox](https://github.com/appshubcc/Bettbox)，使用 [Mihomo](https://github.com/MetaCubeX/mihomo) 核心。感谢上游及相关开源项目的贡献。本项目遵循 [GPL-3.0](LICENSE)。
+>>>>>>> 19b2fd1 (fork: Bettbox Windows-only fork customizations)

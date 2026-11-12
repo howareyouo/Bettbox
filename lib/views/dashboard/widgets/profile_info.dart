@@ -788,7 +788,7 @@ class _GroupProxySheet extends ConsumerWidget {
     final group = ref.watch(
       groupsProvider.select((groups) => groups.getGroup(groupName)),
     );
-    final proxies = ref.watch(sortedGroupProxiesProvider('', groupName)) ?? [];
+    final proxies = ref.watch(sortedGroupProxiesProvider('', groupName));
     final (cardType, layout) = ref.watch(
       proxiesStyleSettingProvider.select(
         (state) => (state.cardType, state.layout),

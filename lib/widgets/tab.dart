@@ -1110,11 +1110,6 @@ class _RenderSegmentedControl<T extends Object> extends RenderBox
   }
 
   void _paintThumb(PaintingContext context, Offset offset, Rect thumbRect) {
-    // const List<BoxShadow> thumbShadow = <BoxShadow>[
-    //   BoxShadow(color: Color(0x1F000000), offset: Offset(0, 3), blurRadius: 8),
-    //   BoxShadow(color: Color(0x0A000000), offset: Offset(0, 3), blurRadius: 1),
-    // ];
-
     final RRect thumbRRect = RRect.fromRectAndRadius(
       thumbRect.shift(offset),
       thumbRadius,

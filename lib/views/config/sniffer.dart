@@ -120,88 +120,46 @@ class OverrideDestinationItem extends ConsumerWidget {
   }
 }
 
-class HttpPortSnifferItem extends ConsumerWidget {
-  const HttpPortSnifferItem({super.key});
+class PortSnifferItem extends ConsumerWidget {
+  final String sniffKey;
+  final String title;
+  final String defaultPorts;
+  final bool defaultOverrideDest;
+
+  const PortSnifferItem({
+    super.key,
+    required this.sniffKey,
+    required this.title,
+    required this.defaultPorts,
+    this.defaultOverrideDest = false,
+  });
 
   @override
   Widget build(BuildContext context, ref) {
-    final httpConfig = ref.watch(
-      patchClashConfigProvider.select((state) => state.sniffer.sniff['HTTP']),
-    );
-    final ports = httpConfig?.ports.join(', ') ?? '';
-
-    return ListItem(
-      title: Text(appLocalizations.httpPortSniffer),
-      subtitle: Text(ports.isEmpty ? '80, 8080-8880' : ports),
-      onTap: () => _showHttpDialog(context, ref, httpConfig),
-    );
-  }
-
-  void _showHttpDialog(
-    BuildContext context,
-    WidgetRef ref,
-    SnifferConfig? httpConfig,
-  ) async {
-    final ports = httpConfig?.ports.join(', ') ?? '';
-    final overrideDest = httpConfig?.overrideDest ?? true; // HTTP 默认为 true
-
-    await globalState.showCommonDialog(
-      child: _SnifferPortDialog(
-        title: appLocalizations.httpPortSniffer,
-        ports: ports,
-        overrideDest: overrideDest,
-        onSave: (newPorts, newOverrideDest) {
-          final portList = newPorts
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
-          final newSniff = Map<String, SnifferConfig>.from(
-            ref.read(patchClashConfigProvider).sniffer.sniff,
-          );
-          newSniff['HTTP'] = SnifferConfig(
-            ports: portList,
-            overrideDest: newOverrideDest,
-          );
-          ref
-              .read(patchClashConfigProvider.notifier)
-              .updateState((state) => state.copyWith.sniffer(sniff: newSniff));
-        },
+    final config = ref.watch(
+      patchClashConfigProvider.select(
+        (state) => state.sniffer.sniff[sniffKey],
       ),
     );
-  }
-}
-
-class TlsPortSnifferItem extends ConsumerWidget {
-  const TlsPortSnifferItem({super.key});
-
-  @override
-  Widget build(BuildContext context, ref) {
-    final tlsConfig = ref.watch(
-      patchClashConfigProvider.select((state) => state.sniffer.sniff['TLS']),
-    );
-    final ports = tlsConfig?.ports.join(', ') ?? '';
+    final ports = config?.ports.join(', ') ?? '';
 
     return ListItem(
-      title: Text(appLocalizations.tlsPortSniffer),
-      subtitle: Text(ports.isEmpty ? '443, 8443' : ports),
-      onTap: () => _showTlsDialog(context, ref, tlsConfig),
+      title: Text(title),
+      subtitle: Text(ports.isEmpty ? defaultPorts : ports),
+      onTap: () => _showDialog(context, ref, config),
     );
   }
 
-  void _showTlsDialog(
+  Future<void> _showDialog(
     BuildContext context,
     WidgetRef ref,
-    SnifferConfig? tlsConfig,
+    SnifferConfig? config,
   ) async {
-    final ports = tlsConfig?.ports.join(', ') ?? '';
-    final overrideDest = tlsConfig?.overrideDest ?? false;
-
     await globalState.showCommonDialog(
       child: _SnifferPortDialog(
-        title: appLocalizations.tlsPortSniffer,
-        ports: ports,
-        overrideDest: overrideDest,
+        title: title,
+        ports: config?.ports.join(', ') ?? '',
+        overrideDest: config?.overrideDest ?? defaultOverrideDest,
         onSave: (newPorts, newOverrideDest) {
           final portList = newPorts
               .split(',')
@@ -211,59 +169,7 @@ class TlsPortSnifferItem extends ConsumerWidget {
           final newSniff = Map<String, SnifferConfig>.from(
             ref.read(patchClashConfigProvider).sniffer.sniff,
           );
-          newSniff['TLS'] = SnifferConfig(
-            ports: portList,
-            overrideDest: newOverrideDest,
-          );
-          ref
-              .read(patchClashConfigProvider.notifier)
-              .updateState((state) => state.copyWith.sniffer(sniff: newSniff));
-        },
-      ),
-    );
-  }
-}
-
-class QuicPortSnifferItem extends ConsumerWidget {
-  const QuicPortSnifferItem({super.key});
-
-  @override
-  Widget build(BuildContext context, ref) {
-    final quicConfig = ref.watch(
-      patchClashConfigProvider.select((state) => state.sniffer.sniff['QUIC']),
-    );
-    final ports = quicConfig?.ports.join(', ') ?? '';
-
-    return ListItem(
-      title: Text(appLocalizations.quicPortSniffer),
-      subtitle: Text(ports.isEmpty ? '443, 8443' : ports),
-      onTap: () => _showQuicDialog(context, ref, quicConfig),
-    );
-  }
-
-  void _showQuicDialog(
-    BuildContext context,
-    WidgetRef ref,
-    SnifferConfig? quicConfig,
-  ) async {
-    final ports = quicConfig?.ports.join(', ') ?? '';
-    final overrideDest = quicConfig?.overrideDest ?? false;
-
-    await globalState.showCommonDialog(
-      child: _SnifferPortDialog(
-        title: appLocalizations.quicPortSniffer,
-        ports: ports,
-        overrideDest: overrideDest,
-        onSave: (newPorts, newOverrideDest) {
-          final portList = newPorts
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList();
-          final newSniff = Map<String, SnifferConfig>.from(
-            ref.read(patchClashConfigProvider).sniffer.sniff,
-          );
-          newSniff['QUIC'] = SnifferConfig(
+          newSniff[sniffKey] = SnifferConfig(
             ports: portList,
             overrideDest: newOverrideDest,
           );
@@ -521,9 +427,14 @@ final snifferItems = <Widget>[
       ForceDnsMappingItem(),
       ParsePureIpItem(),
       OverrideDestinationItem(),
-      HttpPortSnifferItem(),
-      TlsPortSnifferItem(),
-      QuicPortSnifferItem(),
+      PortSnifferItem(
+        sniffKey: 'HTTP',
+        title: 'HTTP',
+        defaultPorts: '80, 8080-8880',
+        defaultOverrideDest: true,
+      ),
+      PortSnifferItem(sniffKey: 'TLS', title: 'TLS', defaultPorts: '443, 8443'),
+      PortSnifferItem(sniffKey: 'QUIC', title: 'QUIC', defaultPorts: '443, 8443'),
       ForceDomainWidget(),
       SkipDomainWidget(),
       SkipSrcAddressWidget(),

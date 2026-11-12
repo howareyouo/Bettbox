@@ -404,7 +404,7 @@ class _MediaUnlockPageState extends ConsumerState<MediaUnlockPage> {
           color: isLight
               ? context.colorScheme.surfaceContainerLowest
               : context.colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: surfaceBorderRadius,
         ),
         child: Row(
           children: [

@@ -18,6 +18,14 @@ const packageName = AppIdentity.packageId;
 final unixSocketPath = '/tmp/BettboxSocket_${Random().nextInt(10000)}.sock';
 const maxTextScale = 1.4;
 const minTextScale = 0.8;
+
+/// 应用统一的浮层/控件圆角：弹出菜单、chip、对话框、状态卡等共用。
+/// （CommonCard 自身的 defaultRadius = 20，与此不同，勿混用。）
+const surfaceRadius = 16.0;
+const surfaceBorderRadius = BorderRadius.all(
+  Radius.circular(surfaceRadius),
+);
+
 final baseInfoEdgeInsets = EdgeInsets.symmetric(
   vertical: 16.ap,
   horizontal: 16.ap,
@@ -159,8 +167,3 @@ const legacyPrimaryColors = [
   0xFFD97706,
   0xFF334155,
 ];
-
-const scriptTemplate = '''
-const main = (config) => {
-  return config;
-}''';

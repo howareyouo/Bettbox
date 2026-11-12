@@ -757,6 +757,54 @@ class _PortDialogState extends ConsumerState<_PortDialog> {
     });
   }
 
+  String? _validatePort(String? value, String label, List<String> others) {
+    if (value == null || value.isEmpty) {
+      return appLocalizations.emptyTip(label);
+    }
+    final port = int.tryParse(value);
+    if (port == null) {
+      return appLocalizations.numberTip(label);
+    }
+    if (port == 0) {
+      return null;
+    }
+    if (port < 1024 || port > 49151) {
+      return appLocalizations.portTip(label);
+    }
+    final isConflict = others
+        .map((item) => item.trim())
+        .contains(value.trim());
+    if (isConflict) {
+      return appLocalizations.portConflictTip;
+    }
+    return null;
+  }
+
+  Widget _portField({
+    required TextEditingController controller,
+    required String label,
+    required List<TextEditingController> others,
+  }) {
+    return TextFormField(
+      keyboardType: TextInputType.url,
+      maxLines: 1,
+      minLines: 1,
+      controller: controller,
+      onFieldSubmitted: (_) {
+        _handleUpdate();
+      },
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        labelText: label,
+      ),
+      validator: (value) => _validatePort(
+        value,
+        label,
+        others.map((item) => item.text).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
@@ -797,223 +845,56 @@ class _PortDialogState extends ConsumerState<_PortDialog> {
             child: Column(
               spacing: 24,
               children: [
-                TextFormField(
-                  keyboardType: TextInputType.url,
-                  maxLines: 1,
-                  minLines: 1,
+                _portField(
                   controller: _mixedPortController,
-                  onFieldSubmitted: (_) {
-                    _handleUpdate();
-                  },
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: appLocalizations.mixedPort,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return appLocalizations.emptyTip(
-                        appLocalizations.mixedPort,
-                      );
-                    }
-                    final port = int.tryParse(value);
-                    if (port == null) {
-                      return appLocalizations.numberTip(
-                        appLocalizations.mixedPort,
-                      );
-                    }
-                    if (port == 0) {
-                      return null;
-                    }
-                    if (port < 1024 || port > 49151) {
-                      return appLocalizations.portTip(
-                        appLocalizations.mixedPort,
-                      );
-                    }
-                    final ports = [
-                      _portController.text,
-                      _socksPortController.text,
-                      _tProxyPortController.text,
-                      _redirPortController.text,
-                    ].map((item) => item.trim());
-                    if (ports.contains(value.trim())) {
-                      return appLocalizations.portConflictTip;
-                    }
-                    return null;
-                  },
+                  label: appLocalizations.mixedPort,
+                  others: [
+                    _portController,
+                    _socksPortController,
+                    _tProxyPortController,
+                    _redirPortController,
+                  ],
                 ),
                 if (_isMore) ...[
-                  TextFormField(
-                    keyboardType: TextInputType.url,
-                    maxLines: 1,
-                    minLines: 1,
+                  _portField(
                     controller: _portController,
-                    onFieldSubmitted: (_) {
-                      _handleUpdate();
-                    },
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: appLocalizations.port,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return appLocalizations.emptyTip(appLocalizations.port);
-                      }
-                      final port = int.tryParse(value);
-                      if (port == null) {
-                        return appLocalizations.numberTip(
-                          appLocalizations.port,
-                        );
-                      }
-                      if (port == 0) {
-                        return null;
-                      }
-                      if (port < 1024 || port > 49151) {
-                        return appLocalizations.portTip(appLocalizations.port);
-                      }
-                      final ports = [
-                        _mixedPortController.text,
-                        _socksPortController.text,
-                        _tProxyPortController.text,
-                        _redirPortController.text,
-                      ].map((item) => item.trim());
-                      if (ports.contains(value.trim())) {
-                        return appLocalizations.portConflictTip;
-                      }
-                      return null;
-                    },
+                    label: appLocalizations.port,
+                    others: [
+                      _mixedPortController,
+                      _socksPortController,
+                      _tProxyPortController,
+                      _redirPortController,
+                    ],
                   ),
-                  TextFormField(
-                    keyboardType: TextInputType.url,
-                    maxLines: 1,
-                    minLines: 1,
+                  _portField(
                     controller: _socksPortController,
-                    onFieldSubmitted: (_) {
-                      _handleUpdate();
-                    },
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: appLocalizations.socksPort,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return appLocalizations.emptyTip(
-                          appLocalizations.socksPort,
-                        );
-                      }
-                      final port = int.tryParse(value);
-                      if (port == null) {
-                        return appLocalizations.numberTip(
-                          appLocalizations.socksPort,
-                        );
-                      }
-                      if (port == 0) {
-                        return null;
-                      }
-                      if (port < 1024 || port > 49151) {
-                        return appLocalizations.portTip(
-                          appLocalizations.socksPort,
-                        );
-                      }
-                      final ports = [
-                        _portController.text,
-                        _mixedPortController.text,
-                        _tProxyPortController.text,
-                        _redirPortController.text,
-                      ].map((item) => item.trim());
-                      if (ports.contains(value.trim())) {
-                        return appLocalizations.portConflictTip;
-                      }
-                      return null;
-                    },
+                    label: appLocalizations.socksPort,
+                    others: [
+                      _portController,
+                      _mixedPortController,
+                      _tProxyPortController,
+                      _redirPortController,
+                    ],
                   ),
-                  TextFormField(
-                    keyboardType: TextInputType.url,
-                    maxLines: 1,
-                    minLines: 1,
+                  _portField(
                     controller: _redirPortController,
-                    onFieldSubmitted: (_) {
-                      _handleUpdate();
-                    },
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: appLocalizations.redirPort,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return appLocalizations.emptyTip(
-                          appLocalizations.redirPort,
-                        );
-                      }
-                      final port = int.tryParse(value);
-                      if (port == null) {
-                        return appLocalizations.numberTip(
-                          appLocalizations.redirPort,
-                        );
-                      }
-                      if (port == 0) {
-                        return null;
-                      }
-                      if (port < 1024 || port > 49151) {
-                        return appLocalizations.portTip(
-                          appLocalizations.redirPort,
-                        );
-                      }
-                      final ports = [
-                        _portController.text,
-                        _socksPortController.text,
-                        _tProxyPortController.text,
-                        _mixedPortController.text,
-                      ].map((item) => item.trim());
-                      if (ports.contains(value.trim())) {
-                        return appLocalizations.portConflictTip;
-                      }
-                      return null;
-                    },
+                    label: appLocalizations.redirPort,
+                    others: [
+                      _portController,
+                      _socksPortController,
+                      _tProxyPortController,
+                      _mixedPortController,
+                    ],
                   ),
-                  TextFormField(
-                    keyboardType: TextInputType.url,
-                    maxLines: 1,
-                    minLines: 1,
+                  _portField(
                     controller: _tProxyPortController,
-                    onFieldSubmitted: (_) {
-                      _handleUpdate();
-                    },
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: appLocalizations.tproxyPort,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return appLocalizations.emptyTip(
-                          appLocalizations.tproxyPort,
-                        );
-                      }
-                      final port = int.tryParse(value);
-                      if (port == null) {
-                        return appLocalizations.numberTip(
-                          appLocalizations.tproxyPort,
-                        );
-                      }
-                      if (port == 0) {
-                        return null;
-                      }
-                      if (port < 1024 || port > 49151) {
-                        return appLocalizations.portTip(
-                          appLocalizations.tproxyPort,
-                        );
-                      }
-                      final ports = [
-                        _portController.text,
-                        _socksPortController.text,
-                        _mixedPortController.text,
-                        _redirPortController.text,
-                      ].map((item) => item.trim());
-                      if (ports.contains(value.trim())) {
-                        return appLocalizations.portConflictTip;
-                      }
-
-                      return null;
-                    },
+                    label: appLocalizations.tproxyPort,
+                    others: [
+                      _portController,
+                      _socksPortController,
+                      _mixedPortController,
+                      _redirPortController,
+                    ],
                   ),
                 ],
               ],

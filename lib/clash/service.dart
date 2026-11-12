@@ -28,6 +28,10 @@ class ClashService extends ClashHandlerInterface {
 
   Process? process;
 
+  /// 内核意外掉线后的重启出口，由组合根（GlobalState.appController setter）
+  /// 注入，避免 clash/ 层反向调用 UI 控制器。
+  Future<void> Function()? onCoreLostRestart;
+
   Completer<void>? _restartCompleter;
 
   TransportType _transportType = TransportType.unixSocket;
@@ -412,7 +416,10 @@ class ClashService extends ClashHandlerInterface {
     }
     if (!_canAutoRestart) return;
     commonPrint.warn('Restarting core after unexpected disconnect');
-    await globalState.appController.restartCore().catchError((_) {});
+    final restart = onCoreLostRestart;
+    if (restart != null) {
+      await restart().catchError((_) {});
+    }
   }
 
   @override

@@ -437,9 +437,6 @@ class _ProxyGroupViewState extends ConsumerState<ProxyGroupView> {
     final sortedProxies = ref.watch(
       sortedGroupProxiesProvider(ref.watch(queryProvider), widget.group.name),
     );
-    if (sortedProxies == null) {
-      return const SizedBox.shrink();
-    }
     proxies = sortedProxies;
     testUrl = widget.group.testUrl;
     final baseBottom =
@@ -503,10 +500,17 @@ class DelayTestButton extends ConsumerStatefulWidget {
 
 class _DelayTestButtonState extends ConsumerState<DelayTestButton>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  );
+  late final _scale = Tween<double>(begin: 1.0, end: 0.0).animate(
+    CurvedAnimation(parent: _controller, curve: const Interval(0, 1)),
+  );
 
-  bool get _isTesting => delayTestCoordinator.isTestingGroup(widget.groupName);
+  /// 上一次 build 观察到的测试状态：边沿触发缩放动画，
+  /// 替代手动 addListener / didUpdateWidget 生命周期。
+  bool _wasTesting = false;
 
   Future<void> _healthcheck() async {
     if (delayTestCoordinator.isTesting) {
@@ -515,41 +519,8 @@ class _DelayTestButtonState extends ConsumerState<DelayTestButton>
     await widget.onClick();
   }
 
-  void _handleTestingChanged() {
-    if (!mounted) return;
-    if (_isTesting) {
-      _controller.forward();
-    } else {
-      _controller.reverse();
-    }
-    setState(() {});
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0, 1)),
-    );
-    delayTestCoordinator.addListener(_handleTestingChanged);
-    _handleTestingChanged();
-  }
-
-  @override
-  void didUpdateWidget(covariant DelayTestButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.groupName != widget.groupName) {
-      _handleTestingChanged();
-    }
-  }
-
   @override
   void dispose() {
-    delayTestCoordinator.removeListener(_handleTestingChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -558,9 +529,20 @@ class _DelayTestButtonState extends ConsumerState<DelayTestButton>
   Widget build(BuildContext context) {
     ref.watch(appSettingProvider.select((state) => state.locale));
     return AnimatedBuilder(
-      animation: _controller.view,
-      builder: (_, child) {
-        final showLoading = _isTesting && _controller.isCompleted;
+      animation: Listenable.merge([delayTestCoordinator, _controller]),
+      builder: (_, _) {
+        final isTesting = delayTestCoordinator.isTestingGroup(
+          widget.groupName,
+        );
+        if (isTesting != _wasTesting) {
+          _wasTesting = isTesting;
+          if (isTesting) {
+            _controller.forward();
+          } else {
+            _controller.reverse();
+          }
+        }
+        final showLoading = isTesting && _controller.isCompleted;
         final contentScale = showLoading ? 0.0 : _scale.value;
         return Stack(
           alignment: Alignment.center,
