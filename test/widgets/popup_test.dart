@@ -102,6 +102,34 @@ void main() {
     expect(find.byType(CommonPopupMenu), findsNothing);
   });
 
+  testWidgets('菜单贴着触发按钮下方弹出，右缘对齐按钮右缘', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CommonPopupBox(
+              targetBuilder: (open) => IconButton(
+                onPressed: open,
+                icon: const Icon(Icons.more_vert),
+              ),
+              popup: CommonPopupMenu(
+                items: [PopupMenuItemData(label: 'action', onPressed: () {})],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final trigger = tester.getRect(find.byType(IconButton));
+    await tester.tap(find.byType(IconButton));
+    await tester.pumpAndSettle();
+    final menu = tester.getRect(find.byType(CommonPopupMenu));
+    // 锚点 = 触发盒右下角 + 4 间距；delegate 让菜单右缘对齐锚点 x、顶边取锚点 y。
+    // 任何额外的 translate/补偿都会打破这两个等式。
+    expect(menu.top, moreOrLessEquals(trigger.bottom + 4));
+    expect(menu.right, moreOrLessEquals(trigger.right));
+  });
+
   testWidgets('从未打开过的菜单被移除时正常释放', (tester) async {
     final visible = await _pumpRemovableMenu(tester);
     visible.value = false;

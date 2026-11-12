@@ -16,6 +16,19 @@ class BaseScrollBehavior extends MaterialScrollBehavior {
   };
 }
 
+/// Scroll behavior that removes mouse from drag devices, so mouse dragging
+/// moves reorderable grid items instead of scrolling the page.
+class NoMouseDragScrollBehavior extends BaseScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.invertedStylus,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.unknown,
+  };
+}
+
 class HiddenBarScrollBehavior extends BaseScrollBehavior {
   @override
   Widget buildScrollbar(
