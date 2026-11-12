@@ -62,9 +62,7 @@ class _AgeToolPageState extends ConsumerState<AgeToolPage> {
   }
 
   void _copy(String text) {
-    if (text.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: text));
-    context.showNotifier(appLocalizations.copySuccess);
+    context.copyToClipboard(text);
   }
 
   Future<void> _generate() async {

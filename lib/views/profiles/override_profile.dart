@@ -592,7 +592,6 @@ class _RuleRowState extends State<RuleRow> {
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: CommonCard(
-            elevated: false,
             padding: EdgeInsets.zero,
             radius: 18,
             type: CommonCardType.filled,
@@ -1280,7 +1279,7 @@ class _PickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: surfaceBorderRadius,
       onTap: onTap,
       child: InputDecorator(
         isEmpty: value.isEmpty,

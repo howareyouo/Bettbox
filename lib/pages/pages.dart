@@ -1,6 +1,5 @@
 export 'home.dart';
-export 'scan.dart';
-export 'editor.dart';
+export 'viewer.dart';
 export 'media_unlock.dart';
 export 'toolbox/common.dart';
 export 'toolbox/nat_test.dart';
