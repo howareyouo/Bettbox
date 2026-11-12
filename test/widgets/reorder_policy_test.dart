@@ -164,14 +164,48 @@ void main() {
     test('纯节流，供入场判定的网格使用', () {
       final policy = ReorderPolicy();
       expect(policy.allow(_t0), isTrue);
-      expect(
-        policy.allow(_t0.add(const Duration(milliseconds: 219))),
-        isFalse,
-      );
-      expect(
-        policy.allow(_t0.add(const Duration(milliseconds: 220))),
-        isTrue,
-      );
+      expect(policy.allow(_t0.add(const Duration(milliseconds: 219))), isFalse);
+      expect(policy.allow(_t0.add(const Duration(milliseconds: 220))), isTrue);
+    });
+  });
+
+  group('moveItemTo', () {
+    String ids(String id) => id;
+
+    test('往后拖：插到目标下标，其余元素相对顺序不变', () {
+      expect(moveItemTo(['a', 'b', 'c', 'd'], ids, 'a', 'c'), [
+        'b',
+        'c',
+        'a',
+        'd',
+      ]);
+    });
+
+    test('往前拖：插到目标下标', () {
+      expect(moveItemTo(['a', 'b', 'c', 'd'], ids, 'd', 'b'), [
+        'a',
+        'd',
+        'b',
+        'c',
+      ]);
+    });
+
+    test('只挪被拖的那一项，成员条目的位置不动', () {
+      // b 是 bundle，b1/b2 是它的成员条目：折叠行按 bundle.members 渲染，
+      // 与这些条目在列表里的位置无关，所以拖动只影响 b 自己。
+      expect(moveItemTo(['a', 'b', 'b1', 'b2', 'c'], ids, 'b', 'c'), [
+        'a',
+        'b1',
+        'b2',
+        'c',
+        'b',
+      ]);
+    });
+
+    test('同一元素或缺失的 id 返回 null，调用方不写配置', () {
+      expect(moveItemTo(['a', 'b'], ids, 'a', 'a'), isNull);
+      expect(moveItemTo(['a', 'b'], ids, 'a', 'zzz'), isNull);
+      expect(moveItemTo(['a', 'b'], ids, 'zzz', 'b'), isNull);
     });
   });
 }
