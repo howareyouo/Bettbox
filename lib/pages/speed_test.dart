@@ -2585,8 +2585,8 @@ class _QuickOutboundCard extends StatelessWidget {
                 color: isSelected
                     ? colorScheme.secondaryContainer
                     : colorScheme.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
                   side: BorderSide(
                     color: isSelected || focused
                         ? colorScheme.primary
@@ -2596,7 +2596,6 @@ class _QuickOutboundCard extends StatelessWidget {
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(20),
                 onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -2725,8 +2724,8 @@ class _OutboundGroupCard extends ConsumerWidget {
                 color: isSelected
                     ? colorScheme.secondaryContainer.withValues(alpha: 0.7)
                     : colorScheme.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
                   side: BorderSide(
                     color: isSelected || focused
                         ? colorScheme.primary
@@ -2736,7 +2735,6 @@ class _OutboundGroupCard extends ConsumerWidget {
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(20),
                 onTap: onToggle,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -2937,8 +2935,8 @@ class _OutboundProxyCard extends StatelessWidget {
                 color: isSelected
                     ? colorScheme.secondaryContainer
                     : colorScheme.surface,
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
                   side: BorderSide(
                     color: isSelected || focused
                         ? colorScheme.primary
@@ -2948,7 +2946,6 @@ class _OutboundProxyCard extends StatelessWidget {
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(20),
                 onTap: onTap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(

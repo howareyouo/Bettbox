@@ -238,9 +238,6 @@ class _CascadeMenuState extends State<_CascadeMenu> {
   Widget _buildBackHeader(PopupMenuItemData item) {
     final colorScheme = context.colorScheme;
     return InkWell(
-      customBorder: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
       onTap: () => _handleSubmenu(null, null),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 10, 22, 10),
@@ -706,9 +703,6 @@ class CommonPopupMenu extends StatelessWidget {
         }
 
         return InkWell(
-          customBorder: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
           onHover: onSubmenu == null || !hoverSubmenu
               ? null
               : (hovering) {
@@ -727,14 +721,7 @@ class CommonPopupMenu extends StatelessWidget {
               : null,
           child: Container(
             constraints: BoxConstraints(minWidth: minWidth),
-            decoration: active
-                ? ShapeDecoration(
-                    color: highlight,
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  )
-                : null,
+            decoration: active ? BoxDecoration(color: highlight) : null,
             padding: EdgeInsets.only(
               left: 14,
               right: submenu || trailing != null ? 10 : 22,
@@ -831,8 +818,8 @@ class CommonPopupMenu extends StatelessWidget {
           ? colorScheme.surfaceContainerLowest
           : colorScheme.surfaceContainerHighest,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(26),
+      shape: RoundedRectangleBorder(
+        borderRadius: surfaceBorderRadius,
         side: BorderSide(
           color: colorScheme.outlineVariant.withValues(
             alpha: isLight ? 0.45 : 0.25,

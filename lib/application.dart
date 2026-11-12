@@ -101,7 +101,7 @@ class ApplicationState extends ConsumerState<Application>
         surfaceTintColor: Colors.transparent,
         elevation: 10,
         shadowColor: Colors.black.withValues(alpha: isLight ? 0.3 : 0.6),
-        shape: RoundedSuperellipseBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
             color: colorScheme.outlineVariant.withValues(
@@ -111,13 +111,13 @@ class ApplicationState extends ConsumerState<Application>
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        shape: RoundedSuperellipseBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         clipBehavior: Clip.antiAlias,
       ),
       popupMenuTheme: const PopupMenuThemeData(
-        shape: RoundedSuperellipseBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),

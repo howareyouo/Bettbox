@@ -195,7 +195,7 @@ class CommonModal extends ConsumerWidget {
         width: size.width * 0.85,
         height: size.height * 0.85,
         decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
         ),

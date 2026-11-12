@@ -106,7 +106,7 @@ class MessageManagerState extends State<MessageManager> {
         : kToolbarHeight + 8;
     final colorScheme = context.colorScheme;
     final isLight = colorScheme.brightness == Brightness.light;
-    final shape = RoundedSuperellipseBorder(
+    final shape = RoundedRectangleBorder(
       borderRadius: const BorderRadius.all(Radius.circular(20)),
       side: BorderSide(
         color: colorScheme.outlineVariant.withValues(

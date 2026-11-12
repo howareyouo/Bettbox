@@ -514,7 +514,7 @@ class _GroupTabChipState extends State<_GroupTabChip>
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: ShapeDecoration(
                 color: bgColor,
-                shape: RoundedSuperellipseBorder(
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(GroupTabBar.height / 2),
                   side: BorderSide(
                     color: borderColor,

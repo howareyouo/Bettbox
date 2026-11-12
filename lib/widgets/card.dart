@@ -217,7 +217,7 @@ class CommonCard extends StatelessWidget {
 
     final isInteractive = onPressed != null || onLongPress != null;
     final isLight = context.colorScheme.brightness == Brightness.light;
-    final shape = RoundedSuperellipseBorder(
+    final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(actualRadius),
     );
     Widget buildCard(WidgetStatesController? controller) {

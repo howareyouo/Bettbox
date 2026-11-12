@@ -76,7 +76,7 @@ ShapeDecoration panelTileDecoration(BuildContext context) {
   if (!isInBottomSheet(context)) {
     return ShapeDecoration(
       color: colorScheme.surfaceContainerLow,
-      shape: RoundedSuperellipseBorder(borderRadius: borderRadius),
+      shape: RoundedRectangleBorder(borderRadius: borderRadius),
     );
   }
   final isLight = colorScheme.brightness == Brightness.light;
@@ -88,7 +88,7 @@ ShapeDecoration panelTileDecoration(BuildContext context) {
             0.5,
           )
         : colorScheme.surfaceContainerHigh,
-    shape: RoundedSuperellipseBorder(
+    shape: RoundedRectangleBorder(
       borderRadius: borderRadius,
       side: BorderSide(
         color: colorScheme.outlineVariant.withValues(
@@ -438,7 +438,7 @@ class _ExpandableBottomSheetState extends State<_ExpandableBottomSheet>
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: backgroundColor,
-        shape: const RoundedSuperellipseBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
         ),
       ),
