@@ -193,6 +193,7 @@ cd .worktrees/windows-only-rebuild && cp pubspec.lock /tmp/textlock.txt \
 | 构建缓存把旧依赖解析/过期工具链路径带回来（如 jni 的 `jvm.lib` LNK1181） | 删 `flutter-*` 构建缓存重跑；根治靠两条：缓存路径**只放 `build/windows`**（绝不缓存 `.dart_tool`），build 步骤先强制 `flutter pub get` 再 build |
 | `LNK1181` / `jvm.lib` 反复出现，且 `sync` 日志说 lock 里仍有 `jni` | 分支上的 `pubspec.lock` 没跟上 override —— 确认脚本步骤 3.6 存在且未被绕过（它负责重写 lock 并断言无 `jni`）；若是手工改分支导致，重跑 `build_windows_only.sh` 即可恢复正常 |
 | CI `Prepare Flutter deps` 日志里出现 `+ jni` 或某个 `* xxx_android 2.x (was 旧版)` | `JNI_FREE_PINS` 漏了来源。用 `curl https://pub.flutter-io.cn/api/packages/<包>` 二分版本找出「首个带 jni 的版本」与「最后一个干净的版本」，往表里加一行（连 sha256），重推 |
+| `flutter build windows` 报 `unable to find directory entry in pubspec.yaml: assets/data` | `assets/data/` 下 5 个资源在 `.gitignore` 里，干净 checkout 无该目录，只由 `setup.dart` 的 `ensureAssets()` 下载（挂在 core 构建上）；Core 缓存命中跳过 Build Core 时目录就从未创建。workflow 的 `Ensure downloaded assets`（`dart setup.dart assets`）已无条件兜底，与缓存无关 |
 | `.worktrees/` 残留 | `git worktree remove --force .worktrees/<名> && git worktree prune`（脚本下次运行也会自动清理） |
 
 ## 8. 硬性规则
