@@ -147,13 +147,16 @@ Future<void> showContextMenu(
   double maxWidth = 300,
 }) {
   final rect = anchor ?? (position ?? Offset.zero) & Size.zero;
+  // 菜单宽度对齐锚点（卡片 / 行）；锚点是右键坐标（宽高为 0）时按内容排布。
+  final width = rect.width > 0 ? rect.width : null;
   return Navigator.of(context, rootNavigator: true).push(
     _ContextMenuRoute(
       barrierLabel: utils.id,
       anchor: rect,
       items: items,
       header: header,
-      maxWidth: maxWidth,
+      width: width,
+      maxWidth: width == null ? maxWidth : math.max(maxWidth, width),
     ),
   );
 }
@@ -162,6 +165,7 @@ class _ContextMenuRoute<T> extends PopupRoute<T> {
   final Rect anchor;
   final List<PopupMenuItemData> items;
   final Widget? header;
+  final double? width;
   final double maxWidth;
 
   _ContextMenuRoute({
@@ -169,6 +173,7 @@ class _ContextMenuRoute<T> extends PopupRoute<T> {
     required this.anchor,
     required this.items,
     required this.header,
+    required this.width,
     required this.maxWidth,
   });
 
@@ -196,6 +201,7 @@ class _ContextMenuRoute<T> extends PopupRoute<T> {
       anchor: anchor,
       items: items,
       header: header,
+      width: width,
       maxWidth: maxWidth,
     );
   }
@@ -207,6 +213,7 @@ class _CascadeMenu extends StatefulWidget {
   final Rect anchor;
   final List<PopupMenuItemData> items;
   final Widget? header;
+  final double? width;
   final double maxWidth;
 
   const _CascadeMenu({
@@ -215,6 +222,7 @@ class _CascadeMenu extends StatefulWidget {
     required this.anchor,
     required this.items,
     required this.header,
+    required this.width,
     required this.maxWidth,
   });
 
@@ -313,23 +321,26 @@ class _CascadeMenuState extends State<_CascadeMenu> {
               animation: widget.animation,
               duration: widget.duration,
               resolveAlignment: () => _placement.alignment,
-              child: CommonPopupMenu.surface(
-                key: _menuKey,
-                context,
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  alignment: _placement.alignment,
-                  clipBehavior: Clip.none,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 120),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    layoutBuilder: (current, previous) => Stack(
-                      alignment: Alignment.topLeft,
-                      children: [...previous, ?current],
+              child: _withWidth(
+                widget.width,
+                CommonPopupMenu.surface(
+                  key: _menuKey,
+                  context,
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    alignment: _placement.alignment,
+                    clipBehavior: Clip.none,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 120),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      layoutBuilder: (current, previous) => Stack(
+                        alignment: Alignment.topLeft,
+                        children: [...previous, ?current],
+                      ),
+                      child: menu,
                     ),
-                    child: menu,
                   ),
                 ),
               ),
@@ -377,6 +388,16 @@ class _MenuPlacement {
 
 const _menuMargin = 8.0;
 const _menuMinHeight = 160.0;
+
+/// 菜单宽度对齐锚点（卡片 / 行）：下限由菜单项自身的最小宽度兜底，
+/// 超出可用空间的部分交给布局委托截断。
+Widget _withWidth(double? width, Widget child) {
+  if (width == null) return child;
+  return ConstrainedBox(
+    constraints: BoxConstraints(minWidth: width),
+    child: child,
+  );
+}
 
 class _ContextMenuLayoutDelegate extends SingleChildLayoutDelegate {
   final Rect anchor;
@@ -529,6 +550,7 @@ class CommonPopupBox extends StatefulWidget {
 class _CommonPopupBoxState extends State<CommonPopupBox> {
   bool _isOpen = false;
   final _targetOffsetValueNotifier = ValueNotifier<Offset>(Offset.zero);
+  final _targetWidthValueNotifier = ValueNotifier<double?>(null);
   Offset? _offset;
   CommonPopupRoute<dynamic>? _route;
 
@@ -538,9 +560,12 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     _isOpen = true;
     final route = _route = CommonPopupRoute(
       barrierLabel: utils.id,
-      builder: (BuildContext context) {
-        return widget.popup;
-      },
+      // 弹窗宽度对齐触发盒：锚点是卡片时铺满卡片，是图标按钮时按内容排布。
+      builder: (BuildContext context) => ValueListenableBuilder<double?>(
+        valueListenable: _targetWidthValueNotifier,
+        builder: (_, width, child) => _withWidth(width, child!),
+        child: widget.popup,
+      ),
       offsetNotifier: _targetOffsetValueNotifier,
     );
     return Navigator.of(context).push(route).then((_) {
@@ -553,8 +578,12 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     final route = _route;
     if (route == null) {
       _targetOffsetValueNotifier.dispose();
+      _targetWidthValueNotifier.dispose();
     } else {
-      route.completed.whenComplete(_targetOffsetValueNotifier.dispose);
+      route.completed.whenComplete(() {
+        _targetOffsetValueNotifier.dispose();
+        _targetWidthValueNotifier.dispose();
+      });
     }
     super.dispose();
   }
@@ -564,6 +593,7 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     if (renderBox == null) {
       return;
     }
+    _targetWidthValueNotifier.value = renderBox.size.width;
     // 默认锚在目标右下角下方留 4 间距：菜单右边缘与按钮右边缘对齐，
     // 顶边落在按钮之外，不再压住触发按钮。
     final localAnchor =
