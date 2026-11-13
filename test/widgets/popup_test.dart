@@ -153,7 +153,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('菜单与触发盒等宽，菜单项无可视左右留白', (tester) async {
+  testWidgets('菜单宽度按锚点取用并受上限约束，菜单项无可视左右留白', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -195,8 +195,7 @@ void main() {
           )
           .first,
     );
-    expect(surface.width, moreOrLessEquals(target.width));
-    expect(surface.left, moreOrLessEquals(target.left));
+    expect(surface.width, moreOrLessEquals(260)); // 菜单宽度上限
     expect(surface.right, moreOrLessEquals(target.right));
 
     final rows = find.descendant(
@@ -211,7 +210,7 @@ void main() {
     }
   });
 
-  testWidgets('右键菜单与锚点等宽', (tester) async {
+  testWidgets('右键菜单宽度按锚点取用并受上限约束', (tester) async {
     final key = GlobalKey();
     late BuildContext menuContext;
     await tester.pumpWidget(
@@ -250,7 +249,7 @@ void main() {
           )
           .first,
     );
-    expect(surface.width, moreOrLessEquals(anchor.width));
+    expect(surface.width, moreOrLessEquals(260)); // 菜单宽度上限
   });
 
   testWidgets('推入菜单的同一帧锚点被移除，菜单首帧构建不报错', (tester) async {
