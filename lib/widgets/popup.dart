@@ -156,7 +156,7 @@ Future<void> showContextMenu(
       items: items,
       header: header,
       width: width,
-      maxWidth: width == null ? maxWidth : math.max(maxWidth, width),
+      maxWidth: maxWidth,
     ),
   );
 }
@@ -380,12 +380,18 @@ class _MenuPlacement {
 const _menuMargin = 8.0;
 const _menuMinHeight = 160.0;
 
-/// 菜单宽度对齐锚点（卡片 / 行）：下限由菜单项自身的最小宽度兜底，
-/// 超出可用空间的部分交给布局委托截断。
+/// 菜单宽度上下限：窄锚点（图标按钮）不缩成细条，宽锚点（卡片）也不撑满整张卡。
+const _menuMinWidth = 148.0;
+const _menuMaxWidth = 260.0;
+
+/// 菜单宽度对齐锚点，再夹进 [_menuMinWidth, _menuMaxWidth]：
+/// 卡片菜单宽度稳定在手感合适的区间，图标按钮菜单仍按内容排布。
 Widget _withWidth(double? width, Widget child) {
   if (width == null) return child;
   return ConstrainedBox(
-    constraints: BoxConstraints(minWidth: width),
+    constraints: BoxConstraints(
+      minWidth: math.min(math.max(width, _menuMinWidth), _menuMaxWidth),
+    ),
     child: child,
   );
 }
