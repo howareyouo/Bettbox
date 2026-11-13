@@ -656,11 +656,7 @@ class CommonPopupMenu extends StatelessWidget {
     route.completed.then((_) => onPressed());
   }
 
-  Widget _popupMenuItem(
-    BuildContext context, {
-    required PopupMenuItemData item,
-    required int index,
-  }) {
+  Widget _popupMenuItem(BuildContext context, PopupMenuItemData item) {
     final colorScheme = context.colorScheme;
     final isLight = colorScheme.brightness == Brightness.light;
     final onPressed = item.onPressed;
@@ -781,9 +777,9 @@ class CommonPopupMenu extends StatelessWidget {
           header,
           const Divider(height: 9),
         ],
-        for (final item in items.asMap().entries) ...[
-          _popupMenuItem(context, item: item.value, index: item.key),
-          if (item.value != items.last) const SizedBox(height: 2),
+        for (var i = 0; i < items.length; i++) ...[
+          _popupMenuItem(context, items[i]),
+          if (i < items.length - 1) const SizedBox(height: 2),
         ],
         if (footer != null) ...[
           const Divider(height: 9),
@@ -792,8 +788,7 @@ class CommonPopupMenu extends StatelessWidget {
       ],
     );
     final body = scrollable ? SingleChildScrollView(child: content) : content;
-    if (bare) return IntrinsicWidth(child: body);
-    return IntrinsicWidth(child: surface(context, body));
+    return IntrinsicWidth(child: bare ? body : surface(context, body));
   }
 
   static Widget surface(BuildContext context, Widget child) {
