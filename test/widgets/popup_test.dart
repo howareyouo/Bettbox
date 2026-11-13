@@ -153,6 +153,106 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('菜单与触发盒等宽，菜单项无可视左右留白', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: CommonPopupBox(
+              targetBuilder: (open) => SizedBox(
+                width: 320,
+                height: 120,
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    onPressed: open,
+                    icon: const Icon(Icons.more_vert),
+                  ),
+                ),
+              ),
+              popup: CommonPopupMenu(
+                items: [
+                  PopupMenuItemData(label: 'action', onPressed: () {}),
+                  PopupMenuItemData(label: 'another action', onPressed: () {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final target = tester.getRect(find.byType(CommonPopupBox));
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    final surface = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(CommonPopupMenu),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(surface.width, moreOrLessEquals(target.width));
+    expect(surface.left, moreOrLessEquals(target.left));
+    expect(surface.right, moreOrLessEquals(target.right));
+
+    final rows = find.descendant(
+      of: find.byType(CommonPopupMenu),
+      matching: find.byType(InkWell),
+    );
+    expect(rows, findsNWidgets(2));
+    for (var i = 0; i < 2; i++) {
+      final rect = tester.getRect(rows.at(i));
+      expect(rect.left, moreOrLessEquals(surface.left));
+      expect(rect.right, moreOrLessEquals(surface.right));
+    }
+  });
+
+  testWidgets('右键菜单与锚点等宽', (tester) async {
+    final key = GlobalKey();
+    late BuildContext menuContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              key: key,
+              width: 300,
+              height: 40,
+              child: Builder(
+                builder: (context) {
+                  menuContext = context;
+                  return const SizedBox.expand();
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final anchor = tester.getRect(find.byKey(key));
+    showContextMenu(
+      menuContext,
+      anchor: anchor,
+      items: [PopupMenuItemData(label: 'action', onPressed: () {})],
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    final surface = tester.getRect(
+      find
+          .ancestor(
+            of: find.byType(CommonPopupMenu),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    expect(surface.width, moreOrLessEquals(anchor.width));
+  });
+
   testWidgets('推入菜单的同一帧锚点被移除，菜单首帧构建不报错', (tester) async {
     final visible = await _pumpRemovableMenu(tester);
     await tester.tap(find.byIcon(Icons.more_vert));
