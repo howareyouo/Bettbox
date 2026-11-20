@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
@@ -340,20 +339,6 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
             );
           },
         ),
-      ),
-      IconButton(
-        onPressed: () {
-          final profiles = globalState.config.profiles;
-          showSheet(
-            context: context,
-            builder: (_, type) {
-              return ReorderableProfilesSheet(type: type, profiles: profiles);
-            },
-          );
-        },
-        tooltip: appLocalizations.sort,
-        icon: const Icon(Icons.sort),
-        iconSize: 26,
       ),
     ];
   }
@@ -1365,110 +1350,6 @@ class _ProfileItemState extends State<ProfileItem> {
           );
         },
       ),
-    );
-  }
-}
-
-class ReorderableProfilesSheet extends StatefulWidget {
-  final List<Profile> profiles;
-  final SheetType type;
-
-  const ReorderableProfilesSheet({
-    super.key,
-    required this.profiles,
-    required this.type,
-  });
-
-  @override
-  State<ReorderableProfilesSheet> createState() =>
-      _ReorderableProfilesSheetState();
-}
-
-class _ReorderableProfilesSheetState extends State<ReorderableProfilesSheet> {
-  late List<Profile> profiles;
-
-  @override
-  void initState() {
-    super.initState();
-    profiles = List.from(widget.profiles);
-  }
-
-  Widget proxyDecorator(Widget child, int index, Animation<double> animation) {
-    final profile = profiles[index];
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (_, Widget? child) {
-        final double animValue = Curves.easeInOut.transform(animation.value);
-        final double scale = lerpDouble(1, 1.02, animValue)!;
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Container(
-        key: Key(profile.id),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: CommonCard(
-          type: CommonCardType.filled,
-          child: ListTile(
-            contentPadding: const EdgeInsets.only(right: 44, left: 16),
-            title: EmojiText(profile.label ?? profile.id),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AdaptiveSheetScaffold(
-      type: widget.type,
-      actions: [
-        IconButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            globalState.appController.setProfiles(profiles);
-          },
-          icon: const Icon(Icons.save),
-        ),
-      ],
-      body: ReorderableListView.builder(
-        buildDefaultDragHandles: false,
-        padding: EdgeInsets.fromLTRB(
-          12,
-          16,
-          12,
-          32 + MediaQuery.paddingOf(context).bottom,
-        ),
-        proxyDecorator: proxyDecorator,
-        // ignore: deprecated_member_use
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            if (oldIndex < newIndex) {
-              newIndex -= 1;
-            }
-            final profile = profiles.removeAt(oldIndex);
-            profiles.insert(newIndex, profile);
-          });
-        },
-        itemBuilder: (_, index) {
-          final profile = profiles[index];
-          return Container(
-            key: Key(profile.id),
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: CommonCard(
-              type: CommonCardType.filled,
-              child: ListTile(
-                contentPadding: const EdgeInsets.only(right: 16, left: 16),
-                title: EmojiText(profile.label ?? profile.id),
-                trailing: ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(Icons.drag_handle),
-                ),
-              ),
-            ),
-          );
-        },
-        itemCount: profiles.length,
-      ),
-      title: appLocalizations.profilesSort,
     );
   }
 }
