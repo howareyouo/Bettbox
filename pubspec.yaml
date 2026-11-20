@@ -70,6 +70,8 @@ dependencies:
   material_ui: ^1.8.0
   cupertino_ui: ^1.1.4
 dependency_overrides:
+  path_provider_android: 2.2.23
+  shared_preferences_android: 2.4.28
   flutter_rust_bridge: 2.13.0
   hotkey_manager_linux:
     path: plugins/hotkey_manager_linux
