@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
 import 'package:bett_box/pages/scan.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
@@ -148,22 +147,18 @@ class AddNodeView extends StatelessWidget {
     await _import(context, utf8.decode(bytes, allowMalformed: true));
   }
 
-  void _handleManual(BuildContext context) {
-    BaseNavigator.push(
-      context,
-      EditorPage(
+  Future<void> _handleManual(BuildContext context) async {
+    final content = await globalState.showCommonDialog<String>(
+      child: InputDialog(
         title: appLocalizations.addNode,
-        content: '',
-        languages: const [],
-        onSave: (editorContext, _, content) async {
-          final nodes = await _parse(content);
-          if (nodes == null) return;
-          if (editorContext.mounted) Navigator.of(editorContext).pop();
-          if (context.mounted) Navigator.of(context).pop(nodes);
-        },
+        value: '',
+        maxLines: 10,
       ),
-      maintainState: false,
     );
+    if (content == null || content.trim().isEmpty) return;
+    final node = await _parse(content);
+    if (node == null) return;
+    if (context.mounted) Navigator.of(context).pop(node);
   }
 
   Future<void> _handleWarp(BuildContext context) async {
