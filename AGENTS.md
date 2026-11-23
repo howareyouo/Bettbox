@@ -50,7 +50,7 @@ CI 全程不感知 upstream。
 | `.github/workflows/windows_only.yml` | CI：push main / 手动 → 重建 windows-only → 构建发布（`sync` + `build` 两个 job） |
 | `windows_only/build_windows_only.sh` | 裁剪脚本：`build_windows_only.sh [源 ref，默认 main] [输出分支，默认 windows-only-rebuild]`；退出码 `2` = 补丁无法应用（现场保留在 `.worktrees/`） |
 | `windows_only/delete_manifest.txt` | 删除清单：每行一个 `git rm` 目标，`#` 注释 |
-| `windows_only/patches/*.patch` | 手工裁剪补丁（目前仅 `strip_iperf_scan.patch`） |
+| `windows_only/patches/*.patch` | 手工裁剪补丁：`strip_iperf_scan.patch`（iperf 页）、`strip_nodes_scan.patch`（节点库页） |
 
 Flutter 版本由 CI 从 main 的 `.github/workflows/build.yaml` pin 解析（兜底读 pubspec），
 rebase 上游时自动跟进，无需手动指定。
@@ -111,13 +111,14 @@ sha256 都对，不成立则 `exit 2` 保留现场，不让矛盾走到链接阶
 4. **运行时判断（`Platform.is*` / `isAndroidTV`）永远保留不删**——Windows 上恒为
    false，行为天然正确；删了反而扩大与上游的冲突面。
 
-### 手工补丁（strip_iperf_scan.patch）
+### 手工补丁（strip_iperf_scan.patch / strip_nodes_scan.patch）
 
-上游 iperf 页（`lib/pages/toolbox/iperf.dart`）引用移动端专属 `ScanPage`
-（`scan.dart` 已被删除）；补丁摘除其 scan 引用（接线改 `onScan: null`，
-按钮在 Windows 本就不显示）。**main 自身不修改 iperf.dart**——这是补丁能
-稳定应用的前提。新增手工补丁的判据：main 代码引用了被删文件，且无法用
-运行时判断/条件导入在 main 内解决。
+上游 iperf 页（`lib/pages/toolbox/iperf.dart`）与节点库页
+（`lib/views/profiles/nodes.dart`，v1.19.9 新增）都引用移动端专属 `ScanPage`
+（`scan.dart` 已被删除）；补丁摘除其 scan 引用（iperf 接线改 `onScan: null`，
+节点库删除扫码入口项与 `_handleScan`）。按钮/入口在 Windows 本就不显示。
+**main 自身不修改这两个文件**——这是补丁能稳定应用的前提。新增手工补丁的
+判据：main 代码引用了被删文件，且无法用运行时判断/条件导入在 main 内解决。
 
 ## 3. 流程一：日常开发与发布
 

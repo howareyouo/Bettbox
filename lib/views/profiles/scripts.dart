@@ -676,7 +676,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     try {
       final res = await request.getTextResponseForUrl(url);
       if (mounted) {
-        await _handleSaveImported(res.data, url: url);
+        await _handleSaveImported('${res.data ?? ''}', url: url);
       }
     } catch (e) {
       globalState.showMessage(

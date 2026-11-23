@@ -770,7 +770,7 @@ final class TrafficStatsSettingProvider
 }
 
 String _$trafficStatsSettingHash() =>
-    r'5f758a4baa884a3be0e11e5876d7e8908a02bf6c';
+    r'e4124a4187e104fe2c9994b3989f3641b7648b5e';
 
 abstract class _$TrafficStatsSetting extends $Notifier<TrafficStatsProps> {
   TrafficStatsProps build();
@@ -874,7 +874,7 @@ final class ManagedSettingProvider
   }
 }
 
-String _$managedSettingHash() => r'0e8d48bd653b0cf34e7ed8f1116649cf166cf587';
+String _$managedSettingHash() => r'bd24b6cd41bade748ccde7990a7033729af95b1e';
 
 abstract class _$ManagedSetting extends $Notifier<ManagedProps> {
   ManagedProps build();
