@@ -9,6 +9,7 @@ import 'package:bett_box/models/models.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:bett_box/l10n/l10n.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:lpinyin/lpinyin.dart';
 

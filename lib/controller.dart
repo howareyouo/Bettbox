@@ -1851,9 +1851,6 @@ class AppController {
     }
   }
 
-  static const _managedScriptBackupKey = 'managedScript';
-  static const _backupDesktopKey = 'backupDesktop';
-
   bool _resumeAfterInstall = false;
 
   Future<void> resumeAfterInstall() async {
