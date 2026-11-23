@@ -425,21 +425,10 @@ class _ProfilesViewState extends ConsumerState<ProfilesView>
           icon: const AppIcon(Icons.sort),
         )
       else
-        CommonPopupBox(
-          popup: CommonPopupMenu(
-            items: [
-              PopupMenuItemData(
-                icon: Icons.sync,
-                label: appLocalizations.syncAll,
-                onPressed: _updateProfiles,
-              ),
-            ],
-          ),
-          targetBuilder: (open) => IconButton(
-            onPressed: open,
-            tooltip: appLocalizations.more,
-            icon: const AppIcon(Icons.more_vert),
-          ),
+        IconButton(
+          onPressed: _updateProfiles,
+          tooltip: appLocalizations.syncAll,
+          icon: const AppIcon(Icons.sync),
         ),
     ];
   }
