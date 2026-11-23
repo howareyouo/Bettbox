@@ -409,7 +409,7 @@ class EditNodeViewState extends ConsumerState<EditNodeView> {
     );
     if (node == null) return;
     if (mounted) {
-      setState(() => _node = node);
+      setState(() => _nodes = [node]);
       unawaited(_loadManaged());
     }
   }
