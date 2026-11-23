@@ -1,0 +1,51 @@
+diff --git a/lib/views/profiles/nodes.dart b/lib/views/profiles/nodes.dart
+--- a/lib/views/profiles/nodes.dart
++++ b/lib/views/profiles/nodes.dart
+@@ -4,7 +4,6 @@
+ import 'package:bett_box/common/common.dart';
+ import 'package:bett_box/enum/enum.dart';
+ import 'package:bett_box/models/models.dart';
+-import 'package:bett_box/pages/scan.dart';
+ import 'package:bett_box/providers/providers.dart';
+ import 'package:bett_box/state.dart';
+ import 'package:bett_box/widgets/widgets.dart';
+@@ -125,15 +124,6 @@
+     await _import(context, text);
+   }
+ 
+-  Future<void> _handleScan(BuildContext context) async {
+-    final text = await BaseNavigator.push<String>(
+-      context,
+-      ScanPage(accept: (_) => true),
+-    );
+-    if (text == null || !context.mounted) return;
+-    await _import(context, text);
+-  }
+-
+   Future<void> _handleFile(BuildContext context) async {
+     final file = await globalState.appController.safeRun(picker.pickerFile);
+     if (file == null) return;
+@@ -209,7 +199,6 @@
+ 
+   @override
+   Widget build(BuildContext context) {
+-    final scannable = system.isAndroid && !globalState.isAndroidTV;
+     final divider = _buildDivider(context);
+     return ListView(
+       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+@@ -225,15 +214,6 @@
+                 subtitle: Text(appLocalizations.nodeClipboardDesc),
+                 onTap: () => _handleClipboard(context),
+               ),
+-              if (scannable) ...[
+-                divider,
+-                ListItem(
+-                  leading: const AppIcon(Icons.qr_code_sharp),
+-                  title: Text(appLocalizations.qrcode),
+-                  subtitle: Text(appLocalizations.nodeQrcodeDesc),
+-                  onTap: () => _handleScan(context),
+-                ),
+-              ],
+               divider,
+               ListItem(
+                 leading: const AppIcon(Icons.upload_file_sharp),

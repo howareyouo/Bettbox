@@ -1,7 +1,7 @@
 diff --git a/lib/pages/toolbox/iperf.dart b/lib/pages/toolbox/iperf.dart
 --- a/lib/pages/toolbox/iperf.dart
 +++ b/lib/pages/toolbox/iperf.dart
-@@ -4,7 +4,6 @@ import 'package:bett_box/clash/clash.dart';
+@@ -5,7 +5,6 @@
  import 'package:bett_box/common/common.dart';
  import 'package:bett_box/enum/enum.dart';
  import 'package:bett_box/models/models.dart';
@@ -9,7 +9,7 @@ diff --git a/lib/pages/toolbox/iperf.dart b/lib/pages/toolbox/iperf.dart
  import 'package:bett_box/providers/providers.dart';
  import 'package:bett_box/state.dart';
  import 'package:bett_box/widgets/widgets.dart';
-@@ -203,8 +202,6 @@ class _IperfPageState extends ConsumerState<IperfPage>
+@@ -204,8 +203,6 @@
    final _sessionUpload = <(double, double)>[];
    final _sessionDownload = <(double, double)>[];
  
@@ -18,7 +18,7 @@ diff --git a/lib/pages/toolbox/iperf.dart b/lib/pages/toolbox/iperf.dart
    @override
    void initState() {
      super.initState();
-@@ -279,21 +276,6 @@ class _IperfPageState extends ConsumerState<IperfPage>
+@@ -280,21 +277,6 @@
      _address.text = _scannedText;
    }
  
@@ -30,7 +30,7 @@ diff --git a/lib/pages/toolbox/iperf.dart b/lib/pages/toolbox/iperf.dart
 -    if (!mounted || value == null) return;
 -    final target = parseIperfLink(value);
 -    if (target == null) {
--      context.showNotifier(appLocalizations.iperfScanInvalid);
+-      unawaited(context.showNotifier(appLocalizations.iperfScanInvalid));
 -      return;
 -    }
 -    setState(() => _applyTarget(target));
@@ -40,7 +40,7 @@ diff --git a/lib/pages/toolbox/iperf.dart b/lib/pages/toolbox/iperf.dart
    Future<void> _start() async {
      if (_testing) return;
      final link = parseIperfLink(_address.text);
-@@ -525,7 +507,7 @@ class _IperfPageState extends ConsumerState<IperfPage>
+@@ -533,7 +515,7 @@
          controller: _address,
          enabled: !_testing,
          onSubmitted: _start,

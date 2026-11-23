@@ -4,9 +4,9 @@ import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
 import 'package:bett_box/pages/media_unlock.dart';
 import 'package:bett_box/pages/speed_test.dart';
+import 'package:bett_box/pages/viewer.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/profiles/nodes.dart';
 import 'package:bett_box/widgets/widgets.dart';
@@ -239,7 +239,7 @@ Future<void> _viewConfig(BuildContext context, String name) async {
   if (config == null || !context.mounted) return;
   await BaseNavigator.push(
     context,
-    EditorPage(title: name, content: config.yaml, readOnly: true),
+    ViewerPage(title: name, content: config.yaml, highlightMode: editorYamlMode),
   );
 }
 

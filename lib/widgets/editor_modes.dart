@@ -15,7 +15,7 @@ final Mode editorYamlMode = Mode(
   name: langYaml.name,
   caseInsensitive: langYaml.caseInsensitive,
   contains: [
-    for (final mode in langYaml.contains ?? const <Mode>[])
+    for (final mode in (langYaml.contains as List?) ?? const <Mode>[])
       identical(mode, HASH_COMMENT_MODE)
           ? Mode(scope: 'comment', begin: r'(?<![^\s])#', end: r'$')
           : mode,
@@ -32,6 +32,7 @@ final Mode editorJsMode = Mode(
   caseInsensitive: langJavascript.caseInsensitive,
   keywords: langJavascript.keywords,
   contains: [
-    for (final mode in langJavascript.contains ?? const <Mode>[]) mode,
+    for (final mode in (langJavascript.contains as List?) ?? const <Mode>[])
+      mode,
   ],
 );

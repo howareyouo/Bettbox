@@ -4,7 +4,6 @@ import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/editor.dart';
 import 'package:bett_box/pages/speed_test.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
@@ -376,29 +375,26 @@ class EditNodeViewState extends ConsumerState<EditNodeView> {
     widget.ready.value = true;
   }
 
-  void _handleEdit(ProxyNode current) {
-    BaseNavigator.push(
-      context,
-      EditorPage(
+  Future<void> _handleEdit(ProxyNode current) async {
+    final content = await globalState.showCommonDialog<String>(
+      child: InputDialog(
         title: current.name,
-        content: nodeToYaml(current.proxy),
-        onSave: (editorContext, _, content) async {
-          final node = await globalState.appController.safeRun(
-            () => globalState.appController.updateNodeProxy(current, content),
-            needLoading: true,
-            silence: false,
-            title: appLocalizations.edit,
-          );
-          if (node == null) return;
-          if (mounted) {
-            setState(() => _node = node);
-            unawaited(_loadManaged());
-          }
-          if (editorContext.mounted) Navigator.of(editorContext).pop();
-        },
+        value: nodeToYaml(current.proxy),
+        maxLines: 10,
       ),
-      maintainState: false,
     );
+    if (content == null || content.trim().isEmpty) return;
+    final node = await globalState.appController.safeRun(
+      () => globalState.appController.updateNodeProxy(current, content),
+      needLoading: true,
+      silence: false,
+      title: appLocalizations.edit,
+    );
+    if (node == null) return;
+    if (mounted) {
+      setState(() => _node = node);
+      unawaited(_loadManaged());
+    }
   }
 
   Future<void> _handleDelete(ProxyNode node) async {
