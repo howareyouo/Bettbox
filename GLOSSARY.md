@@ -40,3 +40,27 @@
 钩子（`lib/common/mixin.dart`）。Riverpod Notifier 状态同构变更
 `state = builder(state)` 的收敛入口，由 `AutoDisposeNotifierMixin` 提供。
 需要额外副作用（null 守卫、强制字段）时覆写并标注 `@override`。
+
+### CoreLifecycle
+模块。内核进程的生命周期：启动、停止、重启、退出与任务循环。从 AppController 拆出，独占核心运行态。
+
+### ConfigApplier
+模块。把当前配置应用到内核：setup、patch、TUN 授权。消费 ConfigCompiler 的编译产物，不感知 UI。
+
+### ProfileManager
+模块。档案、外部 provider、节点库的增删改与当前选择。独占 profile 与节点状态。
+
+### BundleService
+模块。bundle 与 managed script 的生成、同步、版本升级。独占脚本化配置。
+
+### ProxySelector
+模块。代理组、当前选择、延迟、样式。独占 groups 与选择状态。
+
+### DashboardTicker
+模块。仪表盘 runTime/traffic 节拍，由状态层任务循环经 tick 回调 seam 驱动。
+
+### UI coordinator
+模块。导航、对话框、日志、热键、本地网络、偏好保存的 glue。AppController 拆出后的 UI 侧薄层。
+
+### CoreScheduler
+共享 seam。生命周期、配置应用、代理组三者共享的串行化 adapter，由组合根注入同一实例。
