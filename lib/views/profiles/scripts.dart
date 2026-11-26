@@ -266,13 +266,15 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
   Future<void> _handleViewManaged() async {
     final script = await _loadManaged();
     if (script == null || !mounted) return;
-    BaseNavigator.push(
-      context,
-      ViewerPage(
-        title: appLocalizations.managedMode,
-        content: script.content,
+    unawaited(
+      BaseNavigator.push(
+        context,
+        ViewerPage(
+          title: appLocalizations.managedMode,
+          content: script.content,
+        ),
+        maintainState: false,
       ),
-      maintainState: false,
     );
   }
 
@@ -304,7 +306,7 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
       title: appLocalizations.tip,
     );
     if (data == null || !mounted) return;
-    _managedEditSub?.cancel();
+    unawaited(_managedEditSub?.cancel());
     final file = File(
       '${await appPath.relayPath}${Platform.pathSeparator}'
       'managed-${DateTime.now().microsecondsSinceEpoch}.js',
@@ -316,9 +318,13 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
     if (!launched) {
       await _deleteQuietly(file);
       if (!mounted) return;
-      globalState.showMessage(
-        message: TextSpan(text: appLocalizations.externalEditorLaunchFailed(editor)),
-        cancelable: false,
+      unawaited(
+        globalState.showMessage(
+          message: TextSpan(
+            text: appLocalizations.externalEditorLaunchFailed(editor),
+          ),
+          cancelable: false,
+        ),
       );
       return;
     }
@@ -679,9 +685,11 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
         await _handleSaveImported('${res.data ?? ''}', url: url);
       }
     } catch (e) {
-      globalState.showMessage(
-        message: TextSpan(text: '${appLocalizations.importFailed}: $e'),
-        cancelable: false,
+      unawaited(
+        globalState.showMessage(
+          message: TextSpan(text: '${appLocalizations.importFailed}: $e'),
+          cancelable: false,
+        ),
       );
     }
   }

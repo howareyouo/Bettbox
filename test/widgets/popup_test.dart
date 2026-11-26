@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/widgets/popup.dart';
 import 'package:material_ui/material_ui.dart';
@@ -234,10 +236,12 @@ void main() {
       ),
     );
     final anchor = tester.getRect(find.byKey(key));
-    showContextMenu(
-      menuContext,
-      anchor: anchor,
-      items: [PopupMenuItemData(label: 'action', onPressed: () {})],
+    unawaited(
+      showContextMenu(
+        menuContext,
+        anchor: anchor,
+        items: [PopupMenuItemData(label: 'action', onPressed: () {})],
+      ),
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

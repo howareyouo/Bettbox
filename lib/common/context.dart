@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bett_box/common/app_localizations.dart';
 import 'package:bett_box/manager/message_manager.dart';
 import 'package:bett_box/widgets/scaffold.dart';
@@ -51,7 +53,7 @@ extension BuildContextExtension on BuildContext {
     if (text.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
-    showNotifier(appLocalizations.copySuccess);
+    unawaited(showNotifier(appLocalizations.copySuccess));
   }
 
   void showSnackBar(String message, {SnackBarAction? action}) {

@@ -321,12 +321,14 @@ class ProviderItem extends StatelessWidget {
           if (decrypted.isNotEmpty) content = decrypted;
         }
         if (!context.mounted) return;
-        BaseNavigator.push(
-          context,
-          ViewerPage(
-            title: '${appLocalizations.view} - ${provider.name}',
-            content: content,
-            highlightMode: provider.type == 'Rule' ? editorYamlMode : null,
+        unawaited(
+          BaseNavigator.push(
+            context,
+            ViewerPage(
+              title: '${appLocalizations.view} - ${provider.name}',
+              content: content,
+              highlightMode: provider.type == 'Rule' ? editorYamlMode : null,
+            ),
           ),
         );
       },

@@ -65,13 +65,15 @@ class ExternalScriptEditorWatcher {
       title: appLocalizations.tip,
     );
     if (res != true) {
-      globalState.showMessage(
-        message: TextSpan(
-          text: appLocalizations.externalEditorLaunchFailed(
-            ref.read(appSettingProvider).externalEditor,
+      unawaited(
+        globalState.showMessage(
+          message: TextSpan(
+            text: appLocalizations.externalEditorLaunchFailed(
+              ref.read(appSettingProvider).externalEditor,
+            ),
           ),
+          cancelable: false,
         ),
-        cancelable: false,
       );
       return;
     }

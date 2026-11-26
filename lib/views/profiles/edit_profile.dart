@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bett_box/clash/clash.dart';
@@ -227,9 +228,6 @@ class EditProfileViewState extends State<EditProfileView> {
       title: title,
       content: content,
       highlightMode: editorYamlMode,
-    );
-    await BaseNavigator.push<String>(context, viewerPage);
-  }
     );
     await BaseNavigator.push<String>(context, viewerPage);
   }

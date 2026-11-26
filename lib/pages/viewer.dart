@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart' hide Mode;
 import 'package:bett_box/widgets/widgets.dart';
@@ -36,7 +38,7 @@ class _ViewerPageState extends State<ViewerPage> {
   }
 
   Future<void> _handleCopyAll() async {
-    context.copyToClipboard(widget.content);
+    unawaited(context.copyToClipboard(widget.content));
   }
 
   TextSpan? _buildSpan(Brightness brightness, TextStyle base) {
