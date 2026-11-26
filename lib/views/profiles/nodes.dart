@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
-import 'package:bett_box/pages/scan.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/widgets/widgets.dart';
@@ -130,15 +129,6 @@ class AddNodeView extends StatelessWidget {
     await _import(context, text);
   }
 
-  Future<void> _handleScan(BuildContext context) async {
-    final text = await BaseNavigator.push<String>(
-      context,
-      ScanPage(accept: (_) => true),
-    );
-    if (text == null || !context.mounted) return;
-    await _import(context, text);
-  }
-
   Future<void> _handleFile(BuildContext context) async {
     final file = await globalState.appController.safeRun(picker.pickerFile);
     if (file == null) return;
@@ -214,7 +204,6 @@ class AddNodeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scannable = system.isAndroid && !globalState.isAndroidTV;
     final divider = _buildDivider(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -230,15 +219,6 @@ class AddNodeView extends StatelessWidget {
                 subtitle: Text(appLocalizations.nodeClipboardDesc),
                 onTap: () => _handleClipboard(context),
               ),
-              if (scannable) ...[
-                divider,
-                ListItem(
-                  leading: const AppIcon(Icons.qr_code_sharp),
-                  title: Text(appLocalizations.qrcode),
-                  subtitle: Text(appLocalizations.nodeQrcodeDesc),
-                  onTap: () => _handleScan(context),
-                ),
-              ],
               divider,
               ListItem(
                 leading: const AppIcon(Icons.upload_file_sharp),
